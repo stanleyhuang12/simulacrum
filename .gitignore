@@ -1,0 +1,15 @@
+.env
+.txt
+
+
+legislative-simulacrum/node_modules
+legislative-simulacrum/.vscode
+legislative-simulacrum/template
+legislative-simulacrum/public
+
+
+/template
+/database
+/__pycache__
+/node_modules
+/deprecated
