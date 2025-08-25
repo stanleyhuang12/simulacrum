@@ -712,26 +712,6 @@ class Hearing(Simulacrum):
         asyncio.run(run_discussion(user_input))
         self._manage_conversation_history() #this will update the .discussion_history(a)
 
-from openai import OpenAI
-client = OpenAI()
-
-def transcribe_audio(file_path, topic): 
-    """Transcribe audio. Takes in file path and the current topic to transcribe the audio. """
-    with open(file_path, "rb") as audio_file: 
-        audio = AudioSegment.from_wav(audio_file)
-        timelimit_audio = audio[:150000]
-
-        timelimit_audio.export("file/...", format="mp3")
-
-        transcription = client.audio.transcriptions.create(
-            model="gpt-4o-transcribe", 
-            file=audio_file,
-            response_format='text',
-            prompt=f'This is a testimony from an advocate regarding a bill on {topic}.'
-        )
-        
-        return transcription.text
-
 # file_path = ""
 # text = transcribe_audio(file_path, topic="Out of Kids' Hands campaign to restrict the sale of over-the-counter weight-loss supplements to minors.")
 

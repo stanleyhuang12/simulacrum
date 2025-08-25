@@ -31,6 +31,7 @@ body {
   margin: 0;
   display: flex;
   place-items: center;
+  align-items: center;
   min-width: 320px;
   min-height:80%;
   
@@ -51,6 +52,8 @@ h1 {
   margin: 0 auto;
   height: 90%;
   padding: 2rem;
+  align-items: center;
+  align-self: center;
   text-align: center;
   background-color: rgba(154, 80, 176, 0.679);
   box-sizing: border-box

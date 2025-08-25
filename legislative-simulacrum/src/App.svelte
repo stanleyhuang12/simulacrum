@@ -5,6 +5,7 @@
   import Preamble from "./Preamble.svelte";
   import Interface from "./Interface.svelte";
   import Feedback from "./Feedback.svelte";
+  import Recorder from './Recorder.svelte';
 
   //fetch root API and initalize a session cookie
   onMount(async () => {
@@ -46,6 +47,7 @@
 {:else if currentStep === "feedback"}
   <Feedback formData={formData} bind:currentStep={currentStep}/>
 {/if}
+<Recorder />
 
 
 

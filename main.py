@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator, model_validator, ValidationError
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket
 import simulacrum
 from uuid import UUID
 import importlib
@@ -11,6 +11,7 @@ from sqlalchemy.orm import declarative_base, Mapped, mapped_column, Session
 from sqlalchemy import Integer, String, JSON, text
 from contextlib import asynccontextmanager
 
+from audio_utils import transcribe_audio_from_bytes
 import uuid
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -144,6 +145,24 @@ async def manage_unique_session(request: Request, call_next):
 @app.get("/")
 def read_root(request: Request): 
     return {"message": "Hello World!", "user": request.cookies.get(SESSION_COOKIE_NAME, {})}
+
+@app.websocket("/transcribe-audio")
+async def handler(websocket: WebSocket): 
+    await websocket.accept()
+    with open("received.webm", "wb") as f:  # Or .wav, etc, depends on your MediaRecorder format!
+        try:
+            while True:
+                data = await websocket.receive_bytes()
+                transcribed_audio = transcribe_audio_from_bytes(data)# Wait for next binary chunk
+                f.write(transcribed_audio)                 # Save chunk to file (or process)
+        except Exception as e:
+            print("Connection closed:", e)
+    # while True: 
+        
+    #     data = await websocket.receive_bytes()
+    #     results = transcribe_audio_from_bytes(data)
+        
+    #     await websocket.send_text(results.text)
 
 # @app.post("/v1/post_user_info")
 # def get_user_information(user: UserInfo): 
