@@ -25,7 +25,7 @@
     selectedIdeology: "",
     selectedState: ""
   });
-
+        
   let conversationData = $state({
     inputMessage: ""
   });
@@ -40,6 +40,7 @@
 <!-- <svelte:component this={stepMap[currentStep]}/> -->
 {#if currentStep === "form"}
   <Form bind:formData={formData} bind:currentStep={currentStep}/>
+  <Recorder formData={formData} bind:currentStep={currentStep}/>
 {:else if currentStep === "preamble"}
   <Preamble formData={formData} bind:currentStep={currentStep}/> 
 {:else if currentStep === "interface"}
@@ -47,7 +48,6 @@
 {:else if currentStep === "feedback"}
   <Feedback formData={formData} bind:currentStep={currentStep}/>
 {/if}
-<Recorder />
 
 
 

@@ -1,4 +1,4 @@
-<script lang="ts">
+  <script lang="ts">
     
     type FormData = {
         formSubmission: boolean;
