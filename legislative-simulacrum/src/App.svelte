@@ -40,11 +40,12 @@
 <!-- <svelte:component this={stepMap[currentStep]}/> -->
 {#if currentStep === "form"}
   <Form bind:formData={formData} bind:currentStep={currentStep}/>
-  <Recorder formData={formData} bind:currentStep={currentStep}/>
 {:else if currentStep === "preamble"}
+  <Recorder formData={formData} bind:currentStep={currentStep}/>
   <Preamble formData={formData} bind:currentStep={currentStep}/> 
 {:else if currentStep === "interface"}
-  <Interface formData={formData} bind:currentStep={currentStep}/>
+  <Recorder formData={formData} bind:currentStep={currentStep}/>
+  <!-- <Interface formData={formData} bind:currentStep={currentStep}/> -->
 {:else if currentStep === "feedback"}
   <Feedback formData={formData} bind:currentStep={currentStep}/>
 {/if}

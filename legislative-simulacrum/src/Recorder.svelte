@@ -15,6 +15,7 @@
     let recorder; //recorder 
     let audioBlobs = []; 
     
+
     
     // async function registerCustomMimeType() {
     //     await register(await connect());
@@ -159,8 +160,47 @@
         }
         
         getTranscriptionsAndSend(audioBlob);
+        receiveTextandTransmitAudio();
 
     }
+
+    async function receiveTextandTransmitAudio() {
+        let agentResponse;
+        ws = getWebSocket();
+
+        ws.addEventListener("message", async (e) => {
+            const agentText = e.data
+            console.log(agentText);
+            
+            agentResponse = await fetch("https://api.openai.com/v1/audio/speech", {
+                method: "POST",
+                headers: {
+                "Authorization": `Bearer ${OPENAI_API_KEY}`,
+                "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini-tts",
+                    input: agentText,
+                    voice: "alloy",
+                    instructions: "Speak in an appropriate manner as an eager but professional lawmaker.",
+                    response_format: "wav"
+                })
+            });
+            
+
+
+        })
+        
+        const audioBuffer = await agentResponse.arrayBuffer()
+        const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" })
+        const blobURL = URL.createObjectURL(audioResponseBlob)
+        
+        // const audioElem = document.getElementById("agent-audio-src") as HTMLAudioElement;
+        const audioElem = new Audio()
+        audioElem.src = blobURL
+        audioElem.play()
+    }
+
 
     onMount(() => { 
         // registerCustomMimeType();
@@ -213,7 +253,9 @@
 </style>
 
 <div class="video-grid">
-    <video id="agent-video-track" bind:this={videoElem2} muted autoplay playsinline></video>
+    <video id="agent-video-track" bind:this={videoElem2} muted autoplay playsinline>
+        <audio id="agent-audio-src" autoplay></audio>
+    </video>
     <video id="user-video-track" bind:this={videoElem} muted autoplay playsinline></video>
 </div>
 
