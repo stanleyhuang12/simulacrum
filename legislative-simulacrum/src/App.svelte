@@ -41,7 +41,6 @@
 {#if currentStep === "form"}
   <Form bind:formData={formData} bind:currentStep={currentStep}/>
 {:else if currentStep === "preamble"}
-  <Recorder formData={formData} bind:currentStep={currentStep}/>
   <Preamble formData={formData} bind:currentStep={currentStep}/> 
 {:else if currentStep === "interface"}
   <Recorder formData={formData} bind:currentStep={currentStep}/>

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator, model_validator, ValidationError
-from fastapi import FastAPI, HTTPException, Request, WebSocket
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
 import simulacrum
 from uuid import UUID
 import importlib
@@ -10,8 +10,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column, Session
 from sqlalchemy import Integer, String, JSON, text
 from contextlib import asynccontextmanager
+from io import BytesIO, BufferedReader
+from openai import OpenAI
 
-from audio_utils import transcribe_audio_from_bytes
 import uuid
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -125,8 +126,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 SESSION_COOKIE_NAME = "session-id-delibs"
+import os
+from openai import OpenAI
+from dotenv import find_dotenv, load_dotenv
+load_dotenv(find_dotenv())
+os.getenv('OPENAI_API_KEY')
+
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+
 
 @app.middleware("http")
 async def manage_unique_session(request: Request, call_next): 
@@ -143,20 +152,69 @@ async def manage_unique_session(request: Request, call_next):
     
 
 @app.get("/")
-def read_root(request: Request): 
-    return {"message": "Hello World!", "user": request.cookies.get(SESSION_COOKIE_NAME, {})}
+def read_root(request: Request, response: Response): 
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    
+    if not session_id:
+        # No cookie, generate new one
+        session_id = str(uuid.uuid4())
+        response.set_cookie(key=SESSION_COOKIE_NAME, value=session_id)
+
+    return {"message": "Hello World!", "user": session_id}
+
+client = OpenAI()
+
+# async def transcribe_audio_from_bytes(stream_data): 
+#     audio_file = BytesIO(stream_data)
+#     audio_file.name = "audio.wav"
+#     audio_file.seek(0)
+    
+#     with open(audio_file.name) as f: 
+#         transcription = await client.audio.transcriptions.create(
+#             model="gpt-4o-transcribe",
+#             file=f,
+#             response_format="text",
+#         )
+#     return transcription.text
+
+    
 
 @app.websocket("/transcribe-audio")
 async def handler(websocket: WebSocket): 
+    user_cookie = websocket.cookies.get(SESSION_COOKIE_NAME)
     await websocket.accept()
-    with open("received.webm", "wb") as f:  # Or .wav, etc, depends on your MediaRecorder format!
-        try:
-            while True:
-                data = await websocket.receive_bytes()
-                transcribed_audio = transcribe_audio_from_bytes(data)# Wait for next binary chunk
-                f.write(transcribed_audio)                 # Save chunk to file (or process)
-        except Exception as e:
-            print("Connection closed:", e)
+    try:
+        while True: 
+            data = await websocket.receive_text()
+            delibs_response  = converse_with_deliberations_internal(session_id=user_cookie, input_text=data)
+            await websocket.send_text(delibs_response) ## TODO: THIS IS A TUPLE OD LAWMAKER AND MOIVATION
+        
+    except Exception as e:
+        print("Connection closed with error:", e)
+
+"""
+Client-side 
+
+1. Initalize websocket connection
+2. Record audio -> resolve into audio/webm file -> 
+pass webm file as Blob into FormData 
+
+
+"""        
+
+"""
+Server-side 
+1. Websocket accept text
+2. Converse_with_deliberations()
+    > TODO: Need to write code to gracefully initialize a structure if none 
+
+
+
+"""
+
+    
+    
+    
     # while True: 
         
     #     data = await websocket.receive_bytes()
@@ -244,6 +302,21 @@ def manage_deliberations(session_id):
     
         return delibs 
 
+
+def converse_with_deliberations_internal(session_id, input_text:UserResponse): 
+    
+    delibs = manage_deliberations(session_id=session_id)
+    lawmaker_response, coach_response = delibs.panel_discussion(input_text)
+    
+    with Session(engine) as session: 
+        delib_orm = session.query(DeliberationORM).filter_by(unique_id=session_id).first()
+        if delib_orm: 
+            delib_orm.discussion_history = delibs.discussion_history
+            session.commit()
+    
+
+            
+    return lawmaker_response
 
 @app.post("/trial-v1/delibs/converse-with-deliberations", response_model=DelibsResponse)
 def converse_with_deliberations(request: Request, input_text:UserResponse): 

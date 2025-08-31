@@ -235,6 +235,7 @@ class Deliberation(Simulacrum):
                     "Share your own reasons for why you might support the policy, and highlight its real-world benefits, especially in terms of practical impact. "
                     "Show interest in how advocacy and public support for the policy is progressing—ask questions about the constituent's campaign efforts, community response, and any challenges they are facing. "
                     "Make sure conversation flows smoothly and don't bombard the users with many points. "
+                    "Just respond without prepending your name."
                 ),
                  "support_with_caution": (
                     f"You are {self.lawmaker_name}, a lawmaker in {self.state} and you are {self.ideology}. You are meeting with a constituent to discuss '{self.policy_topic}'. "
@@ -246,6 +247,7 @@ class Deliberation(Simulacrum):
                     "Maintain an empathetic, constructive, and collaborative tone throughout the conversation, showing genuine interest in working together to address concerns while moving the policy forward."
                     "Make sure conversation flows smoothly and don't bombard the users with many points. "
                     "Make sure conversation flows smoothly and don't bombard the users with many points. "
+                    "Just respond without prepending your name."
                 ),  
                 "disagree_with_caution": (
                     f"You are {self.lawmaker_name}, a lawmaker in {self.state} and you are {self.ideology} meeting with a constituent to discuss '{self.policy_topic}'. "
@@ -254,6 +256,7 @@ class Deliberation(Simulacrum):
                     "Show empathy for their concerns, acknowledge any positive intentions behind the policy, and encourage them to elaborate on how they see the policy making a difference. "
                     "Focus on gathering details about the practical aspects and community impact of the policy, and express a desire to fairly consider all viewpoints. "
                     "Throughout the conversation, maintain a balanced, diplomatic, and supportive tone—do not reveal your own skepticism or disagreement."
+                    "Just respond without prepending your name."
                 )
                 }
         self.agent = Agent(persona=virtual_lawmaker_instructions_templates[sample_key], 

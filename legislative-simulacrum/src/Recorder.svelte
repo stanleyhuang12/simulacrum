@@ -6,6 +6,7 @@
     const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
     let { formData, currentStep=$bindable() } = $props();
 
+    let wsEventAdded = false;
     let audioStreams;
     let videoStreams;
     let videoElem;
@@ -25,9 +26,49 @@
         if (!ws || ws.readyState === WebSocket.CLOSED) { // initializes websocket 
             ws =  new WebSocket("ws://localhost:8000/transcribe-audio")
             console.log('Established WebSocket connection.')
+            if (!wsEventAdded) {
+                ws.addEventListener("message", handleAgentResponse)
+            }
         } 
+
         return ws 
     }
+
+    async function handleAgentResponse(e) {
+    try {
+        const agentText = e.data;
+        console.log(agentText);
+
+        const agentResponse = await fetch("https://api.openai.com/v1/audio/speech", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${OPENAI_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "gpt-4o-mini-tts",
+                input: agentText,
+                voice: "alloy",
+                instructions: "Speak in an appropriate manner as an eager but professional lawmaker.",
+                response_format: "wav"
+            })
+        });
+
+        if (!agentResponse.ok) {
+            throw new Error(`TTS API error: ${agentResponse.status} ${agentResponse.statusText}`);
+        }
+
+        const audioBuffer = await agentResponse.arrayBuffer();
+        const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" });
+        const blobURL = URL.createObjectURL(audioResponseBlob);
+        const audioElem = new Audio();
+        audioElem.src = blobURL;
+        audioElem.play();
+    } catch (err) {
+        console.error(err);
+    }
+    }
+
 
     async function getVideoStream() { 
         try { 
@@ -48,11 +89,10 @@
 
     function toggleMicrophone() { 
         buttonElemState = !buttonElemState
-        console.log("Toggled microphone")
+        console.log(`Toggled microphone ${buttonElemState}`)
     }
 
     async function getAudioStream() { 
-
         try { 
             toggleMicrophone()
             console.log("WebSocket status: ", ws.readyState)
@@ -92,7 +132,6 @@
                     audioBlobs = [] //reset audioblobs
                     console.log("User turned off microphone, so audio recorder stopped.")
                     console.log(recorder.mimeType)
-                    
                 }
             }
                 
@@ -109,7 +148,7 @@
         formDat.append("file", audioFile);  
         formDat.append("model", "gpt-4o-mini-transcribe");
         formDat.append("language", "en")
-        const policyTopic = "This is part of a conversatio between a community advocate and lawmaker on " + $state.snapshot(formData.selectedPolicyTopic)
+        const policyTopic = "This is part of a conversation between a community advocate and lawmaker on " + $state.snapshot(formData.selectedPolicyTopic)
         formDat.append("prompt", policyTopic)
         console.log(formDat)
     
@@ -160,52 +199,54 @@
         }
         
         getTranscriptionsAndSend(audioBlob);
-        receiveTextandTransmitAudio();
+        // receiveTextandTransmitAudio();
 
     }
 
-    async function receiveTextandTransmitAudio() {
-        let agentResponse;
-        ws = getWebSocket();
-
-        ws.addEventListener("message", async (e) => {
-            const agentText = e.data
-            console.log(agentText);
+    // async function receiveTextandTransmitAudio() {
+    //     let agentResponse;
+    //     ws = getWebSocket();
+    //     try {
+    //     ws.addEventListener("message", async (e) => {
+    //         const agentText = e.data
+    //         console.log(agentText);
             
-            agentResponse = await fetch("https://api.openai.com/v1/audio/speech", {
-                method: "POST",
-                headers: {
-                "Authorization": `Bearer ${OPENAI_API_KEY}`,
-                "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini-tts",
-                    input: agentText,
-                    voice: "alloy",
-                    instructions: "Speak in an appropriate manner as an eager but professional lawmaker.",
-                    response_format: "wav"
-                })
-            });
+    //         agentResponse = await fetch("https://api.openai.com/v1/audio/speech", {
+    //             method: "POST",
+    //             headers: {
+    //             "Authorization": `Bearer ${OPENAI_API_KEY}`,
+    //             "Content-Type": "application/json"
+    //             },
+    //             body: JSON.stringify({
+    //                 model: "gpt-4o-mini-tts",
+    //                 input: agentText,
+    //                 voice: "alloy",
+    //                 instructions: "Speak in an appropriate manner as an eager but professional lawmaker.",
+    //                 response_format: "wav"
+    //             })
+    //         });
+
+    //         if (!agentResponse.ok) {
+    //             throw new Error(`TTS API error: ${agentResponse.status} ${agentResponse.statusText}`);
+    //         }
             
+    //         const audioBuffer = await agentResponse.arrayBuffer()
+    //         const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" })
+    //         const blobURL = URL.createObjectURL(audioResponseBlob)
+    //         const audioElem = new Audio()
+    //         audioElem.src = blobURL
+    //         audioElem.play()
 
-
-        })
-        
-        const audioBuffer = await agentResponse.arrayBuffer()
-        const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" })
-        const blobURL = URL.createObjectURL(audioResponseBlob)
-        
-        // const audioElem = document.getElementById("agent-audio-src") as HTMLAudioElement;
-        const audioElem = new Audio()
-        audioElem.src = blobURL
-        audioElem.play()
-    }
+    //     })} catch(err) {
+    //         console.error(err)
+    //     }
+    // }
 
 
     onMount(() => { 
         // registerCustomMimeType();
         console.log('Establishing websocket connections...')
-        getWebSocket();
+        ws = getWebSocket();
         console.log('Establishing video streams..');
         getVideoStream();
     });

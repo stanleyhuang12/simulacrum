@@ -64,9 +64,9 @@ Thanks so much for trying out our tool. Please feel free to send feedback
 to <a href="mailto:stanh@bu.edu" >stanh@bu.edu</a>!
 
 We're rolling out more features
-- Enhanced multimodal interaction (with audio + possibly visual)
-- Receive feedback via email or a downloadable TXT/PDF file?
-- More precise specifications of virtual lawmaker personas (an integrated engine/system)
+1.  Enhanced multimodal interaction (with audio + possibly visual)
+2.  Receive feedback via email or a downloadable TXT/PDF file?
+3.  More precise specifications of virtual lawmaker personas (an integrated engine/system)
 
 <button onclick={queryFeedback} aria-label="Recieve feedback and transcript.">Click here to get your feedback and transcript of the conversation.</button>
 </div>

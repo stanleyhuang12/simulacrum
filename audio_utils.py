@@ -2,27 +2,16 @@
 Utilities files to stream, speed up, and transcribe audio (speech-to-text) and vice verse
 """
 
-from pydub import AudioSegment
+from pydub import AudioSegment ## ffpmeg
 from openai import OpenAI
-import websockets 
-import asyncio
+
 from io import BytesIO
 
 client = OpenAI()
 
-
-async def transcribe_audio_from_bytes(stream_data): 
-    audio_file = BytesIO(stream_data)
-    audio_file.name = "audio.wav"
-    audio_file.seek(0)
-    
-    with open(audio_file.name) as f: 
-        transcription = client.audio.transcriptions.create(
-            model="gpt-4o-transcribe",
-            file=f,
-            response_format="text",
-        )
-    return transcription.text
+def webm_bytes_to_wav(webm_bytes, output_path="output.wav"):
+    audio = AudioSegment.from_file(BytesIO(webm_bytes), format="webm")
+    audio.export(output_path, format="wav")
 
 
 def transcribe_audio(file_path, topic): 

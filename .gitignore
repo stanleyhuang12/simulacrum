@@ -6,6 +6,7 @@ legislative-simulacrum/node_modules
 legislative-simulacrum/.vscode
 legislative-simulacrum/template
 legislative-simulacrum/public
+legislative-simulacrum/.env
 
 
 /template
