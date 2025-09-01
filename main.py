@@ -1,7 +1,7 @@
-from pydantic import BaseModel, EmailStr, field_validator, model_validator, ValidationError
+from pydantic import BaseModel, EmailStr, field_validator
 from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
 import simulacrum
-from uuid import UUID
+import uuid
 import importlib
 from typing import Optional, List, Dict, Any
 importlib.reload(simulacrum)
@@ -10,11 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column, Session
 from sqlalchemy import Integer, String, JSON, text
 from contextlib import asynccontextmanager
-from io import BytesIO, BufferedReader
 from openai import OpenAI
-
-import uuid
-from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
 class UserInfo(BaseModel): 

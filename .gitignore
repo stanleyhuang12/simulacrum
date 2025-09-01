@@ -14,3 +14,5 @@ legislative-simulacrum/.env
 /__pycache__
 /node_modules
 /deprecated
+venv
+
