@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator
 from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
-import simulacrum
+import simulacrum as simulacrum
 import uuid
 import importlib
 from typing import Optional, List, Dict, Any
@@ -12,6 +12,7 @@ from sqlalchemy import Integer, String, JSON, text
 from contextlib import asynccontextmanager
 from openai import OpenAI
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 
 class UserInfo(BaseModel): 
     username: str
@@ -122,6 +123,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+handler = Mangum(app)
 SESSION_COOKIE_NAME = "session-id-delibs"
 import os
 from openai import OpenAI
@@ -176,7 +179,7 @@ client = OpenAI()
     
 
 @app.websocket("/transcribe-audio")
-async def handler(websocket: WebSocket): 
+async def websocket_handler(websocket: WebSocket): 
     user_cookie = websocket.cookies.get(SESSION_COOKIE_NAME)
     await websocket.accept()
     try:
