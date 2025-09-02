@@ -12,7 +12,10 @@ from sqlalchemy import Integer, String, JSON, text
 from contextlib import asynccontextmanager
 from openai import OpenAI
 from fastapi.middleware.cors import CORSMiddleware
-from mangum import Mangum
+import os
+from openai import OpenAI
+from dotenv import find_dotenv, load_dotenv
+
 
 class UserInfo(BaseModel): 
     username: str
@@ -123,12 +126,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-handler = Mangum(app)
 SESSION_COOKIE_NAME = "session-id-delibs"
-import os
-from openai import OpenAI
-from dotenv import find_dotenv, load_dotenv
 load_dotenv(find_dotenv())
 os.getenv('OPENAI_API_KEY')
 
@@ -353,11 +351,8 @@ def debug_database():
         orm_data = session.query(DeliberationORM).all()
         print(f"ORM query result: {orm_data}")
 
-# Call this function to debug
+
 debug_database()
-
-
-
     
 
 @app.get("/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback")
@@ -373,90 +368,3 @@ def end_of_call_management(request: Request) -> EndOfCallFeedback:
                              full_transcript=full_transcript,
                              trainer_agent_feedback=feedback)
     
-
-
-# def manage_deliberations(session_id, delib_params: Optional[DelibsInfo] = None): 
-#     """
-#     TODO: Ensure that the injected history will be deserialized. 
-#     TODO: Write a Simulacrum function that accepts injected history and dynamic start-up.
-#     """   
-#     with Session(engine) as session: 
-#         delib_orm = session.query(DeliberationORM).filter_by(unique_id=session_id).first() # query not execute because we want ORM mapped instance 
-        
-#         if delib_orm: 
-#             print("No past delib orm saved")
-#             delibs = Deliberation(
-#                 username=delib_orm.username,
-#                 group=delib_orm.organization,
-#                 state=delib_orm.state,
-#                 policy_topic=delib_orm.policy_topic,
-#                 ideology=delib_orm.ideology, 
-#                 lawmaker_name=delib_orm.lawmaker_name
-#             ) 
-#             return delibs 
-#         elif not delib_orm and delib_params: 
-#             delib_inst = initialize_deliberations_simulacrum(delib_params)
-#             new_delib_orm = DeliberationORM(
-#                 unique_id=session_id, 
-#                 organization=delib_inst.group,
-#                 state=delib_inst.state,
-#                 policy_topic=delib_inst.policy_topic,
-#                 ideology=delib_inst.ideology,
-#                 lawmaker_name=delib_inst.lawmaker_name,
-#                 discussion_history=delib_inst.discussion_history
-#             )
-            
-             
-#             session.add(new_delib_orm)
-  
-#             session.commit()
-            
-#             return delib_inst
-   
-# @app.post("/trial-v1/converse-deliberations/", response_model=DelibsResponse)                 
-# def converse_deliberations(request: Request, input_text: str, delib_params: Optional[dict]):
-#     """
-#     Procedure
-    
-#     .1  If no instance of Deliberations ORM in SQLite DB:
-#             Initalize, update SQLite DB, return Deliberation instance  
-#         else: 
-#             Retrieve and return Deliberations instance
-        
-#     .2  User engages with the virtual lawmaker (activites housed in the Deliberations instance)
-#     .3  Update the SQLite DB with latest conversation history 
-#     .4  Return the content responses. 
-#     """
-#     persistent_session_id = request.cookies.get(SESSION_COOKIE_NAME)
-    
-#     delibs_obj = manage_deliberations(
-#         session_id=persistent_session_id
-#         )
-    
-#     if not isinstance(delibs_obj, Deliberation): 
-#         raise TypeError("Internal type error.")
-    
-#     results = delibs_obj.panel_discussion(input_text)
-    
-#     with Session(engine) as session: 
-#         delib_orm = session.query(DeliberationORM).filter_by(unique_id=persistent_session_id).first()
-#         if delib_orm: ## Should always be true
-#             delib_orm.discussion_history = delibs_obj.discussion_history
-#             session.commit()
-#             print("Saved:", delib_orm.discussion_history)  # Add this line
-
-#     return DelibsResponse(
-#         lawmaker_response=results[0],
-#         coach_response=results[1],
-#         discussion_history=delibs_obj.discussion_history
-#     )
-
-
-
-
-
-
-
-
-
-
