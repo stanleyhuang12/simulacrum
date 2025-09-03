@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator
 from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
-import simulacrum as simulacrum
+import simulacrum
 import uuid
 import importlib
 from typing import Optional, List, Dict, Any
@@ -15,16 +15,18 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from openai import OpenAI
 from dotenv import find_dotenv, load_dotenv
+import boto3
+from botocore.exceptions import ClientError
 
 
 class UserInfo(BaseModel): 
     username: str
-    email: EmailStr | None 
+    email: EmailStr = None 
     password: str
     group: str
     policy_topic: str
     state: str
-    age: int | None = None
+    age: int = None 
 
 # class SimAgentInfo(BaseModel): 
 #     lawmaker_name: str
@@ -97,16 +99,18 @@ class DeliberationORM(Base):
 # class FeedbackORM(Base): 
 #     __tablename__ = "feedbacks"
     
+# engine = create_engine("sqlite:///database/database.db")
+engine = create_engine("postgresql+psycopg2://deliberations:simulacrum32()@deliberations-legislative-simulacrum.cjqmko8aimkn.us-east-2.rds.amazonaws.com/deliberations")
 
-
-engine = create_engine("sqlite:///database/database.db")
 
 Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
+with engine.connect() as conn: 
+    conn.execute(text("SELECT * from deliberations"))
         
-with engine.connect() as connection: 
-    results = connection.execute(text("SELECT * FROM deliberations"))
-    results.fetchall()
+# with engine.connect() as connection: 
+#     results = connection.execute(text("SELECT * FROM deliberations"))
+#     results.fetchall()
     
 @asynccontextmanager
 async def lifespan(app: FastAPI): 
@@ -127,12 +131,8 @@ app.add_middleware(
 )
 
 SESSION_COOKIE_NAME = "session-id-delibs"
-load_dotenv(find_dotenv())
-os.getenv('OPENAI_API_KEY')
-
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
-
+# load_dotenv(find_dotenv())
+# os.getenv('OPENAI_API_KEY')
 
 @app.middleware("http")
 async def manage_unique_session(request: Request, call_next): 
@@ -159,8 +159,6 @@ def read_root(request: Request, response: Response):
 
     return {"message": "Hello World!", "user": session_id}
 
-client = OpenAI()
-
 # async def transcribe_audio_from_bytes(stream_data): 
 #     audio_file = BytesIO(stream_data)
 #     audio_file.name = "audio.wav"
@@ -175,7 +173,6 @@ client = OpenAI()
 #     return transcription.text
 
     
-
 @app.websocket("/transcribe-audio")
 async def websocket_handler(websocket: WebSocket): 
     user_cookie = websocket.cookies.get(SESSION_COOKIE_NAME)
@@ -204,8 +201,6 @@ Server-side
 1. Websocket accept text
 2. Converse_with_deliberations()
     > TODO: Need to write code to gracefully initialize a structure if none 
-
-
 
 """
 
@@ -237,8 +232,6 @@ Server-side
 # @app.get("/retrieve_session/")
 # async def get_session_unique_identifier(request: Request):
 #     return request.session.get('unique_identifier', None)
-
-
 
 
 @app.post("/trial-v1/delibs/create_deliberations_instance")
@@ -310,10 +303,9 @@ def converse_with_deliberations_internal(session_id, input_text:UserResponse):
         if delib_orm: 
             delib_orm.discussion_history = delibs.discussion_history
             session.commit()
-    
-
-            
+         
     return lawmaker_response
+
 
 @app.post("/trial-v1/delibs/converse-with-deliberations", response_model=DelibsResponse)
 def converse_with_deliberations(request: Request, input_text:UserResponse): 
@@ -335,19 +327,30 @@ def converse_with_deliberations(request: Request, input_text:UserResponse):
 
 def debug_database():
     with Session(engine) as session:
-        # Check what tables exist
-        tables = session.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
+        # List all tables
+        tables = session.execute(
+            text("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
+        ).fetchall()
         print(f"All tables in database: {[table[0] for table in tables]}")
-        
-        # Check the schema of the deliberations table
-        schema = session.execute(text("PRAGMA table_info(deliberations)")).fetchall()
-        print(f"deliberations table schema: {schema}")
-        
-        # Check raw data
-        raw_data = session.execute(text("SELECT * FROM deliberations")).fetchall()
-        print(f"Raw data from deliberations table: {raw_data}")
-        
-        # Try ORM query
+
+        # Check schema of 'deliberations' table
+        schema = session.execute(
+            text("""
+                SELECT column_name, data_type
+                FROM information_schema.columns
+                WHERE table_name = 'deliberations';
+            """)
+        ).fetchall()
+        print(f"Deliberations table schema: {schema}")
+
+        # Raw data
+        try:
+            raw_data = session.execute(text("SELECT * FROM deliberations;")).fetchall()
+            print(f"Raw data from deliberations table: {raw_data}")
+        except Exception as e:
+            print(f"Could not fetch raw data: {e}")
+
+        # ORM query
         orm_data = session.query(DeliberationORM).all()
         print(f"ORM query result: {orm_data}")
 
@@ -368,3 +371,5 @@ def end_of_call_management(request: Request) -> EndOfCallFeedback:
                              full_transcript=full_transcript,
                              trainer_agent_feedback=feedback)
     
+
+debug_database()
