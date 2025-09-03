@@ -253,44 +253,62 @@
 
 </script>
 
+<style>
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  align-items: center;
+  background: linear-gradient(180deg, #0a0a0a, #111827);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  box-sizing: border-box;
+}
 
-<style> 
-    .video-grid { 
-        display: grid; 
-        grid-template-columns: 1fr 1fr;
-        height: 50%; 
-        gap:16px;
-        max-width: 1200px;
-        margin: auto;
-        padding: 20px;
-        align-items: center;
-        background-color:black;
-        box-sizing: border-box;
+/* Video players */
+video {
+  width: 100%;
+  aspect-ratio: 16 / 9;        /* keeps consistent size */
+  object-fit: cover;           /* or "contain" if you want full view */
+  border-radius: 12px;
+  background-color: #000;      /* fallback if no stream */
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
 
-    }
-    video { 
-        width: 100%;
-        justify-content: center;
-    }
+/* Microphone buttons */
+.microphone {
+  display: inline-block;
+  border-radius: 30px;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  padding: 12px 20px;
+  margin: 20px auto;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
 
-    .microphone { 
-        border-radius: 30px;
-        color: white;
-        border: 1px solid black;
-        padding: 15px;
-        margin: auto;
-        margin-top: 20px;
+#enable-microphone {
+  background-color: forestgreen;
+}
+#enable-microphone:hover,
+#enable-microphone:focus-visible {
+  background-color: #228b22;
+  box-shadow: 0 0 0 3px rgba(34,139,34,0.4);
+}
 
-    }
-    
-    #enable-microphone {
-        background-color: forestgreen;
-    }
-
-    #disable-microphone { 
-        background-color: red;
-    }
-
+#disable-microphone {
+  background-color: crimson;
+}
+#disable-microphone:hover,
+#disable-microphone:focus-visible {
+  background-color: darkred;
+  box-shadow: 0 0 0 3px rgba(220,20,60,0.4);
+}
 </style>
 
 <div class="video-grid">

@@ -58,15 +58,54 @@
 
 </script>
 
+<div class="min-h-screen bg-gradient-to-br from-[#0A1B2A] to-[#111827] text-gray-100 flex flex-col">
+  <!-- Header -->
+  <header class="px-6 py-4 flex justify-between items-center border-b border-gray-800">
+    <h1 class="text-2xl font-bold tracking-wide text-white">Legislative Simulacrum</h1>
+    <nav class="space-x-6">
+      <a href="#" class="hover:text-teal-400">About</a>
+      <a href="#" class="hover:text-teal-400">Features</a>
+      <a href="#" class="hover:text-teal-400">Contact</a>
+    </nav>
+  </header>
 
-<div>
-Thanks so much for trying out our tool. Please feel free to send feedback 
-to <a href="mailto:stanh@bu.edu" >stanh@bu.edu</a>!
+  <!-- Hero Section -->
+  <section class="flex-1 flex flex-col justify-center items-center text-center px-6">
+    <h2 class="text-4xl sm:text-6xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">
+      Talk with Virtual Lawmakers
+    </h2>
+    <p class="max-w-2xl text-lg text-gray-300 mb-8">
+      Empower communities to explore, question, and understand legislative debates through safe and intelligent simulations.
+    </p>
+    <button
+      class="px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-500 hover:opacity-90 shadow-lg"
+      onclick={queryFeedback}
+    >
+      Get Started
+    </button>
+  </section>
 
-We're rolling out more features
-1.  Enhanced multimodal interaction (with audio + possibly visual)
-2.  Receive feedback via email or a downloadable TXT/PDF file?
-3.  More precise specifications of virtual lawmaker personas (an integrated engine/system)
+  <!-- Feature Highlights -->
+  <section class="px-6 py-12 bg-gray-900">
+    <h3 class="text-2xl font-semibold text-white mb-6">Key Features</h3>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="p-6 bg-gray-800 rounded-2xl shadow-md hover:shadow-xl transition">
+        <h4 class="font-bold text-lg mb-2 text-teal-400">Multimodal Interaction</h4>
+        <p class="text-gray-300">Converse using text, audio, and soon visual channels for deeper engagement.</p>
+      </div>
+      <div class="p-6 bg-gray-800 rounded-2xl shadow-md hover:shadow-xl transition">
+        <h4 class="font-bold text-lg mb-2 text-teal-400">Feedback & Reports</h4>
+        <p class="text-gray-300">Receive detailed feedback via email or downloadable TXT/PDF transcripts.</p>
+      </div>
+      <div class="p-6 bg-gray-800 rounded-2xl shadow-md hover:shadow-xl transition">
+        <h4 class="font-bold text-lg mb-2 text-teal-400">Custom Personas</h4>
+        <p class="text-gray-300">Interact with lawmakers tailored to specific policies, values, and perspectives.</p>
+      </div>
+    </div>
+  </section>
 
-<button onclick={queryFeedback} aria-label="Recieve feedback and transcript.">Click here to get your feedback and transcript of the conversation.</button>
+  <!-- Footer -->
+  <footer class="px-6 py-4 border-t border-gray-800 text-sm text-gray-400 text-center">
+    © {new Date().getFullYear()} Legislative Simulacrum. All rights reserved.
+  </footer>
 </div>

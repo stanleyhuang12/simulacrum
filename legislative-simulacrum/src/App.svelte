@@ -38,6 +38,9 @@
 </style>
 
 <!-- <svelte:component this={stepMap[currentStep]}/> -->
+
+
+
 {#if currentStep === "form"}
   <Form bind:formData={formData} bind:currentStep={currentStep}/>
 {:else if currentStep === "preamble"}

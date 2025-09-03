@@ -4,7 +4,6 @@ import simulacrum
 import uuid
 import importlib
 from typing import Optional, List, Dict, Any
-importlib.reload(simulacrum)
 from simulacrum import SimAgent, Deliberation
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column, Session
@@ -102,8 +101,6 @@ class DeliberationORM(Base):
 # engine = create_engine("sqlite:///database/database.db")
 engine = create_engine("postgresql+psycopg2://deliberations:simulacrum32()@deliberations-legislative-simulacrum.cjqmko8aimkn.us-east-2.rds.amazonaws.com/deliberations")
 
-
-Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
 with engine.connect() as conn: 
     conn.execute(text("SELECT * from deliberations"))
