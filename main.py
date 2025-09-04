@@ -180,14 +180,6 @@ async def websocket_handler(websocket: WebSocket):
         while True: 
             data = await websocket.receive_text()
             delibs_response  = converse_with_deliberations_internal(session_id=user_cookie, input_text=data)
-            audio=client.audio.speech.create(
-                input=delibs_response,
-                model="gpt-4o-mini-tts",
-                voice="alloy",
-                instructions="You are a lawmaker.",
-                response_format="wav",
-                stream_format=True
-                                       )
             await websocket.send_text(delibs_response) ## TODO: THIS IS A TUPLE OD LAWMAKER AND MOIVATION
 
     except Exception as e:

@@ -230,14 +230,14 @@
             if (!agentResponse.ok) {
                 throw new Error(`TTS API error: ${agentResponse.status} ${agentResponse.statusText}`);
             }
-            for await (const res of agentResponse) {
-                const audioBuffer = await res.arrayBuffer()
-                const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" })
-                const blobURL = URL.createObjectURL(audioResponseBlob)
-                const audioElem = new Audio()
-                audioElem.src = blobURL
-                audioElem.play()
-            }
+            
+            const audioBuffer = await agentResponse.arrayBuffer()
+            const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" })
+            const blobURL = URL.createObjectURL(audioResponseBlob)
+            const audioElem = new Audio()
+            audioElem.src = blobURL
+            audioElem.play()
+            
             
         })} catch(err) {
             console.error(err)
