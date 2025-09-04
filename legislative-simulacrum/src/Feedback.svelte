@@ -62,32 +62,30 @@
   <!-- Header -->
   <header class="px-6 py-4 flex justify-between items-center border-b border-gray-800">
     <h1 class="text-2xl font-bold tracking-wide text-white">Legislative Simulacrum</h1>
+    <p class="max-w-2xl font-bold text-g text-dark-gray-300 mb-8">
+      Empower communities to explore, question, and understand legislative debates through safe and intelligent simulations.
+    </p>
     <nav class="space-x-6">
-      <a href="#" class="hover:text-teal-400">About</a>
-      <a href="#" class="hover:text-teal-400">Features</a>
-      <a href="#" class="hover:text-teal-400">Contact</a>
+      <a href="#top" class="hover:text-teal-400">About</a>
+      <a href="#top" class="hover:text-teal-400">Features</a>
+      <a href="#top" class="hover:text-teal-400">Contact</a>
     </nav>
   </header>
 
   <!-- Hero Section -->
   <section class="flex-1 flex flex-col justify-center items-center text-center px-6">
     <h2 class="text-4xl sm:text-6xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">
-      Talk with Virtual Lawmakers
+      Thanks for using Legislative Simulacrum
     </h2>
-    <p class="max-w-2xl text-lg text-gray-300 mb-8">
-      Empower communities to explore, question, and understand legislative debates through safe and intelligent simulations.
-    </p>
-    <button
-      class="px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-500 hover:opacity-90 shadow-lg"
-      onclick={queryFeedback}
-    >
-      Get Started
+    <button class="px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-500 hover:opacity-90 shadow-lg"
+      onclick={queryFeedback}>
+      Get your feedback 
     </button>
   </section>
 
   <!-- Feature Highlights -->
   <section class="px-6 py-12 bg-gray-900">
-    <h3 class="text-2xl font-semibold text-white mb-6">Key Features</h3>
+    <h3 class="text-2xl font-bold text-white mb-6">Upcoming features</h3>
     <div class="grid md:grid-cols-3 gap-8">
       <div class="p-6 bg-gray-800 rounded-2xl shadow-md hover:shadow-xl transition">
         <h4 class="font-bold text-lg mb-2 text-teal-400">Multimodal Interaction</h4>
@@ -105,7 +103,13 @@
   </section>
 
   <!-- Footer -->
-  <footer class="px-6 py-4 border-t border-gray-800 text-sm text-gray-400 text-center">
-    © {new Date().getFullYear()} Legislative Simulacrum. All rights reserved.
+  <footer class="!text-sm text-gray-400 px-6 py-4 border-t border-gray-800 text-center">
+    Legislative Simulacrum is a tool developed by the Strategic Training Initiative for the Prevention of Eating Disorders, 
   </footer>
+  <footer class="text-sm !text-sm text-gray-400">
+  Test text size
+  </footer> 
+  <div class="text-red-500 text-[40px] font-bold">
+  TEST TEXT
+</div>
 </div>
