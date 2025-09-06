@@ -13,11 +13,7 @@ from sqlalchemy import text
 from contextlib import asynccontextmanager
 from base_class import * 
 
-import os
-from openai import OpenAI
-from dotenv import find_dotenv, load_dotenv
-import boto3
-from botocore.exceptions import ClientError
+from mangum import Mangum
 
 # engine = create_engine("sqlite:///database/database.db")
 engine = create_engine("postgresql+psycopg2://deliberations:simulacrum32()@deliberations-legislative-simulacrum.cjqmko8aimkn.us-east-2.rds.amazonaws.com/deliberations")
@@ -46,6 +42,10 @@ app.add_middleware(
 SESSION_COOKIE_NAME = "session-id-delibs"
 # load_dotenv(find_dotenv())
 # os.getenv('OPENAI_API_KEY')
+
+
+
+
 
 @app.middleware("http")
 async def manage_unique_session(request: Request, call_next): 
@@ -218,4 +218,7 @@ def end_of_call_management(request: Request) -> EndOfCallFeedback:
                              username=delibs._username,
                              full_transcript=full_transcript,
                              trainer_agent_feedback=feedback)
+    
+# adapter/wrapper for AWS & FastAPI 
+handler = Mangum(app)
     

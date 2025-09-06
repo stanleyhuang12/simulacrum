@@ -50,6 +50,7 @@ packaging==25.0
 pandas==2.3.2
 plurals @ git+https://github.com/josh-ashkinaze/plurals.git@da60fcccf07fb7705374107042107736e3723ae9
 propcache==0.3.2
+psycopg2-binary==2.9.10
 psycopg2==2.9.10
 publication==0.0.3
 pydantic==2.11.7
