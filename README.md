@@ -8,10 +8,10 @@ Our tool empowers and encourages community advocates to engage with democratic p
 
 To Do: 
 
-* Update the interaction interface + WebSocket to support audio-streaming, STT transcription, and TTS transcriptions
-* Polishing front-end
-* Building interface that supports variable intermittent feedback from a coach
-* Fetch API endpoints for end-of-call feedback to help community advocates better improve/localize/tailor their advocacy and messaging
-* Update the database management system to Redis
+* Update the interaction interface + WebSocket to support audio-streaming, STT transcription, and TTS transcriptions [DONE]
+* Polishing front-end [DONE]
+* Building interface that supports variable intermittent feedback from a coach [TODO]
+* Fetch API endpoints for end-of-call feedback to help community advocates better improve/localize/tailor their advocacy and messaging [DONE]
+ * Update errors 
+* Update the database management system to PostgreSQL on AWS [DONE]
 
-* Get feedback from colleagues on how to incorporate deliberative democracy principles into each step
