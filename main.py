@@ -17,14 +17,10 @@ from mangum import Mangum
 
 # engine = create_engine("sqlite:///database/database.db")
 engine = create_engine("postgresql+psycopg2://deliberations:simulacrum32()@deliberations-legislative-simulacrum.cjqmko8aimkn.us-east-2.rds.amazonaws.com/deliberations")
-
 Base = declarative_base()
-Base.metadata.create_all(engine)
-with engine.connect() as conn: 
-    conn.execute(text("SELECT * from deliberations"))
-        
 @asynccontextmanager
 async def lifespan(app: FastAPI): 
+    print("Connects to engine and start up...")
     Base.metadata.create_all(engine)
     yield 
     
@@ -44,13 +40,12 @@ SESSION_COOKIE_NAME = "session-id-delibs"
 # os.getenv('OPENAI_API_KEY')
 
 
-
-
-
 @app.middleware("http")
 async def manage_unique_session(request: Request, call_next): 
+    print("Running middleware process")
     session_id = request.cookies.get(SESSION_COOKIE_NAME)
     if not session_id: 
+        print(f"Session id {session_id}")
         session_id = str(uuid.uuid4())
         response = await call_next(request)
         response.set_cookie(SESSION_COOKIE_NAME, session_id, httponly=True, samesite="lax", max_age=1800)
@@ -63,6 +58,7 @@ async def manage_unique_session(request: Request, call_next):
 
 @app.get("/")
 def read_root(request: Request, response: Response): 
+    print("root API request ")
     session_id = request.cookies.get(SESSION_COOKIE_NAME)
     
     if not session_id:
@@ -74,9 +70,11 @@ def read_root(request: Request, response: Response):
 
 @app.websocket("/transcribe-audio")
 async def websocket_handler(websocket: WebSocket): 
+    print("Await websocket request")
     user_cookie = websocket.cookies.get(SESSION_COOKIE_NAME)
     await websocket.accept()
     try:
+        print("Running websocket connections")
         while True: 
             data = await websocket.receive_text()
             delibs_response  = converse_with_deliberations_internal(session_id=user_cookie, input_text=data)
@@ -86,7 +84,8 @@ async def websocket_handler(websocket: WebSocket):
         print("Connection closed with error:", e)
 
 @app.post("/trial-v1/delibs/create_deliberations_instance")
-def initialize_deliberations_simulacrum(request: Request, delib_params: DelibsInfo): 
+def initialize_deliberations_simulacrum(request: Request, delib_params: DelibsInfo):
+    print("Creating initiation deliberations") 
     session_id = request.cookies.get(SESSION_COOKIE_NAME)
     if not session_id:
         raise HTTPException(status_code=400, detail="Session cookie missing. User must enable cookies settings.")
