@@ -2,8 +2,10 @@
     import { onMount } from "svelte";
     import { MediaRecorder, register } from 'extendable-media-recorder';
     import { connect } from 'extendable-media-recorder-wav-encoder';
+    import OpenAI from "openai";
+    import { playAudio } from "openai/helpers/audio";
     
-    const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+    const openai = new OpenAI({apiKey: import.meta.env.VITE_OPENAI_API_KEY}); 
     let { formData, currentStep=$bindable() } = $props();
 
     let wsEventAdded = false;
@@ -35,6 +37,25 @@
     }
 
     async function handleAgentResponse(e) {
+        try {
+            const agentText = e.data; 
+            console.log(agentText);
+
+            const response = openai.audio.speech.create({
+                input: agentText,
+                model: "gpt-4o-mini-tts",
+                voice: "alloy",
+                response_format: "wav",
+                instructions: "Speak in an appropriate manner."
+            }) 
+
+            await playAudio(response) //should handle audiostreaming
+        } catch(err) {
+            console.error(err)
+        }
+    }
+
+    async function handleAgentResponses(e) {
     try {
         const agentText = e.data;
         console.log(agentText);
@@ -50,7 +71,7 @@
                 input: agentText,
                 voice: "alloy",
                 instructions: "Speak in an appropriate manner as an eager but professional lawmaker.",
-                response_format: "wav"
+                response_format: "wav",
             })
         });
 

@@ -26,7 +26,7 @@ async function submitForm(event) {
         lawmaker_name: formData.selectedLawmaker
     }
     try {
-        const response = await fetch("https://zsvpuzru3l.execute-api.us-east-2.amazonaws.com/dev/legislative-simulacrum-09-05/create_deliberations_instance", {
+        const response = await fetch("http://localhost:8000/trial-v1/delibs/create_deliberations_instance", {
             method: "POST",
             headers: {
                 'accept': 'application/json',

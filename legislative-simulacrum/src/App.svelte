@@ -9,7 +9,7 @@
 
   //fetch root API and initalize a session cookie
   onMount(async () => {
-    await fetch("https://zsvpuzru3l.execute-api.us-east-2.amazonaws.com/dev/legislative-simulacrum-09-05/", {
+    await fetch("http://localhost:8000/", {
       method: "GET",
       credentials: "include" 
     });
