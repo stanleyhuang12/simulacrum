@@ -15,12 +15,16 @@ from base_class import *
 
 from mangum import Mangum
 
+
 # engine = create_engine("sqlite:///database/database.db")
+
 engine = create_engine("postgresql+psycopg2://deliberations:simulacrum32()@deliberations-legislative-simulacrum.cjqmko8aimkn.us-east-2.rds.amazonaws.com/deliberations")
+
+
 Base = declarative_base()
 @asynccontextmanager
 async def lifespan(app: FastAPI): 
-    print("Connects to engine and start up...")
+
     Base.metadata.create_all(engine)
     yield 
     
@@ -55,7 +59,6 @@ async def manage_unique_session(request: Request, call_next):
         response.set_cookie(SESSION_COOKIE_NAME, session_id, httponly=True, samesite="lax", max_age=1800)
         return response 
     
-
 @app.get("/")
 def read_root(request: Request, response: Response): 
     print("root API request ")
@@ -67,6 +70,7 @@ def read_root(request: Request, response: Response):
         response.set_cookie(key=SESSION_COOKIE_NAME, value=session_id)
 
     return {"message": "Hello World!", "user": session_id}
+   
 
 @app.websocket("/transcribe-audio")
 async def websocket_handler(websocket: WebSocket): 
@@ -219,5 +223,13 @@ def end_of_call_management(request: Request) -> EndOfCallFeedback:
                              trainer_agent_feedback=feedback)
     
 # adapter/wrapper for AWS & FastAPI 
-handler = Mangum(app)
+handler = Mangum(app, lifespan='off')
+
+def lambda_handler(event, context): 
+    return handler(event, context)
+
+
+
+
+    
     
