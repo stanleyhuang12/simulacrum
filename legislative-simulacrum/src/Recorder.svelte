@@ -1,11 +1,14 @@
 <script lang="ts">
     import { onMount } from "svelte";
+
     import { MediaRecorder, register } from 'extendable-media-recorder';
     import { connect } from 'extendable-media-recorder-wav-encoder';
     import OpenAI from "openai";
     import { playAudio } from "openai/helpers/audio";
+    // import textToSpeechPrivate  from "./routes/server-api/text-to-speech.svelte";
+    // import getTranscriptionsPrivate from "./routes/server-api/text-to-speech.svelte";
     
-    const openai = new OpenAI({apiKey: import.meta.env.VITE_OPENAI_API_KEY}); 
+    const openai = new OpenAI({apiKey: import.meta.env.OPENAI_API_KEY}); 
     let { formData, currentStep=$bindable() } = $props();
 
     let wsEventAdded = false;
@@ -40,14 +43,15 @@
         try {
             const agentText = e.data; 
             console.log(agentText);
-
-            const response = openai.audio.speech.create({
-                input: agentText,
-                model: "gpt-4o-mini-tts",
-                voice: "alloy",
-                response_format: "wav",
-                instructions: "Speak in an appropriate manner."
-            }) 
+            //MOVE TO SERVER-SIDE MODULE
+            // const response = openai.audio.speech.create({
+            //     input: agentText,
+            //     model: "gpt-4o-mini-tts",
+            //     voice: "alloy",
+            //     response_format: "wav",
+            //     instructions: "Speak in an appropriate manner."
+            // }) 
+            const response = await textToSpeechPrivate(agentText);
 
             await playAudio(response) //should handle audiostreaming
         } catch(err) {
@@ -63,7 +67,7 @@
         const agentResponse = await fetch("https://api.openai.com/v1/audio/speech", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+                "Authorization": `Bearer ${import.meta.env.OPENAI_API_KEY}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
@@ -172,14 +176,19 @@
         const policyTopic = "This is part of a conversation between a community advocate and lawmaker on " + $state.snapshot(formData.selectedPolicyTopic)
         formDat.append("prompt", policyTopic)
         console.log(formDat)
-    
-        const response  = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-            },
+        //TODO
+
+        const response = await fetch("/server-api/speech-to-text.server.svelte", {
+            method: "GET", 
             body: formDat
-        });
+        })
+        // const response  = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        //     method: "POST",
+        //     headers: {
+        //         "Authorization": `Bearer ${import.meta.env.OPENAI_API_KEY}`,
+        //     },
+        //     body: formDat
+        // });
 
         ws = getWebSocket();
         const res = await response.json()
