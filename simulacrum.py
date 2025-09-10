@@ -10,7 +10,7 @@ import json
 f = find_dotenv()
 if load_dotenv(): 
     "Setting os.environ['OPENAI_API_KEY'] to OpenAI's API Key"
-    os.environ['OPENAI_API_KEY'] = os.getenv('OPEN_AI')
+    os.environ['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
 else: 
     "Error retrieving API key"
 

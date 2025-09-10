@@ -3,8 +3,6 @@
 
     import { MediaRecorder, register } from 'extendable-media-recorder';
     import { connect } from 'extendable-media-recorder-wav-encoder';
-    import OpenAI from "openai";
-    import { playAudio } from "openai/helpers/audio";
     // import textToSpeechPrivate  from "./routes/server-api/text-to-speech.svelte";
     // import getTranscriptionsPrivate from "./routes/server-api/text-to-speech.svelte";
     
@@ -53,11 +51,11 @@
             // }) 
             
             // const response = await textToSpeechPrivate(agentText);
-            const response = await fetch("src/routes/server-api/text-to-speech/", {
+            const response = await fetch("/server-api/text-to-speech", {
                 body: agentText
             })
             console.log("Fetching SSR endpoint worked.")
-            await playAudio(response) //should handle audiostreaming
+            await response //should handle audiostreaming
         } catch(err) {
             console.error(err)
         }
@@ -157,7 +155,6 @@
                 if (recorder) {
                     recorder.stop(); 
                     await audioDebug(audioBlobs)
-                    console.log("Submitted CURL request OpenAI's transcription API.")
                     audioBlobs = [] //reset audioblobs
                     console.log("User turned off microphone, so audio recorder stopped.")
                     console.log(recorder.mimeType)
@@ -182,7 +179,7 @@
         console.log(formDat)
         //TODO
 
-        const response = await fetch("src/routes/server-api/speech-to-text", {
+        const response = await fetch("/server-api/speech-to-text", {
             method: "POST", 
             body: formDat
         })
@@ -198,7 +195,7 @@
         const res = await response.json()
         console.log("Response from OpenAI's transcription", res.text)
         ws.send(res.text)
-        
+
         }
 
     function completeSimulation() {
