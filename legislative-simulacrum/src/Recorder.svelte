@@ -8,7 +8,7 @@
     // import textToSpeechPrivate  from "./routes/server-api/text-to-speech.svelte";
     // import getTranscriptionsPrivate from "./routes/server-api/text-to-speech.svelte";
     
-    const openai = new OpenAI({apiKey: import.meta.env.OPENAI_API_KEY}); 
+    // const openai = new OpenAI({apiKey: import.meta.env.OPENAI_API_KEY}); 
     let { formData, currentStep=$bindable() } = $props();
 
     let wsEventAdded = false;
@@ -51,48 +51,52 @@
             //     response_format: "wav",
             //     instructions: "Speak in an appropriate manner."
             // }) 
-            const response = await textToSpeechPrivate(agentText);
-
+            
+            // const response = await textToSpeechPrivate(agentText);
+            const response = await fetch("src/routes/server-api/text-to-speech/", {
+                body: agentText
+            })
+            console.log("Fetching SSR endpoint worked.")
             await playAudio(response) //should handle audiostreaming
         } catch(err) {
             console.error(err)
         }
     }
 
-    async function handleAgentResponses(e) {
-    try {
-        const agentText = e.data;
-        console.log(agentText);
+    // async function handleAgentResponses(e) {
+    // try {
+    //     const agentText = e.data;
+    //     console.log(agentText);
 
-        const agentResponse = await fetch("https://api.openai.com/v1/audio/speech", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${import.meta.env.OPENAI_API_KEY}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "gpt-4o-mini-tts",
-                input: agentText,
-                voice: "alloy",
-                instructions: "Speak in an appropriate manner as an eager but professional lawmaker.",
-                response_format: "wav",
-            })
-        });
+    //     const agentResponse = await fetch("https://api.openai.com/v1/audio/speech", {
+    //         method: "POST",
+    //         headers: {
+    //             "Authorization": `Bearer ${import.meta.env.OPENAI_API_KEY}`,
+    //             "Content-Type": "application/json"
+    //         },
+    //         body: JSON.stringify({
+    //             model: "gpt-4o-mini-tts",
+    //             input: agentText,
+    //             voice: "alloy",
+    //             instructions: "Speak in an appropriate manner as an eager but professional lawmaker.",
+    //             response_format: "wav",
+    //         })
+    //     });
 
-        if (!agentResponse.ok) {
-            throw new Error(`TTS API error: ${agentResponse.status} ${agentResponse.statusText}`);
-        }
+    //     if (!agentResponse.ok) {
+    //         throw new Error(`TTS API error: ${agentResponse.status} ${agentResponse.statusText}`);
+    //     }
 
-        const audioBuffer = await agentResponse.arrayBuffer();
-        const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" });
-        const blobURL = URL.createObjectURL(audioResponseBlob);
-        const audioElem = new Audio();
-        audioElem.src = blobURL;
-        audioElem.play();
-    } catch (err) {
-        console.error(err);
-    }
-    }
+    //     const audioBuffer = await agentResponse.arrayBuffer();
+    //     const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" });
+    //     const blobURL = URL.createObjectURL(audioResponseBlob);
+    //     const audioElem = new Audio();
+    //     audioElem.src = blobURL;
+    //     audioElem.play();
+    // } catch (err) {
+    //     console.error(err);
+    // }
+    // }
 
 
     async function getVideoStream() { 
@@ -178,8 +182,8 @@
         console.log(formDat)
         //TODO
 
-        const response = await fetch("/server-api/speech-to-text.server.svelte", {
-            method: "GET", 
+        const response = await fetch("src/routes/server-api/speech-to-text", {
+            method: "POST", 
             body: formDat
         })
         // const response  = await fetch("https://api.openai.com/v1/audio/transcriptions", {
@@ -189,11 +193,12 @@
         //     },
         //     body: formDat
         // });
-
+        
         ws = getWebSocket();
         const res = await response.json()
         console.log("Response from OpenAI's transcription", res.text)
         ws.send(res.text)
+        
         }
 
     function completeSimulation() {
