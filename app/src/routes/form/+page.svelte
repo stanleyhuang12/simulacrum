@@ -297,5 +297,5 @@ button:disabled {
               </label>
           </div>
         </div>
-    <button type="submit" on:submit={(e) => e.preventDefault()} formaction="?/submit">Enter simulated Deliberations with your virtual lawmaker!</button>
+    <button type="submit" onsubmit={(e) => e.preventDefault()} formaction="?/submit">Enter simulated Deliberations with your virtual lawmaker!</button>
 </form>

@@ -10,6 +10,7 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async ( {request} ) => {
 
     //resolve into form data 
+    console.log("Triggered stt POST request.")
     const formData = await request.formData();
     try {
         const agentResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {

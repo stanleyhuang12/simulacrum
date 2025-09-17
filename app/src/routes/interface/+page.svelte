@@ -11,14 +11,14 @@
     let { formData, currentStep=$bindable() } = $props();
 
     let wsEventAdded = false;
-    let audioStreams;
-    let videoStreams;
-    let videoElem;
-    let videoElem2; //will remove
+    let audioStreams: MediaStream | undefined;
+    let videoStreams: MediaStream | undefined;
+    let videoElem: HTMLVideoElement;
+    let videoElem2: HTMLVideoElement; //will remove
     let buttonElemState = $state(false); //when user clicks turn on/off mic
-    let ws; //websocket
-    let recorder; //recorder 
-    let audioBlobs = []; 
+    let ws: WebSocket; //websocket
+    let recorder: MediaRecorder; //recorder 
+    let audioBlobs: Blob[] = []; 
     
     
     // async function registerCustomMimeType() {
@@ -32,7 +32,8 @@
             ws =  new WebSocket("ws://localhost:8000/transcribe-audio")
             console.log('Established WebSocket connection.')
             if (!wsEventAdded) {
-                ws.addEventListener("message", handleAgentResponse)
+                ws.addEventListener("message", handleAgentResponse);
+                wsEventAdded = true;
             }
         } 
         return ws 
@@ -64,53 +65,78 @@
     //     }
     // }
 
-    async function handleAgentResponse(agentResponse: string) { 
-        //Takes in the Agent Response (text) and converts it to audio. 
-        console.log("Agent response: ", agentResponse);
+    async function handleAgentResponse(agentResponse: any) {
+        //Takes agent response, converts it to audio. 
+        console.log("Agent response", agentResponse)
 
-        //Create a Server-Side Event Stream 
-        const eventSource  = new SSE("/api/text-to-speech", {
+        const agentAudioArray = await fetch("/api/text-to-speech", {
+            method: "POST", 
             headers: {
-                "Content-Type": "application/json"
-            },
-            payload: agentResponse,
-            method: "POST"
-        });
-
-        //EventSource inherits https://developer.mozilla.org/en-US/docs/Web/API/EventSource#events
-
-        eventSource.addEventListener("error", "Error with SSE")
-
-        //Convert SSE JSON chunks, decode to audio 
-        eventSource.addEventListener("message", (e) => {
-            try {
-                const obj = JSON.parse(e.data);
-
-                if (obj.type === "speech.audio.delta" && obj.audio) {
-                    // Decode base64 -> Uint8Array
-                    const byteArr = Uint8Array.from(atob(obj.audio), c => c.charCodeAt(0));
-
-                    // Create an individual Blob
-                    const blob = new Blob([byteArr], { type: "audio/wav" });
-                    const url = URL.createObjectURL(blob);
-
-                    // Option 1: Play immediately (might be choppy)
-                    const audio = new Audio(url);
-                    audio.play();
-
-                    // Option 2: Collect blobs for continuous playback
-                    // audioChunks.push(blob);
-                } else if (obj.type === "speech.audio.done") {
-                    console.log("TTS stream finished.");
-                }
-            } catch (err) {
-                console.error("Failed to parse SSE message:", err);
+                "Content-Type": "application/octet-stream"
             }
-        });
+        })
 
-        // Start listening
-        eventSource.stream();
-        }
+        const agentAudio = await agentAudioArray.arrayBuffer()
+        const audioResponseBlob = new Blob([agentAudio], { type: "audio/wav" });
+        const blobURL = URL.createObjectURL(audioResponseBlob);
+        const audioElem = new Audio();
+        audioElem.src = blobURL;
+        audioElem.play();
+    }
+
+    // async function handleAgentResponse(agentResponse: string) { 
+    //     //Takes in the Agent Response (text) and converts it to audio. 
+    //     console.log("Agent response: ", agentResponse);
+
+    //     //Create a Server-Side Event Stream 
+    //     const eventSource  = new SSE("/api/text-to-speech", {
+    //         headers: {
+    //             "Content-Type": "application/json"
+    //         },
+    //         payload: agentResponse,
+    //         method: "POST"
+    //     });
+
+    //     //EventSource inherits https://developer.mozilla.org/en-US/docs/Web/API/EventSource#events
+
+    //     eventSource.addEventListener("error", (e) => {
+    //         console.error("Error with SSE", e)
+    //     })
+
+    //     //Convert SSE JSON chunks, decode to audio 
+    //     eventSource.addEventListener("message", (e) => {
+    //         try {
+    //             console.log(e.data);
+    //             const obj = JSON.parse(e.data);
+
+    //             if (obj.type === "speech.audio.delta" && obj.audio) {
+    //                 // Decode base64 -> Uint8Array
+    //                 const byteArr = Uint8Array.from(atob(obj.audio), c => c.charCodeAt(0));
+
+    //                 // Create an individual Blob
+    //                 const blob = new Blob([byteArr], { type: "audio/wav" });
+    //                 const blobURL = URL.createObjectURL(blob);
+
+    //                 // Option 1: Play immediately (might be choppy)
+    //                 const audioElem = new Audio();
+    //                 audioElem.src = blobURL;
+    //                 audioElem.play();
+
+    //                 console.log("Tried playing ...")
+
+    //                 // Option 2: Collect blobs for continuous playback
+    //                 // audioChunks.push(blob);
+    //             } else if (obj.type === "speech.audio.done") {
+    //                 console.log("TTS stream finished.");
+    //             }
+    //         } catch (err) {
+    //             console.error("Failed to parse SSE message:", err);
+    //         }
+    //     });
+
+    //     // Start listening
+    //     eventSource.stream();
+    //     }
 
     
 
@@ -218,14 +244,14 @@
         }
     }
 
-    async function retrieveAndSubmitTranscriptions(blob) { 
+    async function retrieveAndSubmitTranscriptions(blob: BlobPart) { 
         // Takes in audio binary large object, query transcriptions API through SSR, 
         // then pass in transcriptions through initialized WebSocket connection 
 
         const formData = await new FormData(); 
         const audioFile = await new File([blob],
             "recording.webm", {
-            type: blob.type
+            type: "audio/webm"
         })
         
         formData.append("file", audioFile);  
@@ -296,23 +322,31 @@
             ws.close()
             console.log("Closing WebSocket connection.")
         }
-        if (recorder && recorder.status !== "inactive") {
+        if (recorder && recorder.state !== "inactive") {
             recorder.stop()
             console.log("Ending audio recorder.")
         }
         try {
-            videoStreams.getTracks().forEach(track => track.stop());
-            audioStreams.getTracks().forEach(track => track.stop());
+            if (videoStreams) {
+                videoStreams.getTracks().forEach(track => track.stop());
+            }
+            if (audioStreams) {
+                audioStreams.getTracks().forEach(track => track.stop());
+            }
         } catch(err) {
             console.error(err)
         }
     }
 
-    function manageAudio(audioBlobs) { 
+    function manageAudio(audioBlobs: any[] | undefined) { 
         // Parses through audio data for sanity check and calls retrieveAndSubmitTranscriptions function
         console.log("=== AUDIO DEBUG ===");
+        if (!audioBlobs || !Array.isArray(audioBlobs)) {
+            console.error("audioBlobs is undefined or not an array");
+            return;
+        }
         console.log("Chunks collected:", audioBlobs.length);
-        console.log("Chunk sizes:", audioBlobs.map(chunk => chunk.size));
+        console.log("Chunk sizes:", audioBlobs.map((chunk: { size: any; }) => chunk.size));
             
         const audioBlob = new Blob(audioBlobs, { type: recorder.mimeType });
         console.log("Final blob size:", audioBlob.size);
