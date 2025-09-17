@@ -30,5 +30,4 @@ export const load: PageServerLoad =  async ( {params} ) => {
         }
     }
     //feedback is a JSON object that includes identifier, username, full_transcript, and trainer_agent_feedback
-
 }
