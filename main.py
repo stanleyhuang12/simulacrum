@@ -18,8 +18,8 @@ from mangum import Mangum
 
 # engine = create_engine("sqlite:///database/database.db")
 
-engine = create_engine("postgresql+psycopg2://deliberations:simulacrum32()@deliberations-legislative-simulacrum.cjqmko8aimkn.us-east-2.rds.amazonaws.com/deliberations")
-
+engine = create_engine("postgresql+psycopg2://deliberations:simulacrum32()@deliberations-legislative-simulacrum.cjqmko8aimkn.us-east-2.rds.amazonaws.com/deliberations", 
+                       pool_pre_ping=True)
 
 Base = declarative_base()
 @asynccontextmanager
