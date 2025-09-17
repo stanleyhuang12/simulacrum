@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { SSE } from 'sse.js'
+  import { goto } from "$app/navigation";
 
 
     // import { MediaRecorder, register } from 'extendable-media-recorder';
@@ -333,6 +334,8 @@
             if (audioStreams) {
                 audioStreams.getTracks().forEach(track => track.stop());
             }
+        
+        goto("/feedback")
         } catch(err) {
             console.error(err)
         }

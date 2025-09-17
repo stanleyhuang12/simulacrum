@@ -1,16 +1,39 @@
 import { OPENAI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
-import { json } from '@sveltejs/kit';
+import { json, error } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async () => {
-    return new Response();
+    return new Response("Speech to text API endpoint requires a POST request.");
 }; 
 
 
-export const POST: RequestHandler = async ( {request} ) => {
+async function validateUser(sess_cookies: string) {
+    const isUserValidated = await fetch("/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback", {
+        headers: {
+            "Cookies": `session_id_delibs=${sess_cookies}`
+        }
+    })
+    if (!isUserValidated.ok) {
+        return 
+    }
+}
 
-    //resolve into form data 
+
+
+export const POST: RequestHandler = async ( {request, cookies} ) => {
+
     console.log("Triggered stt POST request.")
+
+    const sess_cookies = cookies.get("session-id-delibs")
+
+    // Validate user has initialized a Deliberation structure 
+    const isUserValidated = await fetch("/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback", {
+        headers: {
+            "Cookies": `session_id_delibs=${sess_cookies}`
+        }
+    })
+    if (!isUserValidated.ok) return error(isUserValidated.status, isUserValidated.statusText); 
+
     const formData = await request.formData();
     try {
         const agentResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
