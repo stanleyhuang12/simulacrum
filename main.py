@@ -9,7 +9,7 @@ from simulacrum import Deliberation
 # ORM management and typing 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, Session
-from sqlalchemy import text
+from sqlalchemy import text, select, exists
 from contextlib import asynccontextmanager
 from base_class import * 
 
@@ -208,6 +208,23 @@ def debug_database():
         orm_data = session.query(DeliberationORM).all()
         print(f"ORM query result: {orm_data}")
 
+@app.get("/trial-v1/delibs/validate-user")
+def validate_user_existence(request: Request):
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    
+    if not session_id:
+        raise HTTPException(400, "No session cookie found.")
+    
+    with Session(engine) as sess:
+        stmt = select(exists().where(DeliberationORM.session_id == session_id))
+        found = sess.execute(stmt).scalar() 
+        if not found:
+            raise HTTPException(404, "User does not have an initialized Deliberations instance.")
+        
+        return {
+            "status": 200,
+            "message": "Verified user has initialized a Deliberation structure."
+        }
     
 @app.get("/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback")
 def end_of_call_management(request: Request) -> EndOfCallFeedback: 
