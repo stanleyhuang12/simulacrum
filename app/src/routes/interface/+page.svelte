@@ -1,15 +1,17 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { SSE } from 'sse.js'
-  import { goto } from "$app/navigation";
-
+    import { goto } from "$app/navigation";
+    import type { PageProps} from "./$types";
 
     // import { MediaRecorder, register } from 'extendable-media-recorder';
     // import { connect } from 'extendable-media-recorder-wav-encoder';
     // import textToSpeechPrivate  from "./routes/server-api/text-to-speech.svelte";
     // import getTranscriptionsPrivate from "./routes/server-api/text-to-speech.svelte";
     // const openai = new OpenAI({apiKey: import.meta.env.OPENAI_API_KEY}); 
-    let { formData, currentStep=$bindable() } = $props();
+    // let { formData, currentStep=$bindable() } = $props();
+
+    let { data }: PageProps = $props(); 
 
     let wsEventAdded = false;
     let audioStreams: MediaStream | undefined;
@@ -68,13 +70,14 @@
 
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
-        console.log("Agent response", agentResponse)
-
+        console.log("Agent response SIGN", agentResponse)
+        const agentText = agentResponse.data
         const agentAudioArray = await fetch("/api/text-to-speech", {
             method: "POST", 
             headers: {
-                "Content-Type": "application/octet-stream"
-            }
+                "Content-Type": "text/plain"
+            },
+            body: agentText
         })
 
         const agentAudio = await agentAudioArray.arrayBuffer()
@@ -84,7 +87,6 @@
         audioElem.src = blobURL;
         audioElem.play();
     }
-
     // async function handleAgentResponse(agentResponse: string) { 
     //     //Takes in the Agent Response (text) and converts it to audio. 
     //     console.log("Agent response: ", agentResponse);
@@ -273,7 +275,7 @@
             ws = getWebSocket(); 
             ws.send(transcriptions)
         } else { 
-            console.error("Error with TTS transcriptions.")
+            console.error("Error with transcriptions.")
         }
     }
 
@@ -335,7 +337,7 @@
                 audioStreams.getTracks().forEach(track => track.stop());
             }
         
-        goto("/feedback")
+        goto(`/feedback/?session-delibs-id=${data.sess_cookies}`)
         } catch(err) {
             console.error(err)
         }
@@ -488,7 +490,7 @@ video {
     <button class="microphone" id='disable-microphone' onclick={getAudioStream} aria-label="disable-microphone">🔇 Turn off mic</button>
 {/if}
 
-<button class="complete-simulation" onclick={() => { completeSimulation(); currentStep="feedback";}} aria-label="complete simulation">Leave call</button>
+<button class="complete-simulation" onclick={() => { completeSimulation()}} aria-label="complete simulation">Leave call</button>
 
 <!-- <button onclick={getAudioStream}>Turn on mic.</button> -->
 <!-- <button onclick={pauseAudioStream}>Turn off mic.</button> -->

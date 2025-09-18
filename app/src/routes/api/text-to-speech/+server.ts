@@ -11,7 +11,7 @@ export const POST: RequestHandler = async( {request} ) => {
         return json({error: "This endpoint is only accessible server-side"}, { status: 400 })
     }
 
-    const agentText = request.text()
+    const agentText = await request.text()
     if (!agentText) return json({error: "Agent message is null. Unable to convert to speech "}, {status: 404})
 
     try {
@@ -37,11 +37,11 @@ export const POST: RequestHandler = async( {request} ) => {
         return new Response(agentAudioArray, {
             status: 200, 
             headers: {
-                "Content-Type": "application/octet-stream"
+                "Content-Type": "audio/wav"
             }
         });
         } catch(err) {
-            return error(400, "Error")
+            return error(400, `Error ${err}`)
         
     }
 }

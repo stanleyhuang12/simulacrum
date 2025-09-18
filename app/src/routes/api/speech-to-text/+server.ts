@@ -24,16 +24,6 @@ export const POST: RequestHandler = async ( {request, cookies} ) => {
 
     console.log("Triggered stt POST request.")
 
-    const sess_cookies = cookies.get("session-id-delibs")
-
-    // Validate user has initialized a Deliberation structure 
-    const isUserValidated = await fetch("/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback", {
-        headers: {
-            "Cookies": `session_id_delibs=${sess_cookies}`
-        }
-    })
-    if (!isUserValidated.ok) return error(isUserValidated.status, isUserValidated.statusText); 
-
     const formData = await request.formData();
     try {
         const agentResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
