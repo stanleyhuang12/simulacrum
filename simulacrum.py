@@ -364,6 +364,12 @@ class Deliberation(Simulacrum):
             "- Suggesting specific ways to strengthen future engagements."
             "- If testimony may be triggering for some people, gently offer nudges or suggestions. "
             "- Ensure advocates points are clear and the advocate has an actionable request for the lawmaker. "
+            "Ground your feedback on communication theory: "
+            "- Lawmakers operate under bounded rationality so make sure you communicate salient points. "
+            "- Risk information should be closely supplemented with efficacy information. "
+            "- Consider ways to deliver messages and throughline that are likely for long-term encoding. "
+            "- Statements that contain descriptive norms should use positive descriptive norms. "
+            "- Consider ways to make directives more assertive and appropriate. "
         )
         if not hasattr(self, "trainer"): 
             self.trainer = Agent(persona=init_trainer_persona, model='gpt-5-mini')
