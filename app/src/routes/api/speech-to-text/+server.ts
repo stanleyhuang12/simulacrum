@@ -20,7 +20,7 @@ async function validateUser(sess_cookies: string) {
 
 
 
-export const POST: RequestHandler = async ( {request, cookies} ) => {
+export const POST: RequestHandler = async ( {request} ) => {
 
     console.log("Triggered stt POST request.")
 
@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ( {request, cookies} ) => {
             body: formData
         })
         
-        const res = await agentResponse.text();
+        const res = await agentResponse.json();
         
         console.log(res);
         if (!res) return json({"transcriptions": null, "success": false});
@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ( {request, cookies} ) => {
         });
 
     } catch(err) {
-        console.error(err)
+        console.error("Speech-to-text failed", err)
         return json({"transcriptions": null, "success": false})
     };
 };

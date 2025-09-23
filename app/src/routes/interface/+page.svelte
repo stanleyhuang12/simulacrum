@@ -87,96 +87,6 @@
         audioElem.src = blobURL;
         audioElem.play();
     }
-    // async function handleAgentResponse(agentResponse: string) { 
-    //     //Takes in the Agent Response (text) and converts it to audio. 
-    //     console.log("Agent response: ", agentResponse);
-
-    //     //Create a Server-Side Event Stream 
-    //     const eventSource  = new SSE("/api/text-to-speech", {
-    //         headers: {
-    //             "Content-Type": "application/json"
-    //         },
-    //         payload: agentResponse,
-    //         method: "POST"
-    //     });
-
-    //     //EventSource inherits https://developer.mozilla.org/en-US/docs/Web/API/EventSource#events
-
-    //     eventSource.addEventListener("error", (e) => {
-    //         console.error("Error with SSE", e)
-    //     })
-
-    //     //Convert SSE JSON chunks, decode to audio 
-    //     eventSource.addEventListener("message", (e) => {
-    //         try {
-    //             console.log(e.data);
-    //             const obj = JSON.parse(e.data);
-
-    //             if (obj.type === "speech.audio.delta" && obj.audio) {
-    //                 // Decode base64 -> Uint8Array
-    //                 const byteArr = Uint8Array.from(atob(obj.audio), c => c.charCodeAt(0));
-
-    //                 // Create an individual Blob
-    //                 const blob = new Blob([byteArr], { type: "audio/wav" });
-    //                 const blobURL = URL.createObjectURL(blob);
-
-    //                 // Option 1: Play immediately (might be choppy)
-    //                 const audioElem = new Audio();
-    //                 audioElem.src = blobURL;
-    //                 audioElem.play();
-
-    //                 console.log("Tried playing ...")
-
-    //                 // Option 2: Collect blobs for continuous playback
-    //                 // audioChunks.push(blob);
-    //             } else if (obj.type === "speech.audio.done") {
-    //                 console.log("TTS stream finished.");
-    //             }
-    //         } catch (err) {
-    //             console.error("Failed to parse SSE message:", err);
-    //         }
-    //     });
-
-    //     // Start listening
-    //     eventSource.stream();
-    //     }
-
-    
-
-    // async function handleAgentResponse(e) {
-    // try {
-    //     const agentText = e.data;
-    //     console.log(agentText);
-
-    //     const agentResponse = await fetch("https://api.openai.com/v1/audio/speech", {
-    //         method: "POST",
-    //         headers: {
-    //             "Authorization": `Bearer ${import.meta.env.OPENAI_API_KEY}`,
-    //             "Content-Type": "application/json"
-    //         },
-    //         body: JSON.stringify({
-    //             model: "gpt-4o-mini-tts",
-    //             input: agentText,
-    //             voice: "alloy",
-    //             instructions: "Speak in an appropriate manner as an eager but professional lawmaker.",
-    //             response_format: "wav",
-    //         })
-    //     });
-
-    //     if (!agentResponse.ok) {
-    //         throw new Error(`TTS API error: ${agentResponse.status} ${agentResponse.statusText}`);
-    //     }
-
-    //     const audioBuffer = await agentResponse.arrayBuffer();
-    //     const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" });
-    //     const blobURL = URL.createObjectURL(audioResponseBlob);
-    //     const audioElem = new Audio();
-    //     audioElem.src = blobURL;
-    //     audioElem.play();
-    // } catch (err) {
-    //     console.error(err);
-    // }
-    // }
 
     async function getVideoStream() { 
         try { 
@@ -195,6 +105,8 @@
         }
     }
 
+
+
     function toggleMicrophone() { 
         buttonElemState = !buttonElemState
         console.log(`Toggled microphone ${buttonElemState}`)
@@ -211,7 +123,7 @@
                         console.error("Browser does not support audio streaming.")
                         throw new Error('Browser does not support audio streaming.');
                     }
-                console.log("Prompt user to accept aduio connection")
+                console.log("Prompt user to accept audio connection")
                 
                 audioStreams = await window.navigator.mediaDevices.getUserMedia( { audio: {
                     echoCancellation: true,
@@ -221,7 +133,7 @@
                 }); 
                 console.log(audioStreams)
 
-                recorder = new MediaRecorder(audioStreams, { mimeType: "audio/webm;codecs=opus" } );
+                recorder = new MediaRecorder(audioStreams, { mimeType: "audio/webm" } );// remove ;codecs=opus
                 recorder.start(250); //send chunk every 250 ms
                 console.log(recorder.state)
                 recorder.ondataavailable = async (e) => { 
@@ -247,14 +159,14 @@
         }
     }
 
-    async function retrieveAndSubmitTranscriptions(blob: BlobPart) { 
+    async function retrieveAndSubmitTranscriptions(blob: Blob) { 
         // Takes in audio binary large object, query transcriptions API through SSR, 
         // then pass in transcriptions through initialized WebSocket connection 
 
-        const formData = await new FormData(); 
+        const formData = new FormData(); 
         const audioFile = await new File([blob],
             "recording.webm", {
-            type: "audio/webm"
+            type: blob.type
         })
         
         formData.append("file", audioFile);  
@@ -264,16 +176,20 @@
         
         console.log(formData)
 
-        const response = await fetch("/api/speech-to-text/", {
+        const response = await fetch("/api/speech-to-text", {
             method: "POST",
             body: formData
         });
+
         const res = await response.json()
 
         if (res.success == true) {
             const transcriptions = res.transcriptions
+            console.log(transcriptions)
+            const text = transcriptions.text
+            console.log("Text submitted to WS", text)
             ws = getWebSocket(); 
-            ws.send(transcriptions)
+            ws.send(text)
         } else { 
             console.error("Error with transcriptions.")
         }
@@ -353,7 +269,7 @@
         console.log("Chunks collected:", audioBlobs.length);
         console.log("Chunk sizes:", audioBlobs.map((chunk: { size: any; }) => chunk.size));
             
-        const audioBlob = new Blob(audioBlobs, { type: recorder.mimeType });
+        const audioBlob = new Blob(audioBlobs, { type: "audio/webm" });
         console.log("Final blob size:", audioBlob.size);
         console.log("Final blob type:", audioBlob.type);
         
