@@ -14,4 +14,15 @@ To Do:
 * Fetch API endpoints for end-of-call feedback to help community advocates better improve/localize/tailor their advocacy and messaging [DONE]
  * Update errors 
 * Update the database management system to PostgreSQL on AWS [DONE]
+* Refactor code for SSR [DONE]
+* Improve feedback page to incorporate latest literature public health communication, risk communication strategy [DONE]
+
+* Enhance conversational experience with VAD (voice activity detection) [TODO]
+    * Use OpenAI's real time audio-transcription for audio-transcriptions workflow
+* Enhance conversational experience with text-to-speech streaming and audio playing [TODO]
+* Refactor code to create base Lawmaker class [TODO]
+* Find ways to shave off latency while simultaneously reducing costs 
+* Re-deploy API endpoints via Docker/zip files if shaved off dependencies to Lambda Serverless
+* Ensure unified brand color and visual experience
+* Upload an image of a lawmaker for the first zoom background 
 
