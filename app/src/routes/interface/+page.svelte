@@ -146,9 +146,11 @@
                 }}
             else { 
                 if (recorder) {
-                    recorder.stop(); 
-                    await manageAudio(audioBlobs)
+                    const collected = [...audioBlobs]
                     audioBlobs = [] //reset audioblobs
+
+                    recorder.stop(); 
+                    await manageAudio(collected)
                     console.log("User turned off microphone, so audio recorder stopped.")
                     console.log(recorder.mimeType)
                 }
