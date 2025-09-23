@@ -11,131 +11,286 @@
     async function queryFeedback(event: Event) { 
         
         event.preventDefault()
-        
+
         try {
-            if (data.status == 500) {
-                alert("Error processing ")
+          console.log("Start fetch for end-of-call transcription.")
+          const response = await fetch("http://localhost:8000/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback", {
+            method: "GET",
+            headers: {
+                'Cookie': `session-id-delibs=${data.sess_cookies}`
+            },
+            credentials: "include"
+          });
+
+          if (!response.ok) { throw new Error("Error returning Trainer agent feedback.")}
+          
+          const feedbackData = await response.json()
+          const pdfDoc = new jsPDF(); 
+          const pageHeight = pdfDoc.internal.pageSize.height;
+          const margin = 20;
+          const lineHeight = 6; // tweak for spacing
+
+          // Title
+          pdfDoc.setFontSize(16);
+          pdfDoc.setTextColor(128, 0, 128);
+          pdfDoc.text("Metadata", 105, 20, { align: "center" });
+
+          // Identifier
+          let y = 40;
+          pdfDoc.setFontSize(12);
+          pdfDoc.setTextColor(0, 0, 0);
+          pdfDoc.text(`ID: ${feedbackData.identifier}`, 20, y);
+          y += 10;
+          pdfDoc.text(`User: ${feedbackData.username}`, 20, y);
+
+          // Transcript section
+          y += 20;
+          pdfDoc.setFontSize(14);
+          pdfDoc.setTextColor(128, 0, 128);
+          pdfDoc.text("Full Transcript", 105, y, { align: "center" });
+
+          y += 10;
+          pdfDoc.setFontSize(11);
+          pdfDoc.setTextColor(0, 0, 0);
+
+          // Wrap transcript into lines
+          const transcriptLines = pdfDoc.splitTextToSize(feedbackData.full_transcript, 170);
+
+          // Print transcript with auto-paging
+          for (const line of transcriptLines) {
+            if (y + lineHeight > pageHeight - margin) {
+              pdfDoc.addPage();
+              y = margin;
             }
-            
-            const pdf_doc = new jsPDF(); 
+            pdfDoc.text(line, 20, y);
+            y += lineHeight;
+          }
 
-            // Title
-            pdf_doc.setFontSize(16);
-            pdf_doc.setTextColor(128, 0, 128);
-            pdf_doc.text("Metadata", 105, 20, { align: "center" });
+          // Feedback section
+          y += 15;
+          pdfDoc.setFontSize(14);
+          pdfDoc.setTextColor(128, 0, 128);
+          if (y + lineHeight > pageHeight - margin) {
+            pdfDoc.addPage();
+            y = margin;
+          }
+          pdfDoc.text("Feedback to Help Improve Messaging", 105, y, { align: "center" });
 
-            // Identifier
-            let y = 40;
-            pdf_doc.setFontSize(12);
-            pdf_doc.setTextColor(0, 0, 0);
-            pdf_doc.text(`ID: ${data.feedback.identifier}`, 20, y);
-            y += 10;
-            pdf_doc.text(`User: ${data.feedback.username}`, 20, y);
+          y += 10;
+          pdfDoc.setFontSize(11);
+          pdfDoc.setTextColor(0, 0, 0);
 
-            // Transcript
-            y += 20;
-            pdf_doc.setFontSize(14);
-            pdf_doc.setTextColor(128, 0, 128);
-            pdf_doc.text("Full Transcript", 105, y, { align: "center" });
+          const feedbackLines = pdfDoc.splitTextToSize(feedbackData.trainer_agent_feedback, 170);
 
-            y += 10;
-            pdf_doc.setFontSize(11);
-            pdf_doc.setTextColor(0, 0, 0);
+          // Print feedback with auto-paging
+          for (const line of feedbackLines) {
+            if (y + lineHeight > pageHeight - margin) {
+              pdfDoc.addPage();
+              y = margin;
+            }
+            pdfDoc.text(line, 20, y);
+            y += lineHeight;
+          }
 
-            // Wrap transcript to fit maxWidth
-            const transcriptLines = pdf_doc.splitTextToSize(data.feedback.full_transcript, 170);
-            pdf_doc.text(transcriptLines, 20, y);
-
-            // Increase y by line count * line height (≈5 per line)
-            y += transcriptLines.length * 5 + 10;
-
-            // Feedback
-            pdf_doc.setFontSize(14);
-            pdf_doc.setTextColor(128, 0, 128);
-            pdf_doc.text("Feedback to Help Improve Messaging", 105, y, { align: "center" });
-
-            y += 10;
-            pdf_doc.setFontSize(11);
-            pdf_doc.setTextColor(0, 0, 0);
-
-            // Wrap feedback
-            const feedbackLines = pdf_doc.splitTextToSize(data.feedback.trainer_agent_feedback, 170);
-            pdf_doc.text(feedbackLines, 20, y);
-
-            // Save PDF
-            pdf_doc.save("feedback.pdf");
-            
+          // Save PDF
+          pdfDoc.save("feedback.pdf");
         } catch(err: unknown) {
-            console.error("Error:", err)
-            alert("Retrieving feedback––do not click anything else.")
-            retry += 1
-            
-            if (retry == 3) {
-                console.error("Error retrieving feedback; maximum retries reached."); 
-                alert("Error retrieving feedback. Maximum retries reached.")
-                return;
-            }
+          console.warn(`Error: ${err}`)
 
-            setTimeout(queryFeedback, 5000)
-    }
-}
+          retry += 1 
+
+          if (retry == 3) {
+            console.error("Error retrieving feedback; maximum retries reached."); 
+            alert("Error retrieving feedback. Maximum retries reached.")
+            return;
+          }
+          
+          setTimeout(queryFeedback, 5000)
+        }
+  
+        } 
 
    
 
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-[#0A1B2A] to-[#111827] text-gray-100 flex flex-col">
+<div class="app-container">
   <!-- Header -->
-  <header class="px-6 py-4 flex justify-between items-center border-b border-gray-800">
-    <h1 class="text-2xl font-bold tracking-wide text-white">Legislative Simulacrum</h1>
-    <p class="max-w-2xl font-bold text-g text-dark-gray-300 mb-8">
-      Empower communities to explore, question, and understand legislative debates through safe and intelligent simulations.
+  <header class="header">
+    <h1 class="title">Legislative Simulacrum</h1>
+    <p class="subtitle">
+      Empower community advocates in legislative advocacy through through safe and mock simulations with lawmaker deliberation calls.
     </p>
-    <nav class="space-x-6">
-      <a href="#top" class="hover:text-teal-400">About</a>
-      <a href="#top" class="hover:text-teal-400">Features</a>
-      <a href="#top" class="hover:text-teal-400">Contact</a>
+    <nav class="nav-links">
+      <a href="#top">About</a>
+      <a href="#top">Features</a>
+      <a href="mailto:striped@hsph.harvard.edu?cc=stanh@bu.edu&subject=Legislative%20Simulacrum%20Inquiry">Contact</a>
     </nav>
   </header>
 
   <!-- Hero Section -->
-  <section class="flex-1 flex flex-col justify-center items-center text-center px-6">
-    <h2 class="text-4xl sm:text-6xl font-extrabold mb-4 bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">
-      Thanks for using Legislative Simulacrum
+  <section class="hero">
+    <h2 class="hero-title">
+      Thanks for using Legislative Simulacrum!
     </h2>
-    <button class="px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-500 hover:opacity-90 shadow-lg"
-      onclick={queryFeedback}>
-      Get your feedback 
+    <button class="feedback-button" onclick={queryFeedback}>
+      Get your feedback. 
     </button>
   </section>
 
   <!-- Feature Highlights -->
-  <section class="px-6 py-12 bg-gray-900">
-    <h3 class="text-2xl font-bold text-white mb-6">Upcoming features</h3>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="p-6 bg-gray-800 rounded-2xl shadow-md hover:shadow-xl transition">
-        <h4 class="font-bold text-lg mb-2 text-teal-400">Multimodal Interaction</h4>
-        <p class="text-gray-300">Converse using text, audio, and soon visual channels for deeper engagement.</p>
+  <section class="features">
+    <h3>Upcoming features</h3>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h4>Multimodal Interaction</h4>
+        <p>Converse using text, audio, and soon visual channels for deeper engagement.</p>
       </div>
-      <div class="p-6 bg-gray-800 rounded-2xl shadow-md hover:shadow-xl transition">
-        <h4 class="font-bold text-lg mb-2 text-teal-400">Feedback & Reports</h4>
-        <p class="text-gray-300">Receive detailed feedback via email or downloadable TXT/PDF transcripts.</p>
+      <div class="feature-card">
+        <h4>Feedback & Reports</h4>
+        <p>Receive detailed feedback via email or downloadable TXT/PDF transcripts.</p>
       </div>
-      <div class="p-6 bg-gray-800 rounded-2xl shadow-md hover:shadow-xl transition">
-        <h4 class="font-bold text-lg mb-2 text-teal-400">Custom Personas</h4>
-        <p class="text-gray-300">Interact with lawmakers tailored to specific policies, values, and perspectives.</p>
+      <div class="feature-card">
+        <h4>Custom Personas</h4>
+        <p>Interact with lawmakers tailored to specific policies, values, and perspectives.</p>
       </div>
     </div>
   </section>
 
   <!-- Footer -->
-  <footer class="!text-sm text-gray-400 px-6 py-4 border-t border-gray-800 text-center">
-    Legislative Simulacrum is a tool developed by the Strategic Training Initiative for the Prevention of Eating Disorders, 
+  <footer class="footer">
+    Legislative Simulacrum is a tool developed by the Strategic Training Initiative for the Prevention of Eating Disorders.
   </footer>
-  <footer class="text-sm !text-sm text-gray-400">
-  Test text size
-  </footer> 
-  <div class="text-red-500 text-[40px] font-bold">
-  TEST TEXT
 </div>
-</div>
+
+<style>
+  /* Container */
+
+  .app-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(to bottom right, #ffffff, #ffffff);
+    color: #0000;
+    font-family: sans-serif;
+  }
+
+  /* Header */
+  .header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #062f69;
+  }
+
+  .title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0;
+    color: black;
+  }
+
+  .subtitle {
+    max-width: 600px;
+    font-weight: bold;
+    color: #000;
+    margin: 0.5rem 0 1rem;
+  }
+
+  .nav-links a {
+    margin-right: 1.5rem;
+    text-decoration: none;
+  }
+
+  .nav-links a:hover {
+    color: #5614b8;
+  }
+
+  /* Hero Section */
+  .hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 2rem;
+    color: black;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(to right, #3a01b6, #00395d);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 1rem;
+    color: black;
+  }
+
+  .feedback-button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 1rem;
+    background: linear-gradient(to right, #6d00f1, #075adf);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.041);
+    transition: opacity 0.2s ease;
+  }
+
+  .feedback-button:hover {
+    opacity: 0.9;
+  }
+
+  /* Features */
+  .features {
+    padding: 3rem 1.5rem;
+    background: white;
+    color: black;
+  }
+
+  .features h3 {
+    font-size: 1.75rem;
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+  }
+
+  .feature-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .feature-card {
+    background: #111827;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: box-shadow 0.2s ease;
+  }
+
+  .feature-card:hover {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+  }
+
+  .feature-card h4 {
+    color: #14B8A6;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+
+  .feature-card p {
+    color: #D1D5DB;
+    margin: 0;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    font-size: 0.875rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #1F2937;
+    color: #9CA3AF;
+  }
+</style>
