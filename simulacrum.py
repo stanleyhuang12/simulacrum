@@ -6,6 +6,7 @@ import random
 import asyncio
 from abc import abstractmethod
 import json
+from openai import OpenAI
 
 f = find_dotenv()
 if load_dotenv(): 
@@ -13,6 +14,66 @@ if load_dotenv():
     os.environ['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
 else: 
     "Error retrieving API key"
+ 
+ 
+
+ 
+class Lawmaker: 
+    def __init__(self, name, ideology, state, policy_topic, is_chair, agent_id, openai_api_key=None): 
+        self.name = name
+        self.ideology = ideology
+        self.state = state
+        self.policy_topic = policy_topic
+        self.is_chair = is_chair 
+        self.agent_id = agent_id 
+        self.persona = None
+        self.model = "gpt-4.1"
+        self.history = [] 
+        self._initalize()
+        self._set_system_instructions()
+
+
+        if openai_api_key:
+            OpenAI.api_key = openai_api_key
+        elif not os.getenv("OPENAI_API_KEY"):
+            raise ValueError("Please provide an OpenAI API key or set OPENAI_API_KEY environment variable.")
+        else:
+            OpenAI.api_key = os.getenv("OPENAI_API_KEY")
+    
+    def __eq__(self, other): 
+        assert isinstance(other, Lawmaker), TypeError(f"{str(other)} is not a Lawmaker instance.")
+        return self.agent_id == other.agent_id 
+
+    def process(self, task: str) -> str:
+        """
+        Send the prompt to OpenAI and return response.
+        Logs prompt and response in self.history
+        """
+        try:
+            full_prompt = f"{self.persona}\n\nUser Input:\n{task}"
+
+            response = OpenAI.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": self.persona},
+                    {"role": "user", "content": task}
+                ],
+                temperature=0.7,
+                max_tokens=500
+            )
+            assistant_msg = response.choices[0].message['content'].strip()
+
+        except Exception as e:
+            assistant_msg = f"[Error generating response: {str(e)}]"
+
+        self.history.append({"prompt": task, "response": assistant_msg})
+        return assistant_msg
+    
+    def get_history(self):
+        """Return the conversation history"""
+        return self.history
+
+    
 
 class Simulacrum: 
     def __init__(self, 
@@ -183,6 +244,69 @@ class Simulacrum:
             warnings.warn("Simulacrum type must be *deliberation* or *hearing*.")
             return "Agent"
 
+
+class SimAgent(Agent):
+    def __init__(self, name, ideology, state, policy_topic, agent_id=None, is_chair=False, **kwargs): 
+        super().__init__(**kwargs)
+        self.name = name
+        self.ideology = ideology
+        self.state = state
+        self.policy_topic = policy_topic
+        self.is_chair = is_chair 
+        self.agent_id = agent_id 
+        self._initalize()
+        # self._set_system_instructions()
+    
+    def __eq__(self, other): 
+        assert isinstance(other, SimAgent), TypeError(f"{str(other)} is not a SimAgent instance.")
+        return True if self.agent_id == other.agent_id else False 
+    
+    def __str__(self): 
+        return f"SimAgent >> I am {self.name}. I am a {self.ideology} lawmaker in the state of {self.state}." 
+
+
+    def _initalize(self): 
+        sample_key = Simulacrum._random_sampler(alpha=3, beta=3) # Degree of support 
+        if sample_key < 0.334: 
+            support_thresh = "support"
+        elif sample_key < 0.667: 
+            support_thresh = "support_with_caution"
+        else: 
+            support_thresh = "disagree_with_caution"
+            
+        virtual_lawmaker_instructions_templates = { 
+                "support": (
+                    f"You are {self.name}, a lawmaker in {self.state} and you are {self.ideology}. You are meeting with a constituent to discuss '{self.policy_topic}'. "
+                    "Begin by greeting the constituent in a cordial manner and actively listening to their concerns." 
+                    "Express genuine understanding and validate their experiences if advocate shares personal stories."
+                    "Ask occassional thoughtful questions. Sometimes, note some ideas that you have to further improve the advocate's legislative outreach."
+                    "As you hear more, you grow in more support of this policy. But, do not explicitly mention this but instead hint at it."
+                    "Share your own reasons for why you might support the policy, and highlight its real-world benefits, especially in terms of practical impact. "
+                    "Show interest in how advocacy and public support for the policy is progressing—ask questions about the constituent's campaign efforts, community response, and any challenges they are facing. "
+                    "Make sure conversation flows smoothly and don't bombard the users with many points. "
+                ),
+                 "support_with_caution": (
+                    f"You are a {self.name}, a lawmaker in {self.state} and you are {self.ideology}. You are meeting with a constituent to discuss '{self.policy_topic}'. "
+                    "You are generally supportive of this policy, but also thoughtful and cautious about its potential implications. "
+                    "Begin by warmly greeting the constituent and listening closely to their concerns and ideas. Express support for the policy’s goals and highlight potential benefits you see, "
+                    "but also share openly any reservations or questions you have about its implementation or unintended consequences. "
+                    "Ask insightful questions about aspects of the policy that are still uncertain or may present challenges, "
+                    "and encourage the constituent to describe their own experiences, the community’s response, and any ideas they have for making the policy work better in practice. "
+                    "Maintain an empathetic, constructive, and collaborative tone throughout the conversation, showing genuine interest in working together to address concerns while moving the policy forward."
+                    "Make sure conversation flows smoothly and don't bombard the users with many points. "
+                    "Make sure conversation flows smoothly and don't bombard the users with many points. "
+                ),  
+                "disagree_with_caution": (
+                    f"You are {self.name}, a lawmaker in {self.state} and you are {self.ideology} meeting with a constituent to discuss '{self.policy_topic}'. "
+                    "You have private reservations or concerns about this policy, but your role is to engage with the constituent in a respectful and open-minded manner. "
+                    "Listen deeply to their perspective and ask thoughtful, neutral questions to better understand their goals and reasoning. "
+                    "Show empathy for their concerns, acknowledge any positive intentions behind the policy, and encourage them to elaborate on how they see the policy making a difference. "
+                    "Focus on gathering details about the practical aspects and community impact of the policy, and express a desire to fairly consider all viewpoints. "
+                    "Throughout the conversation, maintain a balanced, diplomatic, and supportive tone—do not reveal your own skepticism or disagreement."
+                )
+                }
+        self.persona = virtual_lawmaker_instructions_templates[support_thresh]
+   
 
 class Deliberation(Simulacrum): 
     def __init__(self, 
@@ -377,68 +501,6 @@ class Deliberation(Simulacrum):
             pass
     def __str__(self): 
         return (f"Simulacrum of a one-on-one a {self.ideology.lower()} lawmaker, {self.lawmaker_name}, call discussing {self.state}'s {self.policy_topic}") 
-
-
-class SimAgent(Agent):
-    def __init__(self, name, ideology, state, policy_topic, agent_id=None, is_chair=False, **kwargs): 
-        super().__init__(**kwargs)
-        self.name = name
-        self.ideology = ideology
-        self.state = state
-        self.policy_topic = policy_topic
-        self.is_chair = is_chair 
-        self.agent_id = agent_id 
-        self._initalize()
-        self._set_system_instructions()
-    
-    def __eq__(self, other): 
-        assert isinstance(other, SimAgent), TypeError(f"{str(other)} is not a SimAgent instance.")
-        return True if self.agent_id == other.agent_id else False 
-
-    def _initalize(self): 
-        sample_key = Simulacrum._random_sampler(alpha=3, beta=3) # Degree of support 
-        if sample_key < 0.334: 
-            support_thresh = "support"
-        elif sample_key < 0.667: 
-            support_thresh = "support_with_caution"
-        else: 
-            support_thresh = "disagree_with_caution"
-            
-        virtual_lawmaker_instructions_templates = { 
-                "support": (
-                    f"You are {self.name}, a lawmaker in {self.state} and you are {self.ideology}. You are meeting with a constituent to discuss '{self.policy_topic}'. "
-                    "Begin by greeting the constituent in a cordial manner and actively listening to their concerns." 
-                    "Express genuine understanding and validate their experiences if advocate shares personal stories."
-                    "Ask occassional thoughtful questions. Sometimes, note some ideas that you have to further improve the advocate's legislative outreach."
-                    "As you hear more, you grow in more support of this policy. But, do not explicitly mention this but instead hint at it."
-                    "Share your own reasons for why you might support the policy, and highlight its real-world benefits, especially in terms of practical impact. "
-                    "Show interest in how advocacy and public support for the policy is progressing—ask questions about the constituent's campaign efforts, community response, and any challenges they are facing. "
-                    "Make sure conversation flows smoothly and don't bombard the users with many points. "
-                ),
-                 "support_with_caution": (
-                    f"You are a {self.name}, a lawmaker in {self.state} and you are {self.ideology}. You are meeting with a constituent to discuss '{self.policy_topic}'. "
-                    "You are generally supportive of this policy, but also thoughtful and cautious about its potential implications. "
-                    "Begin by warmly greeting the constituent and listening closely to their concerns and ideas. Express support for the policy’s goals and highlight potential benefits you see, "
-                    "but also share openly any reservations or questions you have about its implementation or unintended consequences. "
-                    "Ask insightful questions about aspects of the policy that are still uncertain or may present challenges, "
-                    "and encourage the constituent to describe their own experiences, the community’s response, and any ideas they have for making the policy work better in practice. "
-                    "Maintain an empathetic, constructive, and collaborative tone throughout the conversation, showing genuine interest in working together to address concerns while moving the policy forward."
-                    "Make sure conversation flows smoothly and don't bombard the users with many points. "
-                    "Make sure conversation flows smoothly and don't bombard the users with many points. "
-                ),  
-                "disagree_with_caution": (
-                    f"You are {self.name}, a lawmaker in {self.state} and you are {self.ideology} meeting with a constituent to discuss '{self.policy_topic}'. "
-                    "You have private reservations or concerns about this policy, but your role is to engage with the constituent in a respectful and open-minded manner. "
-                    "Listen deeply to their perspective and ask thoughtful, neutral questions to better understand their goals and reasoning. "
-                    "Show empathy for their concerns, acknowledge any positive intentions behind the policy, and encourage them to elaborate on how they see the policy making a difference. "
-                    "Focus on gathering details about the practical aspects and community impact of the policy, and express a desire to fairly consider all viewpoints. "
-                    "Throughout the conversation, maintain a balanced, diplomatic, and supportive tone—do not reveal your own skepticism or disagreement."
-                )
-                }
-        self.persona = virtual_lawmaker_instructions_templates[support_thresh]
-    
-    def __str__(self): 
-            return f"SimAgent >> I am {self.name}. I am a {self.ideology} lawmaker in the state of {self.state}." 
 
 
 
