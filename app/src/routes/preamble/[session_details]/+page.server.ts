@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
     const uriData = url.searchParams.get("data");
     const form = uriData ? JSON.parse(decodeURIComponent(uriData)) : null; 
     console.log(form)
-
+    
     if (form != null) { 
         return {
             form: form,

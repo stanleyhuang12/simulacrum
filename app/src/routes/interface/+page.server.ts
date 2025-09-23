@@ -17,6 +17,11 @@ export const load: PageServerLoad = async( {cookies} )=>{
         // No session cookie detected or match with PostgreSQL DB, redirect to login or show error
         throw redirect(303, '/form');
     }
+    
+    cookies.set('session-id-delibs', sess_cookies, {
+        secure: false,
+        path: '/'
+    })
 
     return {sess_cookies: sess_cookies}; 
 }

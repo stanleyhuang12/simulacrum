@@ -253,7 +253,7 @@
                 audioStreams.getTracks().forEach(track => track.stop());
             }
         
-        goto(`/feedback/?session-delibs-id=${data.sess_cookies}`)
+        goto(`/feedback/session-delibs-id=${data.sess_cookies}`)
         } catch(err) {
             console.error(err)
         }
