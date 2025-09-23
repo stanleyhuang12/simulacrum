@@ -22,28 +22,39 @@ async function validateUser(sess_cookies: string) {
 
 export const POST: RequestHandler = async ( {request} ) => {
 
-    console.log("Triggered stt POST request.")
+    console.group("Speech-to-text transcription handler.")
 
-    const formData = await request.formData();
+    // const file = formData.get('file');
+    // console.log("Received file details:", {
+    //         exists: !!file,
+    //         type: file instanceof File ? file.type : 'Not a File',
+    //         size: file instanceof File ? file.size : 'Unknown',
+    //         name: file instanceof File ? file.name : 'Unknown'
+    // });
+
     try {
         const agentResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${OPENAI_API_KEY}`,
             },
-            body: formData
+            body: await request.formData()
         })
         
         const res = await agentResponse.json();
         
         console.log(res);
+        console.groupEnd();
+
         if (!res) return json({"transcriptions": null, "success": false});
         
+
         //json is a helper function that returns a Response object with header "applications/json"
         return json({
             "transcriptions": res, 
             "success": true
         });
+
 
     } catch(err) {
         console.error("Speech-to-text failed", err)

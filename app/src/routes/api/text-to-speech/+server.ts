@@ -33,6 +33,7 @@ export const POST: RequestHandler = async( {request} ) => {
         if (!agentAudio.ok) {
             throw new Error(`TTS API error: ${agentAudio.status} ${agentAudio.statusText}`); };
         
+            
         const agentAudioArray = await agentAudio.arrayBuffer();      
         return new Response(agentAudioArray, {
             status: 200, 

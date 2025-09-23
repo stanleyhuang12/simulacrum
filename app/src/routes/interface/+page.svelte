@@ -4,12 +4,6 @@
     import { goto } from "$app/navigation";
     import type { PageProps} from "./$types";
 
-    // import { MediaRecorder, register } from 'extendable-media-recorder';
-    // import { connect } from 'extendable-media-recorder-wav-encoder';
-    // import textToSpeechPrivate  from "./routes/server-api/text-to-speech.svelte";
-    // import getTranscriptionsPrivate from "./routes/server-api/text-to-speech.svelte";
-    // const openai = new OpenAI({apiKey: import.meta.env.OPENAI_API_KEY}); 
-    // let { formData, currentStep=$bindable() } = $props();
 
     let { data }: PageProps = $props(); 
 
@@ -29,8 +23,7 @@
     // };
 
     function getWebSocket() {
-        // Upgrade to a new websocket connection if no prior instance found
-        // Checks for prior websocket event listener 
+
         if (!ws || ws.readyState === WebSocket.CLOSED) { 
             ws =  new WebSocket("ws://localhost:8000/transcribe-audio")
             console.log('Established WebSocket connection.')
@@ -42,31 +35,6 @@
         return ws 
     }
 
-
-
-    // async function handleAgentResponse(e) {
-    //     try {
-    //         const agentText = e.data; 
-    //         console.log(agentText);
-    //         //MOVE TO SERVER-SIDE MODULE
-    //         // const response = openai.audio.speech.create({
-    //         //     input: agentText,
-    //         //     model: "gpt-4o-mini-tts",
-    //         //     voice: "alloy",
-    //         //     response_format: "wav",
-    //         //     instructions: "Speak in an appropriate manner."
-    //         // }) 
-            
-    //         // const response = await textToSpeechPrivate(agentText);
-    //         const response = await fetch("/server-api/text-to-speech", {
-    //             body: agentText
-    //         })
-    //         console.log("Fetching SSR endpoint worked.")
-    //         await response //should handle audiostreaming
-    //     } catch(err) {
-    //         console.error(err)
-    //     }
-    // }
 
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
@@ -117,6 +85,7 @@
             toggleMicrophone()
             console.log("WebSocket status: ", ws.readyState)
             if (buttonElemState === true) {
+                audioBlobs = [];
 
                 const audioAccept = window.navigator.mediaDevices;
                 if (!audioAccept || !audioAccept.getUserMedia) {
@@ -131,7 +100,7 @@
                 } 
                     
                 }); 
-                console.log(audioStreams)
+                console.log(audioStreams); 
 
                 recorder = new MediaRecorder(audioStreams, { mimeType: "audio/webm" } );// remove ;codecs=opus
                 recorder.start(250); //send chunk every 250 ms
@@ -143,12 +112,14 @@
                     } else {
                         console.error("Empty audio appended to audioBlobs")
                     }
-                }}
+                };
+                recorder.onerror = (event) => {
+                    console.error("MediaRecorder error:", event); // Check for media error 
+                };
+            }    
             else { 
                 if (recorder) {
                     const collected = [...audioBlobs]
-                    audioBlobs = [] //reset audioblobs
-
                     recorder.stop(); 
                     await manageAudio(collected)
                     console.log("User turned off microphone, so audio recorder stopped.")
@@ -178,12 +149,18 @@
         
         console.log(formData)
 
+        console.log("Submitting FormData:", {
+            fileSize: audioFile.size,
+            fileType: audioFile.type
+        });
+
         const response = await fetch("/api/speech-to-text", {
             method: "POST",
             body: formData
         });
 
         const res = await response.json()
+        
 
         if (res.success == true) {
             const transcriptions = res.transcriptions
@@ -197,46 +174,6 @@
         }
     }
 
-    // async function getTranscriptionsAndSend(blob) {
-    //     const formDat = await new FormData(); 
-        
-    //     const audioFile = await new File([blob], "recording.webm", { 
-    //             type: blob.type
-    //         })
-
-    //     formDat.append("file", audioFile);  
-    //     formDat.append("model", "gpt-4o-mini-transcribe");
-    //     formDat.append("language", "en")
-    //     formDat.append("prompt", "This is part of a conversation between a community advocate and lawmaker on " + $state.snapshot(data.form.policy_topic))
-    //     console.log(formDat)
-    //     //TODO
-
-    //     // const response = await fetch("/server-api/speech-to-text", {
-    //     //     method: "POST", 
-    //     //     body: formDat
-    //     // })
-
-    //     const response = await fetch("/api/speech-to-text/", {
-    //         method: "POST",
-    //         body: formDat
-    //     })
-    //     // const response  = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    //     //     method: "POST",
-    //     //     headers: {
-    //     //         "Authorization": `Bearer ${import.meta.env.OPENAI_API_KEY}`,
-    //     //     },
-    //     //     body: formDat
-    //     // });
-    //     const res = await response.json()
-    //     if (res.success == true) {
-    //         const transcriptions = res.transcriptions
-    //         ws = getWebSocket(); 
-    //         ws.send(transcriptions)
-    //     } else { 
-    //         console.error("Error with TTS transcriptions.")
-    //     }
-
-    //     }
 
     function completeSimulation() {
         if (ws && ws.readyState == WebSocket.OPEN) {
@@ -284,48 +221,6 @@
         retrieveAndSubmitTranscriptions(audioBlob);
         // receiveTextandTransmitAudio();
     }
-
-    // async function receiveTextandTransmitAudio() {
-    //     let agentResponse;
-    //     ws = getWebSocket();
-    //     try {
-    //     ws.addEventListener("message", async (e) => {
-    //         const agentText = e.data
-    //         console.log(agentText);
-            
-    //         agentResponse = await fetch("https://api.openai.com/v1/audio/speech", {
-    //             method: "POST",
-    //             headers: {
-    //             "Authorization": `Bearer ${OPENAI_API_KEY}`,
-    //             "Content-Type": "application/json"
-    //             },
-    //             body: JSON.stringify({
-    //                 model: "gpt-4o-mini-tts",
-    //                 input: agentText,
-    //                 voice: "alloy",
-    //                 instructions: "Speak in an appropriate manner as an eager but professional lawmaker.",
-    //                 response_format: "wav",
-    //                 stream: true
-    //             })
-    //         });
-
-    //         if (!agentResponse.ok) {
-    //             throw new Error(`TTS API error: ${agentResponse.status} ${agentResponse.statusText}`);
-    //         }
-            
-    //         const audioBuffer = await agentResponse.arrayBuffer()
-    //         const audioResponseBlob = new Blob([audioBuffer], { type: "audio/wav" })
-    //         const blobURL = URL.createObjectURL(audioResponseBlob)
-    //         const audioElem = new Audio()
-    //         audioElem.src = blobURL
-    //         audioElem.play()
-            
-            
-    //     })} catch(err) {
-    //         console.error(err)
-    //     }
-    // }
-
 
     onMount(() => { 
         // registerCustomMimeType();
