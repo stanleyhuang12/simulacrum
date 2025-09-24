@@ -26,26 +26,42 @@ export const POST: RequestHandler = async( {request} ) => {
                 input: agentText, 
                 voice: "alloy", 
                 instructions: "Speak in an appropriate and professional manner.",
-                response_format: "wav"
+                response_format: "wav",
+                stream: true,
+                stream_format: "audio",
             })
         });
 
+        // console.log(agentAudio)
+        // let reader = agentAudio.body?.getReader();
+        // let streamed = await reader?.read();
+    
+        // console.log(streamed)
         if (!agentAudio.ok) {
-            throw new Error(`TTS API error: ${agentAudio.status} ${agentAudio.statusText}`); };
-        
-            
-        const agentAudioArray = await agentAudio.arrayBuffer();      
-        return new Response(agentAudioArray, {
-            status: 200, 
+            throw new Error(`TTS API error: ${agentAudio.status} ${agentAudio.statusText}`);
+        }
+        //pipe through 
+        return new Response(agentAudio.body, {
+            status: 200,
             headers: {
-                "Content-Type": "audio/wav"
+                "Content-Type": "audio/wav",
+                "Transfer-Encoding": "chunked",
+                "Cache-Control": "no-cache"
             }
-        });
-        } catch(err) {
-            return error(400, `Error ${err}`)
+        })
         
-    }
-}
+
+    //     const agentAudioArray = await agentAudio.arrayBuffer();      
+    //     return new Response(agentAudioArray, {
+    //         status: 200, 
+    //         headers: {
+    //             "Content-Type": "audio/wav"
+    //         }
+    //     });
+    } catch(err) {
+        return error(400, `Error ${err}`)
+        
+    }}
 
 // export const POST: RequestHandler = async ( {request} ) => {
 //     // Checks if component is in SSR code.

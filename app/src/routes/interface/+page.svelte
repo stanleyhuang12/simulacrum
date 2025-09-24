@@ -40,15 +40,15 @@
         //Takes agent response, converts it to audio. 
         console.log("Agent response SIGN", agentResponse)
         const agentText = agentResponse.data
-        const agentAudioArray = await fetch("/api/text-to-speech", {
+        const audioReadableStream = await fetch("/api/text-to-speech", {
             method: "POST", 
             headers: {
                 "Content-Type": "text/plain"
             },
             body: agentText
         })
-
-        const agentAudio = await agentAudioArray.arrayBuffer()
+        
+        const agentAudio = await audioReadableStream.arrayBuffer()
         const audioResponseBlob = new Blob([agentAudio], { type: "audio/wav" });
         const blobURL = URL.createObjectURL(audioResponseBlob);
         const audioElem = new Audio();
@@ -161,7 +161,6 @@
 
         const res = await response.json()
         
-
         if (res.success == true) {
             const transcriptions = res.transcriptions
             console.log(transcriptions)
