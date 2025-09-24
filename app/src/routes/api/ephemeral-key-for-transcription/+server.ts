@@ -5,7 +5,7 @@ import { json, error } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async() => {
     try {
-        const ephemeralKey = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+        const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${OPENAI_API_KEY}`,
@@ -29,8 +29,11 @@ export const POST: RequestHandler = async() => {
                 }
             })
         })
-        return json({ephemeralKey: ephemeralKey})
 
+        const data = await response.json()
+        console.log(data)
+        const ephemeralKey = data.value
+        return json({ephemeralKey: ephemeralKey})
     } catch(err) {
         console.error(`Error: ${err}`);
         return error(400, err && typeof err === "object" && "message" in err ? (err as Error).message : String(err || "Error"))
