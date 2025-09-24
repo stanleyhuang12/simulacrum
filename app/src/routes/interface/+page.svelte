@@ -22,6 +22,12 @@
     //     await register(await connect());
     // };
 
+    function establishOAIConnection() {
+        const pc = new RTCPeerConnection();
+        
+
+    }
+
     function getWebSocket() {
 
         if (!ws || ws.readyState === WebSocket.CLOSED) { 
@@ -47,7 +53,7 @@
             },
             body: agentText
         })
-        
+
         const agentAudio = await audioReadableStream.arrayBuffer()
         const audioResponseBlob = new Blob([agentAudio], { type: "audio/wav" });
         const blobURL = URL.createObjectURL(audioResponseBlob);
@@ -146,6 +152,7 @@
         formData.append("model", "gpt-4o-mini-transcribe");
         formData.append("language", "en")
         formData.append("prompt", "This is part of a conversation between a community advocate and lawmaker on a policy topic.")
+        formData.append("stream", "true")
         
         console.log(formData)
 
