@@ -8,24 +8,130 @@
     let { data }: PageProps = $props(); 
 
     let wsEventAdded = false;
+
+    // params for video streaming 
     let audioStreams: MediaStream | undefined;
     let videoStreams: MediaStream | undefined;
     let videoElem: HTMLVideoElement;
     let videoElem2: HTMLVideoElement; //will remove
     let buttonElemState = $state(false); //when user clicks turn on/off mic
+    
+    // params for audio management 
     let ws: WebSocket; //websocket
+    
     let recorder: MediaRecorder; //recorder 
     let audioBlobs: Blob[] = []; 
-    
-    
-    // async function registerCustomMimeType() {
-    //     await register(await connect());
-    // };
+    let audioElement: HTMLAudioElement;
 
-    function establishOAIConnection() {
+    // params for realtime transcription 
+    let peerConnection: RTCPeerConnection | null;
+    let dc: RTCDataChannel | null = null; 
+    let isActiveSession: boolean = false; 
+
+    async function getVideoStream() { 
+        try { 
+            const videoAccept = window.navigator.mediaDevices; 
+            if (!videoAccept || !videoAccept.getUserMedia) { 
+                console.error('Browser does not support video streaming.')
+                throw MediaError;
+            }
+
+            videoStreams = await window.navigator.mediaDevices.getUserMedia( { video: true }); 
+            videoElem.srcObject = videoStreams
+            videoElem2.srcObject = videoStreams
+            console.log("Video streams enabled.")
+        } catch (err) { 
+            console.error(err)
+        }
+    }
+
+    
+    async function establishOAIConnection() {
+        console.group("Establishing OpenAI WebRTC connection")
         const pc = new RTCPeerConnection();
-        
+        console.log("Requesting ephemeral key")
 
+        const ephemRes = await fetch("/api/ephemeral-key-for-transcription", {
+            method: "POST"
+        })
+        const ephemData = await ephemRes.json()
+        const EPHEMERAL_KEY = ephemData.ephemeralKey
+        console.log(`Retrieved ephemeral key ${EPHEMERAL_KEY}`)
+        console.log(ephemData)
+
+        audioStreams = await window.navigator.mediaDevices.getUserMedia( { audio: {
+            echoCancellation: true,
+            autoGainControl: true,
+        }});
+        audioElement = document.createElement("audio");
+        audioElement.autoplay = true;
+
+        pc.ontrack = (e) => (audioElement.srcObject = e.streams[0]);
+
+        dc = pc.createDataChannel("oai-events");
+        dc.addEventListener("message", (evt) => receiveEmittedEvents(evt))
+
+        pc.addTrack(audioStreams.getTracks()[0])
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        const sdpResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
+            method: "POST",
+            body: offer.sdp,
+            headers: {
+                Authorization: `Bearer ${EPHEMERAL_KEY}`,
+                "Content-Type": "application/sdp",
+            },
+        });
+
+        const answer: RTCSessionDescriptionInit = {
+            type: "answer",
+            sdp: await sdpResponse.text(),
+        };
+        await pc.setRemoteDescription(answer);
+        console.log("Established remote connection")
+        console.groupEnd()
+
+        peerConnection = pc
+        isActiveSession = true 
+    }
+
+    function closeOAIConnection() {
+        if (dc) {
+            dc.close()
+            if (peerConnection) {
+                peerConnection.getSenders().forEach((sender) => {
+                    sender.track?.stop();}); 
+
+                peerConnection.close();
+            }
+            peerConnection = null; 
+            dc = null; 
+            isActiveSession = false 
+        } else {
+            console.log('All WebRTC P2P connection is already closed. ')
+        }
+    }
+
+    function receiveEmittedEvents(evt: any) {
+        console.group("Receiving emitted events.")
+        const event = JSON.parse(evt.data); 
+
+        if (event.type === "error") {
+            throw new Error('Error parsing server-emitted event.')
+        }
+
+        switch (event.type) {
+            case "session.created": 
+                console.log('Session established.');
+                break;
+    
+            case "conversation.item.input_audio_transcription.completed": 
+                console.log('Completed transcriptions')
+            case "response.done"
+
+        }
+        console.log(event)
+        
     }
 
     function getWebSocket() {
@@ -62,22 +168,7 @@
         audioElem.play();
     }
 
-    async function getVideoStream() { 
-        try { 
-            const videoAccept = window.navigator.mediaDevices; 
-            if (!videoAccept || !videoAccept.getUserMedia) { 
-                console.error('Browser does not support video streaming.')
-                throw MediaError;
-            }
 
-            videoStreams = await window.navigator.mediaDevices.getUserMedia( { video: true }); 
-            videoElem.srcObject = videoStreams
-            videoElem2.srcObject = videoStreams
-            console.log("Video streams enabled.")
-        } catch (err) { 
-            console.error(err)
-        }
-    }
 
 
 
@@ -181,29 +272,6 @@
     }
 
 
-    function completeSimulation() {
-        if (ws && ws.readyState == WebSocket.OPEN) {
-            ws.close()
-            console.log("Closing WebSocket connection.")
-        }
-        if (recorder && recorder.state !== "inactive") {
-            recorder.stop()
-            console.log("Ending audio recorder.")
-        }
-        try {
-            if (videoStreams) {
-                videoStreams.getTracks().forEach(track => track.stop());
-            }
-            if (audioStreams) {
-                audioStreams.getTracks().forEach(track => track.stop());
-            }
-        
-        goto(`/feedback/session-delibs-id=${data.sess_cookies}`)
-        } catch(err) {
-            console.error(err)
-        }
-    }
-
     function manageAudio(audioBlobs: any[] | undefined) { 
         // Parses through audio data for sanity check and calls retrieveAndSubmitTranscriptions function
         console.log("=== AUDIO DEBUG ===");
@@ -230,11 +298,37 @@
 
     onMount(() => { 
         // registerCustomMimeType();
+        console.log('Establishing WebRTC Peer Connection with OpenAI')
+        establishOAIConnection()
         console.log('Establishing websocket connections...')
         ws = getWebSocket();
         console.log('Establishing video streams..');
         getVideoStream();
     });
+
+    function completeSimulation() {
+        closeOAIConnection()
+        if (ws && ws.readyState == WebSocket.OPEN) {
+            ws.close()
+            console.log("Closing WebSocket connection.")
+        }
+        if (recorder && recorder.state !== "inactive") {
+            recorder.stop()
+            console.log("Ending audio recorder.")
+        }
+        try {
+            if (videoStreams) {
+                videoStreams.getTracks().forEach(track => track.stop());
+            }
+            if (audioStreams) {
+                audioStreams.getTracks().forEach(track => track.stop());
+            }
+        
+        goto(`/feedback/session-delibs-id=${data.sess_cookies}`)
+        } catch(err) {
+            console.error(err)
+        }
+    }
 
 </script>
 
