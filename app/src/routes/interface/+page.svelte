@@ -138,9 +138,13 @@
     
             case "conversation.item.input_audio_transcription.completed": 
                 console.log('Completed transcriptions');
-                console.log(event.type);
-                console.log("Completed transcript:", event);
-        
+                console.log(event);
+                const text = event.transcript 
+                if (!event.transcript) {
+                    break;
+                }
+                ws.send(text); 
+
     }}
 
     function getWebSocket() {
@@ -237,6 +241,8 @@
             console.error(err);
         }
     }
+
+   
 
     async function retrieveAndSubmitTranscriptions(blob: Blob) { 
         // Takes in audio binary large object, query transcriptions API through SSR, 
