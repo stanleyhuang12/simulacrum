@@ -23,6 +23,8 @@
     let audioBlobs: Blob[] = []; 
     let audioElement: HTMLAudioElement;
 
+    let EPHEMERAL_KEY: string | null;
+
     // params for realtime transcription 
     let peerConnection: RTCPeerConnection | null;
     let dc: RTCDataChannel | null = null; 
@@ -45,19 +47,30 @@
         }
     }
 
-    
-    async function establishOAIConnection() {
-        console.group("Establishing OpenAI WebRTC connection")
-        const pc = new RTCPeerConnection();
-        console.log("Requesting ephemeral key")
-
+    async function getEphemeralKey() {
+        console.group("Retrieving ephemeral key.")
+        
         const ephemRes = await fetch("/api/ephemeral-key-for-transcription", {
             method: "POST"
         })
+        
         const ephemData = await ephemRes.json()
-        const EPHEMERAL_KEY = ephemData.ephemeralKey
-        console.log(`Retrieved ephemeral key ${EPHEMERAL_KEY}`)
-        console.log(ephemData)
+        EPHEMERAL_KEY = ephemData.ephemeralKey
+        console.log(`Retrieved ephemeral key ${EPHEMERAL_KEY}`);
+
+        console.groupEnd();
+
+        return EPHEMERAL_KEY
+    }
+
+    
+    async function establishOAIConnection() {
+        const pc = new RTCPeerConnection();
+        console.log("Requesting ephemeral key")
+
+        if (!EPHEMERAL_KEY) {
+            getEphemeralKey(); 
+        }
 
         audioStreams = await window.navigator.mediaDevices.getUserMedia( { audio: {
             echoCancellation: true,
@@ -89,7 +102,6 @@
         };
         await pc.setRemoteDescription(answer);
         console.log("Established remote connection")
-        console.groupEnd()
 
         peerConnection = pc
         isActiveSession = true 
@@ -113,26 +125,23 @@
     }
 
     function receiveEmittedEvents(evt: any) {
-        console.group("Receiving emitted events.")
+
         const event = JSON.parse(evt.data); 
 
         if (event.type === "error") {
             throw new Error('Error parsing server-emitted event.')
-        }
+        };
 
         switch (event.type) {
             case "session.created": 
                 console.log('Session established.');
-                break;
     
             case "conversation.item.input_audio_transcription.completed": 
-                console.log('Completed transcriptions')
-            case "response.done"
-
-        }
-        console.log(event)
+                console.log('Completed transcriptions');
+                console.log(event.type);
+                console.log("Completed transcript:", event);
         
-    }
+    }}
 
     function getWebSocket() {
 

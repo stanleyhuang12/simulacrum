@@ -12,6 +12,10 @@ export const POST: RequestHandler = async() => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
+                "expires_after": {
+                    "anchor": "created_at",
+                    "seconds": 900, // 15 minutes for ephemeral key to expire 
+                },
                 "session": {
                     "type": "transcription",
                     "audio": {
@@ -22,7 +26,8 @@ export const POST: RequestHandler = async() => {
                                 "prompt": "The following is a conversation between a community advocate with a policymaker and their staff."
                             },
                             "turn_detection": {
-                                "type": "server_vad"
+                                "type": "server_vad",
+                                "silence_duration_ms": 4500, // 500ms = 0.5 seconds  ; wait 4.5 seconds before emit .completed
                             }
                         }
                     }
