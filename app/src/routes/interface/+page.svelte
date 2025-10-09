@@ -257,6 +257,7 @@
 
 <style>
 /* ---------- Layout ---------- */
+
 .video-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -296,8 +297,6 @@ video {
 }
 
 .microphone-pos {
-  display: flex;
-  justify-self: center; 
   border-radius: 30px;
   color: #fff;
   font-weight: 600;
@@ -307,6 +306,14 @@ video {
   cursor: pointer;
   text-align: center;
   transition: all 0.2s ease;
+}
+
+.complete-simulation {
+    color: white; 
+    background: black; 
+    border-radius: 20px; 
+    border: none;
+    padding: 10px 10px; 
 }
 
 #enable-microphone {
