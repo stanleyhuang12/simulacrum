@@ -4,14 +4,14 @@ from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 # Simulacrum classes 
-from simulacrum import Deliberation
+from backend.simulacrum import Deliberation
 
 # ORM management and typing 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, Session
 from sqlalchemy import text, select, exists
 from contextlib import asynccontextmanager
-from base_class import * 
+from backend.base_class import * 
 
 from mangum import Mangum
 

@@ -20,10 +20,15 @@ To Do:
 * Enhance conversational experience with VAD (voice activity detection) [TODO]
     * Use OpenAI's real time audio-transcription for audio-transcriptions workflow
 * Enhance conversational experience with text-to-speech streaming and audio playing [DONE]
-    * Verify this is working in SSR console [TODO]
+    * Verify this is working in SSR console [DONE]
 * Refactor code to create base Lawmaker class [TODO]
-* Find ways to shave off latency while simultaneously reducing costs 
-* Re-deploy API endpoints via Docker/zip files if shaved off dependencies to Lambda Serverless
+* Find ways to shave off latency while simultaneously reducing costs [DONE] (best way is realtime transcription and audio streaming)... 
+* Verify audio streaming is fast and efficient [TODO]
+* Hint boxes for community advocates if they need help
+
+* Update the code for 
+* Re-deploy API endpoints via Docker/zip files if shaved off dependencies to Lambda Serverless 
 * Ensure unified brand color and visual experience
 * Upload an image of a lawmaker for the first zoom background 
+
 
