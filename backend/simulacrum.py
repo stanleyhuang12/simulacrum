@@ -16,64 +16,6 @@ else:
     "Error retrieving API key"
  
 
- 
-class Lawmaker: 
-    def __init__(self, name, ideology, state, policy_topic, is_chair, agent_id, openai_api_key=None): 
-        self.name = name
-        self.ideology = ideology
-        self.state = state
-        self.policy_topic = policy_topic
-        self.is_chair = is_chair 
-        self.agent_id = agent_id 
-        self.persona = None
-        self.model = "gpt-4.1"
-        self.history = [] 
-        self._initalize()
-        self._set_system_instructions()
-
-
-        if openai_api_key:
-            OpenAI.api_key = openai_api_key
-        elif not os.getenv("OPENAI_API_KEY"):
-            raise ValueError("Please provide an OpenAI API key or set OPENAI_API_KEY environment variable.")
-        else:
-            OpenAI.api_key = os.getenv("OPENAI_API_KEY")
-    
-    def __eq__(self, other): 
-        assert isinstance(other, Lawmaker), TypeError(f"{str(other)} is not a Lawmaker instance.")
-        return self.agent_id == other.agent_id 
-
-    def process(self, task: str) -> str:
-        """
-        Send the prompt to OpenAI and return response.
-        Logs prompt and response in self.history
-        """
-        try:
-            full_prompt = f"{self.persona}\n\nUser Input:\n{task}"
-
-            response = OpenAI.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.persona},
-                    {"role": "user", "content": task}
-                ],
-                temperature=0.7,
-                max_tokens=500
-            )
-            assistant_msg = response.choices[0].message['content'].strip()
-
-        except Exception as e:
-            assistant_msg = f"[Error generating response: {str(e)}]"
-
-        self.history.append({"prompt": task, "response": assistant_msg})
-        return assistant_msg
-    
-    def get_history(self):
-        """Return the conversation history"""
-        return self.history
-
-    
-
 class Simulacrum: 
     def __init__(self, 
                  username,
