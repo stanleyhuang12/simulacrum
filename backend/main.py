@@ -14,21 +14,29 @@ from contextlib import asynccontextmanager
 from backend.base_class import * 
 
 from mangum import Mangum
+from dotenv import load_dotenv
+import os 
 
+load_dotenv()
 
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASS")
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
+
+engine = create_engine(
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}",
+    pool_pre_ping=True
+)
 # engine = create_engine("sqlite:///database/database.db")
-
-engine = create_engine("postgresql+psycopg2://deliberations:simulacrum32()@deliberations-legislative-simulacrum.cjqmko8aimkn.us-east-2.rds.amazonaws.com/deliberations", 
-                       pool_pre_ping=True)
 
 Base = declarative_base()
 @asynccontextmanager
 async def lifespan(app: FastAPI): 
-
     Base.metadata.create_all(engine)
     yield 
     
-    
+
 app = FastAPI(debug=True, docs_url="/swagger_docs", lifespan=lifespan)
 ## For testing only
 app.add_middleware(
