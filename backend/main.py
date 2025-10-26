@@ -41,7 +41,7 @@ app = FastAPI(debug=True, docs_url="/swagger_docs", lifespan=lifespan)
 ## For testing only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://legislative-simulacrum.vercel.app", "http://localhost:5173"],
+    allow_origins=["*", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
