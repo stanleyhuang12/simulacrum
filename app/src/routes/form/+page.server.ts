@@ -10,7 +10,7 @@ export const actions: Actions = {
         console.log(sess_cookies)
         console.log(payload)
 
-        const res = await fetch("http://18.191.115.138/trial-v1/delibs/create_deliberations_instance", {
+        const res = await fetch("http://localhost:8000/trial-v1/delibs/create_deliberations_instance", {
             method: "POST",
             headers: {
                 'Accept': 'application/json',

@@ -30,7 +30,7 @@
     
     onMount(async () => {
         console.log("Component is mounted.")
-        const res = await fetch("http://18.191.115.138/", {
+        const res = await fetch("http://localhost:8000/", {
         method: "GET",
         credentials: "include" 
         });
