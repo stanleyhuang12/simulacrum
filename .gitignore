@@ -17,3 +17,5 @@ legislative-simulacrum/.env
 /deprecated
 venv
 
+/app/build
+

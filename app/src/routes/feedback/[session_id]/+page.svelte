@@ -14,7 +14,7 @@
 
         try {
           console.log("Start fetch for end-of-call transcription.")
-          const response = await fetch("http://18.116.42.126/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback", {
+          const response = await fetch("http://18.116.42.126v/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback", {
             method: "GET",
             headers: {
                 'Cookie': `session-id-delibs=${data.sess_cookies}`

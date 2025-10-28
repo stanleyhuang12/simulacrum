@@ -6,7 +6,7 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async( {cookies} )=>{
     const sess_cookies = cookies.get('session-id-delibs');
     console.log(sess_cookies)
-    const isUserValidated = await fetch("http://18.116.42.126/trial-v1/delibs/validate-user", {
+    const isUserValidated = await fetch("http://localhost:8000/trial-v1/delibs/validate-user", {
         headers: {
             "Cookie": `session-id-delibs=${sess_cookies}`
         }
