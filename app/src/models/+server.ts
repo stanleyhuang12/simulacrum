@@ -28,15 +28,100 @@ function should_display_coach(
     }
 };
 
-interface coach {
+interface CoachInterface {
+    init_coach_persona: string
     process(input:string): string | Promise<string>; 
 }
 
+interface AdvocacyTrainerInterface {
+    init_advocacy_persona: string 
+    process(input:string): string | Promise<string>;
+}
 
-export class Coach implements coach {
+
+export class AdvocacyTrainer implements AdvocacyTrainerInterface {
+    init_advocacy_persona: string
+    private messages: APICallMessage[]
+
     constructor(
-        private init_coach_persona: string,
-        private messages: APICallMessage[],
+        // private init_coach_persona: string,
+        // private messages: APICallMessage[],
+        public model: string = "gpt-4.1"
+    ) {
+        this.init_advocacy_persona = `
+            "You are an advocacy coach and expert supporting youth and community advocates. 
+            Please first synthesize the transcript of a conversation between an advocate and a lawmaker. 
+            Then, offer helpful guidance, feedback, conversation strategies tips to help the youth and community advocate. 
+            Please provide a concise summary of the conversation flow and offer constructive feedback. 
+            Focus on: \n
+            - Highlight key moments or arguments made during the conversation.\n
+            - Offer encouragement where the advocate performed well (without being overly flattering).\n
+            - Suggest specific ways to strengthen future engagements.
+            - If testimony may be triggering for some people, gently offer nudges or suggestions. 
+            - Ensure advocates points are clear and the advocate has an actionable request for the lawmaker. 
+            
+            Ground your feedback on communication theory: 
+            - Lawmakers operate under bounded rationality so make sure you communicate salient points. 
+            - Risk information should be closely supplemented with efficacy information. 
+            - Consider ways to deliver messages and throughline that are likely for long-term encoding. 
+            - Statements that contain descriptive norms should use positive descriptive norms. 
+            - Consider ways to make directives more assertive and appropriate. 
+
+            Constraints: 
+            - Do not regurgitate these advices back to the user. 
+            - Simply make the actual suggestion in place.
+        `
+        this.messages = [];
+    }
+
+    private set_system_instructions() {
+        this.messages = []
+        const system_instruction: APICallMessage = {
+            role: "system",
+            content: this.init_advocacy_persona
+        }
+        this.messages.push(system_instruction)
+    };
+
+    async process(input: string) {
+        this.set_system_instructions();
+        const userAPIMessageCall: APICallMessage = {
+            role: "user", 
+            content: input
+        };
+        this.messages.push(userAPIMessageCall);
+
+        try {
+            const agentResponse = await fetch("/api/llm-process", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "model": this.model,
+                    "messages": this.messages
+                })
+               
+            });
+            const res = await agentResponse.json();
+            const text = res.choices[0].message.content;
+            return text; 
+
+        } catch(err) {
+            return `An error has occurred displaying coach messaging, please consult with the STRIPED team and share this error message: 
+            ${err}`
+        }
+    }
+
+}
+
+export class Coach implements CoachInterface {
+    init_coach_persona: string
+    private messages: APICallMessage[]
+
+    constructor(
+        // private init_coach_persona: string,
+        // private messages: APICallMessage[],
         public model: string = "gpt-4.1"
     ) {
         this.init_coach_persona = `
@@ -54,10 +139,11 @@ export class Coach implements coach {
             - Do not be overly sycophantic.
             - Keep responses to one or two quick sentences.
         `;
+        this.messages = [];
     }
 
     private set_system_instructions() {
-        this.messages.length = 0 
+        this.messages = []
         const system_instruction: APICallMessage = {
             role: "system",
             content: this.init_coach_persona
@@ -74,7 +160,7 @@ export class Coach implements coach {
         this.messages.push(userAPIMessageCall);
 
         try {
-            const agentResponse = await fetch("api/llm-process", {
+            const agentResponse = await fetch("/api/llm-process", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -111,11 +197,11 @@ export abstract class Simulacrum {
     private _cached_prompts?: string[];
     private _cached_responses?: string[];
     private _discussion_history?: string[];
-    public coach!: coach; 
+    protected coach!: Coach; 
 
     protected abstract _log_episodal_memory(episodeNumber: number, dialogue: Dialogue): void; 
     protected abstract _manage_and_cache_responses(): void; 
-    protected abstract _retrieve_memory(memoryType: "long_term"|"short_term"): void;
+    protected abstract _retrieve_memory(memoryType: "long_term"|"short_term"): string;
     protected abstract _init_coach(): void;
 
 
@@ -161,16 +247,21 @@ export abstract class Simulacrum {
     };
     
     public coach_on_call(on_call:boolean=false) {
-        if (!("coach" in this)) {this._init_coach(); }
+        if (!this.coach) {
+            this.coach = new Coach(); 
+        }
 
         if ("_discussion_history" in this) {
             const episodalMemory = this._retrieve_memory('short_term'); 
             if (on_call) {
-                const response = self.coach.process(episodalMemory)
+                const response = this.coach.process(episodalMemory)
             }
-            
-            
-        } 
+
+        } else {
+            console.warn("No memory yet. Start a conversation before coach can offer feedback.")
+            return ""
+            // throw Error("No memory yet. Start a conversation before coach can offer feedback.")
+        }
     };
 
 
