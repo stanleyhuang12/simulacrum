@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async () => {
-    return new Response("Vanilla API call.");
+    return new Response("This is a vanilla text/chat completions API call.");
 }; 
 
 export const POST: RequestHandler = async( {request} ) => {
@@ -13,7 +13,7 @@ export const POST: RequestHandler = async( {request} ) => {
             headers: {
                 "Authorization": `Bearer ${OPENAI_API_KEY}`,
             },
-            body: await request.json();
+            body: await request.json()
         })
         
         const res = await agentResponse.json();

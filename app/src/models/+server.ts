@@ -74,15 +74,22 @@ export class Coach implements coach {
         this.messages.push(userAPIMessageCall);
 
         try {
-            const agentResponse = await fetch(JSON.stringify({
-                "model": this.model,
-                "input": this.messages
-            }));
-
+            const agentResponse = await fetch("api/llm-process", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "model": this.model,
+                    "input": this.messages
+                })
+           
+               
+            });
             const res = await agentResponse.json();
-            const text = res.choices[0].messages.content;
-
+            const text = res.choices[0].message.content;
             return text; 
+            
         } catch(err) {
             return `An error has occurred displaying coach messaging, please consult with the STRIPED team and share this error message: 
             ${err}`
