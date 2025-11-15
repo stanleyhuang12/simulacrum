@@ -198,11 +198,11 @@ export abstract class Simulacrum {
     private _cached_responses?: string[];
     private _discussion_history?: string[];
     protected coach!: Coach; 
+    protected trainer!: AdvocacyTrainer; 
 
     protected abstract _log_episodal_memory(episodeNumber: number, dialogue: Dialogue): void; 
     protected abstract _manage_and_cache_responses(): void; 
     protected abstract _retrieve_memory(memoryType: "long_term"|"short_term"): string;
-    protected abstract _init_coach(): void;
 
 
     private _manage_and_cache_prompts(userInput: string) {
@@ -251,26 +251,33 @@ export abstract class Simulacrum {
             this.coach = new Coach(); 
         }
 
-        if ("_discussion_history" in this) {
-            const episodalMemory = this._retrieve_memory('short_term'); 
-            if (on_call) {
-                const response = this.coach.process(episodalMemory)
-            }
-
-        } else {
+        const episodalMemory = this._retrieve_memory('short_term'); 
+        if (!episodalMemory) {
             console.warn("No memory yet. Start a conversation before coach can offer feedback.")
             return ""
-            // throw Error("No memory yet. Start a conversation before coach can offer feedback.")
         }
+        if (on_call) {
+            const response = this.coach.process(episodalMemory);
+            
+            return should_display_coach() ? response : "" 
+        };
     };
 
+    public trainer_end_of_session() {
+        if (!this.trainer) {
+            this.trainer = new AdvocacyTrainer(); 
+        } 
+
+        const LongTermMemory = this._retrieve_memory('long_term'); 
+        if (!LongTermMemory) {
+            throw new Error("No memory stored yet.")
+        }
+        const response = this.trainer.process(LongTermMemory);
+        return response
+    }
 
     private _serialize_conversation_history() {
         return JSON.stringify(this._discussion_history ?? [])
     }
-
-
-
-
-    
 }
+
