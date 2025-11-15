@@ -1,0 +1,8 @@
+TypeScript needs to augment a JS package by declaring the module and then passing 
+in type parameters. For instance, we would want to create a file called 
+
+`module.d.ts` 
+
+declare module `module_name`{
+    // subsequent functions that are passed in the ts file require type specifications her
+}
