@@ -5,6 +5,11 @@ type Dialogue = {
     response: string;
 };
 
+type APICallMessage = {
+    role: "system" | "user",
+    content: string
+}
+
 function random_sampler(
     a: number = 2,
     b: number = 3, 
@@ -23,6 +28,68 @@ function should_display_coach(
     }
 };
 
+interface coach {
+    process(input:string): string | Promise<string>; 
+}
+
+
+export class Coach implements coach {
+    constructor(
+        private init_coach_persona: string,
+        private messages: APICallMessage[],
+        public model: string = "gpt-4.1"
+    ) {
+        this.init_coach_persona = `
+            You are an advocacy coach and expert supporting youth and community advocates.
+            Your task is to look at a short snippet of a transcript between youth and lawmaker and encourage the youth advocate.
+            The conversation is happening real-time and the advocate needs quick encouragement and support.
+
+            To dos:
+            - If advocate shares testimony, validate them quickly.
+            - If facing challenges or opposition, offer encouragement and a small nudge.
+            - If they do well, acknowledge it.
+
+            Constraints:
+            - Be specific to the context.
+            - Do not be overly sycophantic.
+            - Keep responses to one or two quick sentences.
+        `;
+    }
+
+    private set_system_instructions() {
+        this.messages.length = 0 
+        const system_instruction: APICallMessage = {
+            role: "system",
+            content: this.init_coach_persona
+        }
+        this.messages.push(system_instruction)
+    };
+
+    async process(input: string) {
+        this.set_system_instructions();
+        const userAPIMessageCall: APICallMessage = {
+            role: "user", 
+            content: input
+        };
+        this.messages.push(userAPIMessageCall);
+
+        try {
+            const agentResponse = await fetch(JSON.stringify({
+                "model": this.model,
+                "input": this.messages
+            }));
+
+            const res = await agentResponse.json();
+            const text = res.choices[0].messages.content;
+
+            return text; 
+        } catch(err) {
+            return `An error has occurred displaying coach messaging, please consult with the STRIPED team and share this error message: 
+            ${err}`
+        }
+    }
+
+}
 
 export abstract class Simulacrum {
     constructor(
@@ -38,9 +105,13 @@ export abstract class Simulacrum {
     private _cached_prompts?: string[];
     private _cached_responses?: string[];
     private _discussion_history?: string[];
+    public coach!: coach; 
 
     protected abstract _log_episodal_memory(episodeNumber: number, dialogue: Dialogue): void; 
     protected abstract _manage_and_cache_responses(): void; 
+    protected abstract _retrieve_memory(memoryType: "long_term"|"short_term"): void;
+    protected abstract _init_coach(): void;
+
 
     private _manage_and_cache_prompts(userInput: string) {
         /*
@@ -81,11 +152,26 @@ export abstract class Simulacrum {
         }
             
 
-    }
+    };
+    
+    public coach_on_call(on_call:boolean=false) {
+        if (!("coach" in this)) {this._init_coach(); }
+
+        if ("_discussion_history" in this) {
+            const episodalMemory = this._retrieve_memory('short_term'); 
+            if (on_call) {
+                const response = self.coach.process(episodalMemory)
+            }
+            
+            
+        } 
+    };
+
 
     private _serialize_conversation_history() {
         return JSON.stringify(this._discussion_history ?? [])
     }
+
 
 
 
