@@ -81,15 +81,14 @@ export class Coach implements coach {
                 },
                 body: JSON.stringify({
                     "model": this.model,
-                    "input": this.messages
+                    "messages": this.messages
                 })
-           
                
             });
             const res = await agentResponse.json();
             const text = res.choices[0].message.content;
             return text; 
-            
+
         } catch(err) {
             return `An error has occurred displaying coach messaging, please consult with the STRIPED team and share this error message: 
             ${err}`
