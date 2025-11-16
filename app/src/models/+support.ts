@@ -1,4 +1,4 @@
-import type { ChatMessage } from "./+simulacrum";
+import type { ChatMessage } from "./+utils";
 
 
 export interface CoachInterface {

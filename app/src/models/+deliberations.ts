@@ -1,5 +1,6 @@
-import { Simulacrum, random_beta_sampler } from './+simulacrum';
-import type { ChatMessage, Dialogue } from './+simulacrum';
+import { Simulacrum } from './+simulacrum';
+import type { ChatMessage, Dialogue } from './+utils';
+import { random_beta_sampler } from './+utils';
 
 type VirtualLawmakerInstructionsTemplateType = Record<
   "support" | "support_with_caution" | "disagree_with_caution",
@@ -38,6 +39,7 @@ const virtualLawmakerInstructionsTemplate: VirtualLawmakerInstructionsTemplateTy
                               Just respond without prepending your name.`           
 }
 
+
 export class Lawmaker {
     public name: string;
     public advocateName: string; 
@@ -61,6 +63,7 @@ export class Lawmaker {
         this.state = state;
         this.ideology = ideology;
         this.policy_topic = policy_topic;
+        this._init_virtual_lawmaker(); 
         // this.degree_of_support = degree_of_support;
     }
 
@@ -208,20 +211,12 @@ export class Deliberation extends Simulacrum {
         this.lawmaker_name = lawmaker_name;
     }
     public _init_virtual_lawmaker() {
-
+        this.lawmaker = new Lawmaker(this._username, this.lawmaker_name, this.state, this.ideology, this.policy_topic)
     }
 
-    public _log_episodal_memory() {
-    // method body
-    }
-
-    public _manage_and_cache_responses() {
-        // method body
-    }
-
-    public _retrieve_memory(memoryType:any) {
-        // method body
-        return "hi"
+    public panel_discussion(input:string) {
+        const response = this.lawmaker.process(input)
+        return response 
     }
 
 }
