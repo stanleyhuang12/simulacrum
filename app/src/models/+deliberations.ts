@@ -6,6 +6,12 @@ type VirtualLawmakerInstructionsTemplateType = Record<
   string
 >;
 
+export type Memory = {
+    "prompt": APICallMessage[], 
+    "dialogue": Dialogue, 
+    "model": string
+}
+
 const virtualLawmakerInstructionsTemplate: VirtualLawmakerInstructionsTemplateType= {
     "support": `Begin by greeting the constituent in a cordial manner and actively listening to their concerns. 
                 Express genuine understanding and validate their experiences if advocate shares personal stories.
@@ -38,7 +44,7 @@ export class Lawmaker {
     public policy_topic: string;
     public degree_of_support?: number;
     public persona?: string; 
-    public history?: Array<APICallMessage>; 
+    public _history?: Array<Memory> ; 
 
     constructor(
         name: string, 
@@ -103,20 +109,53 @@ export class Lawmaker {
             content: input
         };
 
-        const agentResponse = await fetch("/api/llm-process", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    "model": model,
-                    "messages": input
-                })
-               
-            });
-        const res = await agentResponse.json();
-        const text = res.choices[0].message.content;
-        return text; 
+        const currentAPICallMessage: APICallMessage[] = [systemInstructions, userInstructions]
+        
+
+        try {
+            // Accumulate past conversation histories 
+            if (this._history == null) {
+                this._history = []
+            }
+            if (this._history?.length >= 1) {
+                this._history[-1]
+            }
+
+
+            const agentResponse = await fetch("/api/llm-process", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        "model": model,
+                        "messages": input
+                    })
+                
+                });
+
+            const res = await agentResponse.json();
+            const text = res.choices[0].message.content;
+
+            const currentDialogue: Dialogue = {
+                prompt: input,
+                response: text
+            }
+            
+            const currentMemory: Memory = {
+                "prompt": currentAPICallMessage,
+                "dialogue": currentDialogue,
+                "model": model
+            }
+            this._history?.push(currentMemory)
+
+            return text;
+        } catch(err) {
+            return err;
+        }
+
+
+        
 
 
     };
