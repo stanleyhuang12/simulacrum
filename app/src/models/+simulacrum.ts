@@ -1,25 +1,25 @@
 import jStat from 'jstat';
 
-type Dialogue = {
+export type Dialogue = {
     prompt: string; 
     response: string;
 };
 
-type APICallMessage = {
+export type APICallMessage = {
     role: "system" | "user",
     content: string
 }
 
-function random_sampler(
+export function random_beta_sampler(
     a: number = 2,
     b: number = 3, 
-) {
+):number {
     return (jStat as any).beta.sample(a, b)
 };
 
-function should_display_coach(
+export function should_display_coach(
     threshold=0.5
-) {
+):boolean {
     const probs = (jStat as any).random()
     if (probs > threshold) {
         return true
@@ -28,12 +28,12 @@ function should_display_coach(
     }
 };
 
-interface CoachInterface {
+export interface CoachInterface {
     init_coach_persona: string
     process(input:string): string | Promise<string>; 
 }
 
-interface AdvocacyTrainerInterface {
+export interface AdvocacyTrainerInterface {
     init_advocacy_persona: string 
     process(input:string): string | Promise<string>;
 }
@@ -185,9 +185,9 @@ export class Coach implements CoachInterface {
 
 export abstract class Simulacrum {
     constructor(
-        private _username: string,
-        private _group: string,
-        private _simulacrum_type: string,
+        protected _username: string,
+        protected _group: string,
+        protected _simulacrum_type: string,
         public policy_topic: string,
         public state: string,
         public num_agents: number,
@@ -200,10 +200,9 @@ export abstract class Simulacrum {
     protected coach!: Coach; 
     protected trainer!: AdvocacyTrainer; 
 
-    protected abstract _log_episodal_memory(episodeNumber: number, dialogue: Dialogue): void; 
-    protected abstract _manage_and_cache_responses(): void; 
-    protected abstract _retrieve_memory(memoryType: "long_term"|"short_term"): string;
-
+    public abstract _log_episodal_memory(episodeNumber: number, dialogue: Dialogue): void; 
+    public abstract _manage_and_cache_responses(): void; 
+    public abstract _retrieve_memory(memoryType: "long_term"|"short_term"): string;
 
     private _manage_and_cache_prompts(userInput: string) {
         /*
