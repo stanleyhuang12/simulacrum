@@ -1,5 +1,5 @@
 import { Simulacrum, random_beta_sampler } from './+simulacrum';
-import type { APICallMessage, Dialogue } from './+simulacrum';
+import type { ChatMessage, Dialogue } from './+simulacrum';
 
 type VirtualLawmakerInstructionsTemplateType = Record<
   "support" | "support_with_caution" | "disagree_with_caution",
@@ -7,9 +7,10 @@ type VirtualLawmakerInstructionsTemplateType = Record<
 >;
 
 export type Memory = {
-    "prompt": APICallMessage[], 
+    "prompt": ChatMessage[], 
     "dialogue": Dialogue, 
-    "model": string
+    "model": string,
+    "episodeNumber": number
 }
 
 const virtualLawmakerInstructionsTemplate: VirtualLawmakerInstructionsTemplateType= {
@@ -39,28 +40,71 @@ const virtualLawmakerInstructionsTemplate: VirtualLawmakerInstructionsTemplateTy
 
 export class Lawmaker {
     public name: string;
+    public advocateName: string; 
     public state: string;
     public ideology: string;
     public policy_topic: string;
     public degree_of_support?: number;
     public persona?: string; 
-    public _history?: Array<Memory> ; 
+    public _memory: Array<Memory> = []; 
 
     constructor(
+        advocateName: string,
         name: string, 
         state: string, 
         ideology: string, 
         policy_topic: string,
         // degree_of_support: number | null = null,
     ) {
+        this.advocateName = advocateName
         this.name = name;
         this.state = state;
         this.ideology = ideology;
         this.policy_topic = policy_topic;
         // this.degree_of_support = degree_of_support;
     }
-    
-    public virtual_lawmaker_bio() {
+
+    public log_episodal_memory(prompt: ChatMessage[], dialogue: Dialogue, model: string) {
+        /*
+        Encodes an episodal memory into the Lawmaker's memory stores. 
+        */
+        const memory: Memory = {
+            prompt: prompt, 
+            dialogue: dialogue, 
+            model: model, 
+            episodeNumber: this._memory.length + 1
+        };
+
+        this._memory.push(memory);
+    }
+
+    public retrieve_memory(memoryType: "short_term" | "long_term") {
+         /*
+        Retrieves short-term or long-term memory in the form a transcript.  
+        */
+        if (this._memory.length == 0) {
+            return ""
+        }
+        if (memoryType == "short_term") {
+            const memory = this._memory[this._memory.length - 1];
+            return `
+            Transcript: 
+
+            ${this.advocateName}: ${memory.dialogue.prompt} 
+            ${this.name}: ${memory.dialogue.response}`;
+
+        } else if (memoryType == "long_term") {
+            const transcript = this._memory.map(m => `
+                ${this.advocateName}: ${m.dialogue.prompt}  
+                ${this.name}: ${m.dialogue.response}`
+            ).join("\n");
+
+            return "Transcript: " + transcript 
+        }
+        
+    }
+
+    public _virtual_lawmaker_bio() {
         return `I am ${this.name}, a ${this.ideology} lawmaker in the state of ${this.state}. 
         I will be discussing ${this.policy_topic} with you today.
         `;
@@ -99,29 +143,21 @@ export class Lawmaker {
         /*
         Method to interact with the server for LLM API call
         */
-       const systemInstructions: APICallMessage = {
+        const systemInstructions: ChatMessage = {
             role: "system",
             content: this.persona ? this.persona : this._init_virtual_lawmaker(),
         };
+
+        const memoryStores = this.retrieve_memory("long_term")
        
-        const userInstructions: APICallMessage = {
+        const userInstructions: ChatMessage = {
             role: "user",
-            content: input
+            content: memoryStores + `${this.advocateName}: ${input}`
         };
 
-        const currentAPICallMessage: APICallMessage[] = [systemInstructions, userInstructions]
+        const messages: ChatMessage[] = [systemInstructions, userInstructions]
         
-
         try {
-            // Accumulate past conversation histories 
-            if (this._history == null) {
-                this._history = []
-            }
-            if (this._history?.length >= 1) {
-                this._history[-1]
-            }
-
-
             const agentResponse = await fetch("/api/llm-process", {
                     method: "POST",
                     headers: {
@@ -129,35 +165,25 @@ export class Lawmaker {
                     },
                     body: JSON.stringify({
                         "model": model,
-                        "messages": input
+                        "messages": messages
                     })
                 
                 });
 
             const res = await agentResponse.json();
             const text = res.choices[0].message.content;
-
+            
+            /* Manage memory stores*/
             const currentDialogue: Dialogue = {
                 prompt: input,
                 response: text
             }
             
-            const currentMemory: Memory = {
-                "prompt": currentAPICallMessage,
-                "dialogue": currentDialogue,
-                "model": model
-            }
-            this._history?.push(currentMemory)
-
+            this.log_episodal_memory(messages, currentDialogue, model)
             return text;
         } catch(err) {
             return err;
         }
-
-
-        
-
-
     };
 }
 
