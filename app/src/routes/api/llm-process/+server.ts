@@ -1,4 +1,4 @@
-import { OPENAI_API_KEY } from '$env/static/private';
+import { HUIT_OPENAI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 
@@ -11,11 +11,11 @@ export const POST: RequestHandler = async ({ request }) => {
   try {
     const body = await request.json();
 
-    const agentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const agentResponse = await fetch("https://go.apis.huit.harvard.edu/ais-openai-direct/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
+        "Authorization": `Bearer ${HUIT_OPENAI_API_KEY}`
       },
       body: JSON.stringify(body)
     });

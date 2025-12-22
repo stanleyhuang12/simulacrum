@@ -72,6 +72,7 @@ export function validateAndRetrieveDeliberation( uuid:any ) {
     const deliberationObject = sequelize.models.Deliberation.findByPk(uuid)
     if (deliberationObject == null){
         console.error("No deliberation instance found.")
+        return null;
     }
-
+    return deliberationObject;
 }

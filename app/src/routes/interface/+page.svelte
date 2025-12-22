@@ -177,7 +177,7 @@
                 }
                 ws.send(text); 
                 isProcessingAudio = false; 
-    }}
+    }} 
 
 
     function getWebSocket() {
