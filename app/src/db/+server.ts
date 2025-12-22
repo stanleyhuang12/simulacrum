@@ -9,7 +9,7 @@ const DB_PASS = import.meta.env.get('DB_PASS')
 const DB_HOST = import.meta.env.get('DB_HOST')
 const DB_NAME = import.meta.env.get('DB_NAME')
 
-const sequelize = new Sequelize(`postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB_NAME}`, 
+export const sequelize = new Sequelize(`postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB_NAME}`, 
     {
         dialect: "postgres", 
         logging: true
@@ -25,14 +25,14 @@ async function initializeDatabase() {
     }
 }
 
-const DeliberationORM = sequelize.define(
+export const DeliberationORM = sequelize.define(
     "deliberations", /* table name: 'deliberations', object name: 'DeliberationORM */
     {
         username: {
             type: DataTypes.STRING, 
         }, 
         unique_id: {
-            type: DataTypes.STRING, 
+            type: DataTypes.UUID, 
             allowNull: false, 
             primaryKey: true
         }, 
@@ -52,7 +52,8 @@ const DeliberationORM = sequelize.define(
             type: DataTypes.STRING
         },
         discussion_history: { 
-            type: DataTypes.JSON
+            type: DataTypes.JSON, 
+            allowNull: true
         },
     }, {
         sequelize, 
@@ -64,5 +65,5 @@ const DeliberationORM = sequelize.define(
 
 sequelize.sync(); 
 
-export default sequelize; 
+
 
