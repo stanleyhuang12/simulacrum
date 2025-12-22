@@ -1,29 +1,35 @@
 import { json, error } from '@sveltejs/kit';
-import { Sequelize, Model, DataTypes  } from "sequelize"; 
+import { Sequelize, Model, DataTypes } from "sequelize"; 
 import type { ModelOptions } from "sequelize"; 
 import { Deliberation } from "../models/+deliberations";
-
-
-const DB_USER = import.meta.env.get('DB_USER')
-const DB_PASS = import.meta.env.get('DB_PASS')
-const DB_HOST = import.meta.env.get('DB_HOST')
-const DB_NAME = import.meta.env.get('DB_NAME')
+import { DB_USER, DB_HOST, DB_NAME, DB_PASS } from "$env/static/private";
+import pg from "pg"; 
+import type { Options } from '@sveltejs/vite-plugin-svelte';
 
 export const sequelize = new Sequelize(`postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB_NAME}`, 
     {
         dialect: "postgres", 
-        logging: true
-    }
-);
+        dialectModule: pg,
+        logging: true,
+        dialectOptions: {
+            ssl: {
+                require: true,           // Enforce SSL
+                rejectUnauthorized: false // Ignore self-signed certificates
+            }
+    } 
+});
 
-async function initializeDatabase() {
-    try { 
-        const authenticated = await sequelize.authenticate(); 
-        console.log(`PostgreSQL URI connection is sucessfully authenticated!`)
+
+(async () => {
+    try {
+        await sequelize.authenticate();
+        await sequelize.sync({alter: true});
+        console.log('PostgreSQL connected and tables synced');
     } catch (err) {
-        console.error(`PostgreSQL URI connection failed to authenticate, ${err}`)
+        console.error('PostgreSQL connection failed:', err);
     }
-}
+})();
+
 
 export const DeliberationORM = sequelize.define(
     "deliberations", /* table name: 'deliberations', object name: 'DeliberationORM */
@@ -62,8 +68,10 @@ export const DeliberationORM = sequelize.define(
     } as ModelOptions,
 );
 
+export function validateAndRetrieveDeliberation( uuid:any ) { 
+    const deliberationObject = sequelize.models.Deliberation.findByPk(uuid)
+    if (deliberationObject == null){
+        console.error("No deliberation instance found.")
+    }
 
-sequelize.sync(); 
-
-
-
+}

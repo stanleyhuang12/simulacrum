@@ -15,7 +15,7 @@ export const actions: Actions = {
         console.log(sess_cookies)
         console.log(payload)
 
-        const res = await fetch("/create_deliberations_instance", {
+        const res = await event.fetch("/api/create-deliberation-instance", {
             method: "POST",
             headers: {
                 'Accept': 'application/json',

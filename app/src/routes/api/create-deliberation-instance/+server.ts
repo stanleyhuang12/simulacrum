@@ -7,22 +7,19 @@ import { DeliberationORM } from "$db/+server";
 
 export const POST: RequestHandler = async ( {cookies, request} ) => {
     const userID = await cookies.get('session-id-delibs'); 
-    const res = await request.formData(); 
-    
-    if (!userID) { 
-        redirect(400, "/form")
-    }
-
+    const res = await request.json(); 
+    console.log(userID)
+    console.log(res)
     try {
         await DeliberationORM.create(
         {
-            username: res.get('username'), 
+            username: res.username, 
             unique_id: userID, 
-            organization: res.get('organization'),
-            state: res.get('state'),
-            policy_topic: res.get('policy_topic'),
-            ideology: res.get('ideology'),
-            lawmaker_name: res.get('lawmaker_name'),
+            organization: res.organization,
+            state: res.state,
+            policy_topic: res.policy_topic,
+            ideology: res.ideology,
+            lawmaker_name: res.lawmaker_name,
             /* No discussion history because this is initialization*/
         }
     ) 
