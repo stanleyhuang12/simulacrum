@@ -11,5 +11,6 @@ declare global {
 }
 
 declare module 'jstat';
+declare module 'sequelize';
 
 export {};
