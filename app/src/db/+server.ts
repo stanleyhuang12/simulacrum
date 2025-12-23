@@ -68,11 +68,12 @@ export const DeliberationORM = sequelize.define(
     } as ModelOptions,
 );
 
-export function validateAndRetrieveDeliberation( uuid:any ) { 
-    const deliberationObject = sequelize.models.Deliberation.findByPk(uuid)
-    if (deliberationObject == null){
+export async function validateAndRetrieveDeliberation( uuid:any ) { 
+    const deliberationObject = await sequelize.models.deliberations.findByPk(uuid)
+    if (deliberationObject == null || deliberationObject == undefined){
         console.error("No deliberation instance found.")
         return null;
     }
     return deliberationObject;
 }
+
