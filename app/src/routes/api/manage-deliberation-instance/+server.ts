@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
-import { DeliberationORM, sequelize, validateAndRetrieveDeliberation, updateDeliberationRecord } from "$db/+server";
+import { validateAndRetrieveDeliberation, updateDeliberationRecord } from "$db/+server";
 import { hydrateDeliberationInstance } from '$models/+deliberations';
 /* GET request will retrieve the DeliberationORM object if it exists in the database  */
 

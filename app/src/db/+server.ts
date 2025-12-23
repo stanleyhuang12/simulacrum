@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { Sequelize, Model, DataTypes } from "sequelize"; 
 import type { ModelOptions } from "sequelize"; 
-import { Deliberation, type Memory } from "../models/+deliberations";
+import { type Memory } from "../models/+deliberations";
 import { DB_USER, DB_HOST, DB_NAME, DB_PASS } from "$env/static/private";
 import pg from "pg"; 
 import type { Options } from '@sveltejs/vite-plugin-svelte';
