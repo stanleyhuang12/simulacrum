@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
-import { DeliberationORM, sequelize, validateAndRetrieveDeliberation } from "$db/+server";
+import { DeliberationORM, sequelize, validateAndRetrieveDeliberation, updateDeliberationRecord } from "$db/+server";
 import { hydrateDeliberationInstance } from '$models/+deliberations';
 /* GET request will retrieve the DeliberationORM object if it exists in the database  */
 
@@ -13,12 +13,10 @@ export const POST: RequestHandler = async ( {cookies, request} ) => {
 
     try { 
         const deliberationRecord = await validateAndRetrieveDeliberation(userID)
+        if (deliberationRecord == null ) { return error(404, "No deliberation error found.")}
         const deliberationInstance = hydrateDeliberationInstance(deliberationRecord)
-        const response = deliberationInstance.lawmaker.process(input)
-
-
-        /* Rehydrating database back into object object */
-        
+        const response = deliberationInstance.panel_discussion(input)
+        updateDeliberationRecord( deliberationRecord, await deliberationInstance.lawmaker._retrieve_deserialized_memory() )        
 
     } catch(err) {
         console.error(`Error retrieving Deliberation instance from PostgreSQL database, ${err}`)

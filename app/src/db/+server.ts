@@ -85,7 +85,7 @@ export async function validateAndRetrieveDeliberation( uuid:any ) {
     return deliberationObject;
 }
 
-export async function updateDeliberationRecord ( uuid: any, deliberationRecord: Model, savedMemory:Array<Memory> ) { 
+export async function updateDeliberationRecord ( deliberationRecord: Model, savedMemory:Array<Memory> ) { 
     try {
         return deliberationRecord.update({
             memory: savedMemory
