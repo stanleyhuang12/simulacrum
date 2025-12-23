@@ -1,30 +1,28 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
-import { DeliberationORM } from "$db/+server";
-
-
+import { DeliberationORM, sequelize, validateAndRetrieveDeliberation } from "$db/+server";
+import { hydrateDeliberationInstance } from '$models/+deliberations';
 /* GET request will retrieve the DeliberationORM object if it exists in the database  */
+
 
 export const POST: RequestHandler = async ( {cookies, request} ) => {
     const userID = await cookies.get('session-id-delibs'); 
-    const res = await request.json(); 
+    const input = await request.text(); 
     console.log(userID)
-    console.log(res)
-    try {
-        await DeliberationORM.create(
-        {
-            username: res.username, 
-            unique_id: userID, 
-            organization: res.organization,
-            state: res.state,
-            policy_topic: res.policy_topic,
-            ideology: res.ideology,
-            lawmaker_name: res.lawmaker_name,
-            /* No discussion history because this is initialization*/
-        }
-    ) 
-    } catch(err: any) { 
-        return error(500, `Deliberation event not create in PostgreSQL ${err}`)
+    console.log(input)
+
+    try { 
+        const deliberationRecord = await validateAndRetrieveDeliberation(userID)
+        const deliberationInstance = hydrateDeliberationInstance(deliberationRecord)
+        const response = deliberationInstance.lawmaker.process(input)
+
+
+        /* Rehydrating database back into object object */
+        
+
+    } catch(err) {
+        console.error(`Error retrieving Deliberation instance from PostgreSQL database, ${err}`)
+        return error(500, `${err}`)
     }
 
     console.log('Deliberation event created in PostgreSQL!')

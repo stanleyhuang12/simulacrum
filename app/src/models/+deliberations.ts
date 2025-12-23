@@ -47,7 +47,7 @@ export class Lawmaker {
     public ideology: string;
     public policy_topic: string;
     public degree_of_support?: number;
-    public persona?: string; 
+    public persona!: string; 
     public _memory: Array<Memory> = []; 
 
     constructor(
@@ -65,6 +65,14 @@ export class Lawmaker {
         this.policy_topic = policy_topic;
         this._init_virtual_lawmaker(); 
         // this.degree_of_support = degree_of_support;
+    }
+
+    public _rehydrate_memory( savedMemory: Array<Memory> ) { 
+        this._memory = savedMemory || []; 
+    }
+
+    public _retrieve_deserialized_memory() {
+        return this._memory
     }
 
     public log_episodal_memory(prompt: ChatMessage[], dialogue: Dialogue, model: string) {
@@ -115,6 +123,7 @@ export class Lawmaker {
 
     private _init_virtual_lawmaker(): string {
         let supportValue: number; 
+        if (this.persona) { return this.persona}
         if (this.degree_of_support == null ) {
             this.degree_of_support = random_beta_sampler();
             supportValue = this.degree_of_support
@@ -198,15 +207,14 @@ export class Deliberation extends Simulacrum {
     constructor(
         _username: string, 
         _group: string,
-        _simulacrum_type: string = 'Deliberations',
+        _simulacrum_type: string = 'deliberations',
         policy_topic: string,
         state: string,
         num_agents: number=1,
-        committee_name: string,
         ideology: string,
         lawmaker_name: string
     ) {
-        super(_username, _group, _simulacrum_type, policy_topic, state, num_agents, committee_name); // call parent constructor first
+        super(_username, _group, _simulacrum_type, policy_topic, state, num_agents); // call parent constructor first
         this.ideology = ideology;
         this.lawmaker_name = lawmaker_name;
     }
@@ -220,3 +228,21 @@ export class Deliberation extends Simulacrum {
     }
 
 }
+export function hydrateDeliberationInstance( deliberationRecord: any) { 
+    const deliberationObject = new Deliberation(
+        deliberationRecord.username, 
+        deliberationRecord.organization, 
+        "deliberations", 
+        deliberationRecord.policy_topic, 
+        deliberationRecord.state, 1,  
+        deliberationRecord.ideology,
+        deliberationRecord.lawmaker_name   
+    )
+    if (deliberationRecord.discussion_history == null) { return deliberationObject }
+
+    deliberationObject.lawmaker._rehydrate_memory(deliberationRecord.memory)
+    deliberationObject.lawmaker.persona = deliberationRecord.persona 
+
+    return deliberationObject
+}
+

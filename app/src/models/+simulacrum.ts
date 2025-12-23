@@ -12,12 +12,11 @@ export abstract class Simulacrum {
         public policy_topic: string,
         public state: string,
         public num_agents: number,
-        public committee_name: string 
     ) {};
 
     protected _memory: Memory[] = [];
     protected coach!: Coach; 
-    protected lawmaker!: Lawmaker; 
+    public lawmaker!: Lawmaker; 
     protected trainer!: AdvocacyTrainer; 
 
     abstract _init_virtual_lawmaker(): void; 

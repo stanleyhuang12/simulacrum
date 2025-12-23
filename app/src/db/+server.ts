@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { Sequelize, Model, DataTypes } from "sequelize"; 
 import type { ModelOptions } from "sequelize"; 
-import { Deliberation } from "../models/+deliberations";
+import { Deliberation, type Memory } from "../models/+deliberations";
 import { DB_USER, DB_HOST, DB_NAME, DB_PASS } from "$env/static/private";
 import pg from "pg"; 
 import type { Options } from '@sveltejs/vite-plugin-svelte';
@@ -23,7 +23,7 @@ export const sequelize = new Sequelize(`postgresql://${DB_USER}:${DB_PASS}@${DB_
 (async () => {
     try {
         await sequelize.authenticate();
-        await sequelize.sync({alter: true});
+        await sequelize.sync({force: true});
         console.log('PostgreSQL connected and tables synced');
     } catch (err) {
         console.error('PostgreSQL connection failed:', err);
@@ -57,7 +57,15 @@ export const DeliberationORM = sequelize.define(
         lawmaker_name: { 
             type: DataTypes.STRING
         },
-        discussion_history: { 
+        degree_of_support: {
+            type: DataTypes.FLOAT, 
+            allowNull: true
+        },
+        persona: {
+            type: DataTypes.TEXT, 
+            allowNull: true
+        },
+        memory: { 
             type: DataTypes.JSON, 
             allowNull: true
         },
@@ -77,3 +85,12 @@ export async function validateAndRetrieveDeliberation( uuid:any ) {
     return deliberationObject;
 }
 
+export async function updateDeliberationRecord ( uuid: any, deliberationRecord: Model, savedMemory:Array<Memory> ) { 
+    try {
+        return deliberationRecord.update({
+            memory: savedMemory
+        }) 
+    } catch(err) {
+        console.error(`Failed to update deliberation record in PostgreSQL database. ${err}`)
+    }
+}
