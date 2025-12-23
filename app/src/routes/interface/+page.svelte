@@ -17,7 +17,7 @@
     let buttonElemState = $state(false); //when user clicks turn on/off mic
     let isProcessingAudio = false 
     // params for audio management 
-    let ws: WebSocket; //websocket
+    // let ws: WebSocket; //websocket
     
     // let recorder: MediaRecorder; //recorder 
     // let audioBlobs: Blob[] = []; 
@@ -152,7 +152,7 @@
     //     }
     // }
 
-    function receiveEmittedEvents(evt: any) {
+    async function receiveEmittedEvents(evt: any) {
 
         const event = JSON.parse(evt.data); 
 
@@ -175,36 +175,44 @@
                 if (!event.transcript) {
                     break;
                 }
-                ws.send(text); 
+                // ws.send(text); 
+                const result = await fetch("/api/manage-deliberation-instance", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "text/plain",
+                    }, 
+                    body: text
+                })
+
+                const agentResponse = await result.text()
+                handleAgentResponse(agentResponse)
                 isProcessingAudio = false; 
     }} 
 
 
-    function getWebSocket() {
+    // function getWebSocket() {
 
-        if (!ws || ws.readyState === WebSocket.CLOSED) { 
-            ws =  new WebSocket("ws://localhost:8000/transcribe-audio")
-            console.log('Established WebSocket connection.')
-            if (!wsEventAdded) {
-                ws.addEventListener("message", handleAgentResponse);
-                wsEventAdded = true;
-            }
-        } 
-        return ws 
-    }
+    //     if (!ws || ws.readyState === WebSocket.CLOSED) { 
+    //         ws =  new WebSocket("ws://localhost:8000/transcribe-audio")
+    //         console.log('Established WebSocket connection.')
+    //         if (!wsEventAdded) {
+    //             ws.addEventListener("message", handleAgentResponse);
+    //             wsEventAdded = true;
+    //         }
+    //     } 
+    //     return ws 
+    // }
 
 
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
         console.log("Agent's response: ", agentResponse)
-        const agentText = agentResponse.data
-        console.log(agentText)
         const audioReadableStream = await fetch("/api/text-to-speech", {
             method: "POST", 
             headers: {
                 "Content-Type": "text/plain"
             },
-            body: agentText
+            body: agentResponse
         })
 
         const agentAudio = await audioReadableStream.arrayBuffer()
@@ -224,8 +232,8 @@
     onMount(() => { 
         console.log('Establishing WebRTC Peer Connection with OpenAI')
         establishOAIConnection()
-        console.log('Establishing websocket connections...')
-        ws = getWebSocket();
+        // console.log('Establishing websocket connections...')
+        // ws = getWebSocket();
         console.log('Establishing video streams..');
         getVideoStream();
     });
@@ -233,10 +241,10 @@
     function completeSimulation() {
         console.log("Closing WebRTC peer connection")
         closeOAIConnection()
-        if (ws && ws.readyState == WebSocket.OPEN) {
-            ws.close()
-            console.log("Closing WebSocket connection.")
-        }
+        // if (ws && ws.readyState == WebSocket.OPEN) {
+        //     ws.close()
+        //     console.log("Closing WebSocket connection.")
+        // }
 
         try {
             if (videoStreams) {

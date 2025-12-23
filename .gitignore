@@ -12,6 +12,7 @@ legislative-simulacrum/.env
 
 /template
 /database
+/backend
 /__pycache__
 /node_modules
 /deprecated

@@ -3,8 +3,6 @@
     import { jsPDF } from "jspdf";
     import type { PageProps } from "./$types";
 
-    // let { formData, currentStep=$bindable()} = $props();
-
     let { data }: PageProps = $props(); 
     let retry: number = 0; 
     let isDownloading = $state(false);  
@@ -14,7 +12,7 @@
 
         try {
           console.log("Start fetch for end-of-call transcription.")
-          const response = await fetch("http://18.116.42.126v/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback", {
+          const response = await fetch("/api/end-of-call-feedback", {
             method: "GET",
             headers: {
                 'Cookie': `session-id-delibs=${data.sess_cookies}`
@@ -28,14 +26,12 @@
           const pdfDoc = new jsPDF(); 
           const pageHeight = pdfDoc.internal.pageSize.height;
           const margin = 20;
-          const lineHeight = 6; // tweak for spacing
+          const lineHeight = 6; 
 
-          // Title
           pdfDoc.setFontSize(16);
           pdfDoc.setTextColor(128, 0, 128);
           pdfDoc.text("Metadata", 105, 20, { align: "center" });
 
-          // Identifier
           let y = 40;
           pdfDoc.setFontSize(12);
           pdfDoc.setTextColor(0, 0, 0);
@@ -43,7 +39,6 @@
           y += 10;
           pdfDoc.text(`User: ${feedbackData.username}`, 20, y);
 
-          // Transcript section
           y += 20;
           pdfDoc.setFontSize(14);
           pdfDoc.setTextColor(128, 0, 128);
@@ -53,10 +48,8 @@
           pdfDoc.setFontSize(11);
           pdfDoc.setTextColor(0, 0, 0);
 
-          // Wrap transcript into lines
           const transcriptLines = pdfDoc.splitTextToSize(feedbackData.full_transcript, 170);
 
-          // Print transcript with auto-paging
           for (const line of transcriptLines) {
             if (y + lineHeight > pageHeight - margin) {
               pdfDoc.addPage();
@@ -66,7 +59,6 @@
             y += lineHeight;
           }
 
-          // Feedback section
           y += 15;
           pdfDoc.setFontSize(14);
           pdfDoc.setTextColor(128, 0, 128);
@@ -82,7 +74,6 @@
 
           const feedbackLines = pdfDoc.splitTextToSize(feedbackData.trainer_agent_feedback, 170);
 
-          // Print feedback with auto-paging
           for (const line of feedbackLines) {
             if (y + lineHeight > pageHeight - margin) {
               pdfDoc.addPage();
@@ -93,7 +84,7 @@
           }
 
           isDownloading = false; 
-          // Save PDF
+
           pdfDoc.save("feedback.pdf");
           
         } catch(err: unknown) {
