@@ -12,7 +12,8 @@ export const load: PageServerLoad =  async ( {cookies} ) => {
     if (deliberationRecord == null) {
         redirect(308, "/")
     }
-
+    
+    console.log(deliberationRecord.toJSON())
     const savedMemory = deliberationRecord.toJSON().memory
     return { 
         memory: savedMemory,

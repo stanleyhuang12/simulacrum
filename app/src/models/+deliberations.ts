@@ -217,7 +217,9 @@ export class Deliberation extends Simulacrum {
         super(_username, _group, _simulacrum_type, policy_topic, state, num_agents); // call parent constructor first
         this.ideology = ideology;
         this.lawmaker_name = lawmaker_name;
+        this._init_virtual_lawmaker(); 
     }
+    
     public _init_virtual_lawmaker() {
         this.lawmaker = new Lawmaker(this._username, this.lawmaker_name, this.state, this.ideology, this.policy_topic)
     }

@@ -9,15 +9,18 @@
 
     async function queryFeedback(event: Event) { 
         isDownloading = true; 
-
+        if (data.memory == null) {
+          throw new Error("Error returning feedback. Reason: No conversation started")
+        }
         try {
           console.log("Start fetch for end-of-call transcription.")
           const response = await fetch("/api/end-of-call-feedback", {
-            method: "GET",
+            method: "POST",
             headers: {
                 'Cookie': `session-id-delibs=${data.sess_cookies}`
             },
-            credentials: "include"
+            credentials: "include",
+            body: data.memory
           });
 
           if (!response.ok) { throw new Error("Error returning Trainer agent feedback.")}
