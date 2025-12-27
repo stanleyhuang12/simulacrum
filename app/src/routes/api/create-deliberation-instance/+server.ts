@@ -20,6 +20,7 @@ export const POST: RequestHandler = async ( {cookies, request} ) => {
             policy_topic: res.policy_topic,
             ideology: res.ideology,
             lawmaker_name: res.lawmaker_name,
+
             /* No discussion history because this is initialization*/
         }
     ) 

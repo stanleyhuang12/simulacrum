@@ -16,7 +16,6 @@
         selectedEthnicity: string; 
         selectedRace: string; 
         selectedGender: string; 
-        selectedAgeRange: string; 
     };
 
     // export let formData: FormData 
@@ -32,7 +31,6 @@
         selectedEthnicity: "",
         selectedRace: "", 
         selectedGender: "",
-        selectedAgeRange: "", 
     });
 
 
@@ -264,7 +262,7 @@ button:disabled {
                   
                   <label class="label-question" id="user-data-field">
                     What is your email?
-                    <input type="email" bind:value={form.userEmail} id="email" placeholder="johndoe@gmail.com" size=50>
+                    <input type="email" bind:value={form.userEmail} id="email" name="userEmail" placeholder="johndoe@gmail.com" size=50>
                   </label>
 
                   <label class="label-question">
@@ -286,9 +284,9 @@ button:disabled {
                 Lawmaker name
                 <input type="text" name="lawmaker_name" bind:value={form.selectedLawmaker} placeholder="Representative John Doe" size="60"> 
             </label>
-            <label class="label-question">
+            <label for="lawmakerGender" class="label-question">
               Gender
-              <select bind:value={form.selectedGender}>
+              <select name="lawmakerGender" bind:value={form.selectedGender}>
                 <option value="">-- Select gender --</option>
                 <option value="female">Female</option>
                 <option value="male">Male</option>
@@ -298,12 +296,12 @@ button:disabled {
               </select>
           </label>
 
-          <label class="label-question">
+          <label for="lawmakerEthnicity" class="label-question">
             Ethnicity
-            <select bind:value={form.selectedEthnicity}>
+            <select name="lawmakerEthnicity" bind:value={form.selectedEthnicity}>
               <option value="">-- Select ethnicity --</option>
               <option value="hispanic-latino">Hispanic / Latino</option>
-              <option value="non-hispanic-white">Non-Hispanic White</option>
+              <option value="non-hispanic-white">White Non-Hispanic</option>
               <option value="black-african-american">Black / African American</option>
               <option value="asian">Asian</option>
               <option value="native-american">Native American</option>
@@ -313,9 +311,9 @@ button:disabled {
             </select>
           </label>
 
-          <label class="label-question">
+          <label for="race" class="label-question">
             Race
-            <select bind:value={form.selectedRace}>
+            <select name="lawmakerRace" bind:value={form.selectedRace}>
               <option value="">-- Select race --</option>
               <option value="white">White</option>
               <option value="black">Black</option>
@@ -327,9 +325,9 @@ button:disabled {
             </select>
           </label>
 
-          <label class="label-question">
+          <label for="lawmakerAge" class="label-question">
             Age range
-            <select bind:value={form.selectedAgeRange}>
+            <select name="lawmakerAge">
               <option value="">-- Select age range --</option>
               <option value="18-24">18-24</option>
               <option value="25-34">25-34</option>

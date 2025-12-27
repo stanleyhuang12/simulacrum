@@ -11,6 +11,7 @@ export const actions: Actions = {
     submit: async (event) => {
         const sess_cookies = await event.cookies.get("session-id-delibs")
         const formData = await event.request.formData();
+        
         const payload = Object.fromEntries(formData); // Convert FormData -> object
         console.log(sess_cookies)
         console.log(payload)
