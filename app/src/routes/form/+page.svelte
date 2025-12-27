@@ -1,6 +1,6 @@
   <script lang="ts">
     import { enhance } from '$app/forms';
-  import { boolean, number } from 'mathjs';
+    import { boolean, number } from 'mathjs';
     import { onMount } from "svelte";
       
 
@@ -13,6 +13,10 @@
         selectedLawmaker: string;
         selectedIdeology: string;
         selectedState: string;
+        selectedEthnicity: string; 
+        selectedRace: string; 
+        selectedGender: string; 
+        selectedAgeRange: string; 
     };
 
     // export let formData: FormData 
@@ -25,16 +29,11 @@
         selectedLawmaker: "",
         selectedIdeology: "",
         selectedState: "",
+        selectedEthnicity: "",
+        selectedRace: "", 
+        selectedGender: "",
+        selectedAgeRange: "", 
     });
-
-    let secondaryForm = $state({
-      selectedEthnicity: "",
-      selectedRace: "", 
-      selectedGender: "",
-      selectedAgeRange: "", 
-    })
-
-    let lawmakerProfileComplete = [form.selectedLawmaker, form.selectedIdeology, form.selectedState].filter(d => d != null).length 
 
 
     // let currentStep = "";
@@ -200,9 +199,10 @@ button:disabled {
   cursor: not-allowed;
 }
 
+
 .label-question textarea {
   width: 70%;
-  min-height: 60px; /* or whatever you need */
+  min-height: 200px; /* or whatever you need */
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -288,7 +288,7 @@ button:disabled {
             </label>
             <label class="label-question">
               Gender
-              <select bind:value={secondaryForm.selectedGender}>
+              <select bind:value={form.selectedGender}>
                 <option value="">-- Select gender --</option>
                 <option value="female">Female</option>
                 <option value="male">Male</option>
@@ -300,7 +300,7 @@ button:disabled {
 
           <label class="label-question">
             Ethnicity
-            <select bind:value={secondaryForm.selectedEthnicity}>
+            <select bind:value={form.selectedEthnicity}>
               <option value="">-- Select ethnicity --</option>
               <option value="hispanic-latino">Hispanic / Latino</option>
               <option value="non-hispanic-white">Non-Hispanic White</option>
@@ -315,7 +315,7 @@ button:disabled {
 
           <label class="label-question">
             Race
-            <select bind:value={secondaryForm.selectedRace}>
+            <select bind:value={form.selectedRace}>
               <option value="">-- Select race --</option>
               <option value="white">White</option>
               <option value="black">Black</option>
@@ -329,7 +329,7 @@ button:disabled {
 
           <label class="label-question">
             Age range
-            <select bind:value={secondaryForm.selectedAgeRange}>
+            <select bind:value={form.selectedAgeRange}>
               <option value="">-- Select age range --</option>
               <option value="18-24">18-24</option>
               <option value="25-34">25-34</option>
