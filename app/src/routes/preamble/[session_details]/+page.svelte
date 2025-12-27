@@ -36,7 +36,7 @@
   text-align: center;
   padding: 2rem;
   border-radius: 16px;
-  background: linear-gradient(145deg, rgba(36,36,60,0.8), rgba(20,20,40,0.9));
+  background: (--primary);
   backdrop-filter: blur(12px) saturate(140%);
   box-shadow: 0 12px 40px rgba(0,0,0,0.5);
 }
@@ -87,16 +87,21 @@ ul {
 
 
 <div id="preamble">
+  <!-- Lawmaker avatar picture sections -->
   {#if (data.status==200) && (data.imageGenerationObject != null)}
       <img id="avatar" src={data.imageGenerationObject.data[0].url} alt="avatar-of-lawmaker" />
   {:else}
       <img id="avatar" src={failed_image} alt="avatar-failed-to-render"/>
   {/if}
 
+  <div id="text-content">
+
+  <!-- Text section -->
   <h2 in:fade={{duration:400}}>Welcome, {data.form.username},</h2>
   <h3 in:fade={{ delay:300 , duration:500 }}>
     to the <strong>Legislative Simulacrum</strong> — a virtual training platform for public policy advocates. 
   </h3>
+
   <p in:fade={{delay:700}}>
     Your meeting on <strong>{data.form.policy_topic.toUpperCase()}</strong> 
     with an AI-persona of <strong>{data.form.lawmaker_name.toUpperCase()}</strong>, 
@@ -121,4 +126,5 @@ ul {
       Join your meeting
     </button>
   {/if}
+  </div>
 </div>
