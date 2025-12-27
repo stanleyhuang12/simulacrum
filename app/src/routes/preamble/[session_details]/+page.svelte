@@ -3,10 +3,11 @@
     import { fade } from "svelte/transition";
     import type { PageProps } from './$types';
     import { goto } from '$app/navigation';
+    import failed_image from "$db/static_failed_images.png";
 
     let { data }: PageProps = $props();
     let revealDeliberationStatus = $state(false);
-    let alertMessage = `${data.form.lawmaker_name} has joined the meeting and is inviting you in.`;
+    let alertMessage = `${data.form.lawmaker_name} has joined the meeting and is inviting you in. Whenever you are ready, you can click join to enter the call!`;
     
     onMount(() => {
         startButtonTimer(); 
@@ -16,7 +17,7 @@
         setTimeout(() => {
             alert(alertMessage);
             revealDeliberationsButton();
-        }, 10000)
+        }, 12500)
     }
 
     function revealDeliberationsButton() {
@@ -24,8 +25,6 @@
             revealDeliberationStatus = true
         }
     }
-
-
 
 </script>
 
@@ -85,7 +84,15 @@ ul {
 }
 </style>
 
+
+
 <div id="preamble">
+  {#if (data.status==200) && (data.imageGenerationObject != null)}
+      <img id="avatar" src={data.imageGenerationObject.data[0].url} alt="avatar-of-lawmaker" />
+  {:else}
+      <img id="avatar" src={failed_image} alt="avatar-failed-to-render"/>
+  {/if}
+
   <h2 in:fade={{duration:400}}>Welcome, {data.form.username},</h2>
   <h3 in:fade={{ delay:300 , duration:500 }}>
     to the <strong>Legislative Simulacrum</strong> — a virtual training platform for public policy advocates. 
