@@ -17,7 +17,8 @@ export const load: PageServerLoad = async( {cookies} )=>{
 
     return {
         form: {
-            user: deliberationObject.dataValues.username,
+            username: deliberationObject.dataValues.username,
+            organization: deliberationObject.dataValues.organization,
             state: deliberationObject.dataValues.state,
             lawmakerName: deliberationObject.dataValues.lawmaker_name, 
             meetingTopic: `15 minute meeting with ${deliberationObject.dataValues.lawmaker_name} regarding ${deliberationObject.dataValues.policy_topic}`

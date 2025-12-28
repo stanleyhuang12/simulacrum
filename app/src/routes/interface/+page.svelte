@@ -318,8 +318,42 @@ video {
 }
 
 /* ---------- Microphone Buttons ---------- */
-.microphone {
-  display: inline-block;
+
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  border-radius: 30px;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  padding: 12px 20px;
+  margin: 20px auto;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+/* .microphone-pos {
+  border-radius: 30px;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  padding: 12px 20px;
+  margin: 20px auto;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+} */
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(125,0,208,0.5);
+}
+
+.microphone, .camera, #leave-call{
   border-radius: 30px;
   color: #fff;
   font-weight: 600;
@@ -331,17 +365,7 @@ video {
   transition: all 0.2s ease;
 }
 
-.microphone-pos {
-  border-radius: 30px;
-  color: #fff;
-  font-weight: 600;
-  border: none;
-  padding: 12px 20px;
-  margin: 20px auto;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.2s ease;
-}
+
 
 .complete-simulation {
     color: white; 
@@ -351,41 +375,50 @@ video {
     padding: 10px 10px; 
 }
 
-#enable-microphone {
+#enable-microphone, #enable-camera {
   background-color: forestgreen;
 }
 
 #enable-microphone:hover,
-#enable-microphone:focus-visible {
+#enable-microphone:focus-visible, 
+#enable-camera:hover, 
+#enable-camera:focus-visible{
   background-color: #228b22;
   box-shadow: 0 0 0 3px rgba(34, 139, 34, 0.4);
 }
-
-#disable-microphone {
+#disable-microphone, #disable-camera {
   background-color: crimson;
 }
-
 #disable-microphone:hover,
+#disable-microphone:focus-visible, 
+#disable-microphone:hover, 
 #disable-microphone:focus-visible {
   background-color: darkred;
   box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.4);
 }
+#leave-call {
+  background: crimson;
+}
+
+#leave-call:hover {
+  background: darkred;
+  box-shadow: 0 0 0 3px rgba(220,20,60,0.4);
+}
 </style>
 
+
+
 <div class="simulation-container">
-    <!-- Lawmaker Profile -->
-
-        <div><strong>{data.form.lawmakerName} | {data.form.state}</strong></div>
-    </div>
-
-     <!-- User video Grid -->
+     <!-- Lawmaker and User video Grid -->
     <div class="video-grid">
         <div class="lawmaker-profile">
             <img class="lawmaker-avatar" src={data.lawmakerAvatarURL} alt="Lawmaker Avatar" />
+             <div><strong>{data.form.lawmakerName} | {data.form.state}</strong></div>
         </div>
-        <video bind:this={videoElem} autoplay playsinline muted
-        
-        ></video>
+        <div class="user-profile">
+            <video bind:this={videoElem} autoplay playsinline muted></video>
+            <div><strong>{data.form.username} | {data.form.organization}</strong></div>
+        </div>
     </div>
 
 
@@ -397,13 +430,26 @@ video {
             <button class="microphone" id='disable-microphone' onclick={closeOAIConnection} aria-label="disable-microphone">🔇 Turn off mic</button>
         {/if}
 
-        {#if $state.snapshot(camOn) === true}
-            <button class="camera"></button>
+        {#if $state.snapshot(camOn) === false}
+            <button class="camera" id='enable-camera' onclick={toggleCamera}>📸 Turn on camera </button>
+        {:else}
+            <button class="camera" id='disable-camera' onclick={toggleCamera}>📷 Turn off camera</button>
+        {/if}
 
-       
+        <button id="leave-call" onclick={completeSimulation} aria-label="leave-call">
+            🚪 Leave Call
+        </button>
+
+    </div>
 
 </div>
 
+
+
+
+       
+
+<!-- 
 
 <div class="video-grid">
     <video id="agent-video-track" bind:this={videoElem2} muted autoplay playsinline>
@@ -423,4 +469,3 @@ video {
 <button class="complete-simulation" onclick={() => { completeSimulation()}} aria-label="complete simulation">Leave call</button>
 </div>
 <!-- <button onclick={getAudioStream}>Turn on mic.</button> -->
-<!-- <button onclick={pauseAudioStream}>Turn off mic.</button> -->
