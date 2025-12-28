@@ -14,6 +14,7 @@
     let videoElem: HTMLVideoElement;
     let videoElem2: HTMLVideoElement; //will remove
     let buttonElemState = $state(false); //when user clicks turn on/off mic
+    let camOn = $state(false)
     let isProcessingAudio = false 
     // params for audio management 
     // let ws: WebSocket; //websocket
@@ -45,6 +46,33 @@
             console.error(err)
         }
     }
+
+function toggleCamera() {
+    if (!videoStreams) return;
+
+    if (camOn) {
+        // Stop all video tracks
+        videoStreams.getVideoTracks().forEach(track => {
+        track.enabled = false; // disable the track
+        track.stop(); // stop sending video
+        });
+        camOn = false; // update state
+    } else {
+        // Camera is OFF — re-enable or create a new track
+        navigator.mediaDevices.getUserMedia({ video: true })
+        .then((newStream) => {
+            const newVideoTrack = newStream.getVideoTracks()[0];
+            if (videoStreams?.getVideoTracks().length) {
+                videoStreams.removeTrack(videoStreams.getVideoTracks()[0]);
+            }
+            videoStreams?.addTrack(newVideoTrack);
+            camOn = true;
+        })
+        .catch(err => console.error("Failed to enable camera:", err));
+    }
+}
+
+    
 
     async function getEphemeralKey() {
         console.group("Retrieving ephemeral key.")
@@ -343,6 +371,38 @@ video {
   box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.4);
 }
 </style>
+
+<div class="simulation-container">
+    <!-- Lawmaker Profile -->
+
+        <div><strong>{data.form.lawmakerName} | {data.form.state}</strong></div>
+    </div>
+
+     <!-- User video Grid -->
+    <div class="video-grid">
+        <div class="lawmaker-profile">
+            <img class="lawmaker-avatar" src={data.lawmakerAvatarURL} alt="Lawmaker Avatar" />
+        </div>
+        <video bind:this={videoElem} autoplay playsinline muted
+        
+        ></video>
+    </div>
+
+
+    <div class="controls">
+        <!--Microphone toggle -->
+        {#if $state.snapshot(buttonElemState) === false } 
+            <button class="microphone" id='enable-microphone' onclick={establishOAIConnection} aria-label="enable-microphone">🎙️ Turn on mic</button>
+        {:else}
+            <button class="microphone" id='disable-microphone' onclick={closeOAIConnection} aria-label="disable-microphone">🔇 Turn off mic</button>
+        {/if}
+
+        {#if $state.snapshot(camOn) === true}
+            <button class="camera"></button>
+
+       
+
+</div>
 
 
 <div class="video-grid">

@@ -15,8 +15,13 @@ export const load: PageServerLoad = async( {cookies} )=>{
         throw redirect(303, '/form');
     }
 
-
     return {
+        form: {
+            user: deliberationObject.dataValues.username,
+            state: deliberationObject.dataValues.state,
+            lawmakerName: deliberationObject.dataValues.lawmaker_name, 
+            meetingTopic: `15 minute meeting with ${deliberationObject.dataValues.lawmaker_name} regarding ${deliberationObject.dataValues.policy_topic}`
+        },
         sess_cookies: sess_cookies, 
         lawmakerAvatarURL: lawmakerAvatarCache
     }; 
