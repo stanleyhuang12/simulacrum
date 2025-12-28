@@ -1,26 +1,24 @@
-import { HUIT_OPENAI_API_KEY } from '$env/static/private';
+import { HUIT_OPENAI_API_KEY, OPENAI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 
 
 export const POST: RequestHandler = async ({ request }) => {
-    console.log(HUIT_OPENAI_API_KEY); 
+    // console.log(HUIT_OPENAI_API_KEY); 
   try {
     console.log("Fetching lawmaker avatar API generation")
     const form = await request.json();
     console.log(form)
     const body = { 
-        prompt: `Generate a semi-photo-realistic avatar of a lawmaker who is ${form.lawmakerGender}, ${form.lawmakerEthnicity}, ${form.lawmakerAge}. Be careful to not to create stereotypical images or replicate harmful societal biases.`,
+        prompt: `Generate a single, semi-photo-realistic avatar of a lawmaker who is ${form.lawmakerGender}, ${form.lawmakerEthnicity}, ${form.lawmakerAge}. Be careful to not replicate harmful stereotypes.`,
         model: "dall-e-2",
-        background: "transparent",
         size: "256x256",
-        quality: "medium",
     }
-    const response = await fetch("https://go.apis.huit.harvard.edu/ais-openai-direct/v1/images/generations", {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": HUIT_OPENAI_API_KEY
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify(body)
     });
@@ -28,7 +26,7 @@ export const POST: RequestHandler = async ({ request }) => {
     const res = await response.json();
     console.log(res)
 
-    if (!res.ok) { 
+    if (!response.ok) { 
         console.error("Error calling OpenAI's Image Generation API:");
         return error(500, `Image Generation API call failed. See: ${res}`)
     }

@@ -27,86 +27,159 @@
     }
 
 </script>
-
 <style>
 :root { 
   --surface: rgba(69, 6, 121, 0.9);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.7);
+  --accent: rgb(180, 0, 180);
 }
+
 @media (prefers-color-scheme: dark) {
-:root {
-  --surface: rgba(69, 6, 121, 0.9);
-  --border: rgba(255, 255, 255, 0.1);
-  --text: rgba(255, 255, 255, 0.904);
-}
+  :root {
+    --surface: rgba(69, 6, 121, 0.9);
+  }
 }
 
+body {
+  background: radial-gradient(
+    circle at top,
+    rgba(125, 0, 208, 0.15),
+    transparent 70%
+  );
+}
+
+/* === MAIN PANEL === */
 #preamble {
-  color: white;
-  max-width: 720px;
-  margin: 4rem auto;
-  text-align: center;
-  padding: 2rem;
-  border-radius: 16px;
-  background: (--surface);
-  backdrop-filter: blur(12px) saturate(140%);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  position: relative;
+  max-width: 760px;
+  margin: 5rem auto;
+  padding: 3rem 3rem 3.5rem;
+  border-radius: 22px;
+  background: var(--surface);
+  backdrop-filter: blur(14px) saturate(150%);
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.6),
+    inset 0 0 0 1px var(--border);
+  color: var(--text);
 }
 
+/* glowing top accent */
+#preamble::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent),
+    transparent
+  );
+  opacity: 0.7;
+}
+
+/* === TYPOGRAPHY === */
 h2 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
+  font-size: 2.1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.75rem;
 }
 
 h3 {
   font-weight: 400;
-  line-height: 1.5;
-  margin-bottom: 1.5rem;
-  color: rgba(255,255,255,0.85);
+  line-height: 1.55;
+  margin-bottom: 1.75rem;
+  color: var(--text);
 }
 
 p {
-  margin-bottom: 1rem;
-  color: rgba(255,255,255,0.7);
+  margin-bottom: 1.2rem;
+  color: var(--text);
 }
 
+/* === LIST === */
 ul {
+  margin: 2rem auto;
+  max-width: 520px;
+  padding-left: 1.4rem;
   text-align: left;
-  margin: 1.5rem auto;
-  max-width: 500px;
-  padding-left: 1.2rem;
-  color: rgba(255,255,255,0.8);
+  color: var(--muted);
 }
 
+ul li {
+  margin-bottom: 0.75rem;
+}
+
+/* === AVATAR FRAME === */
+.avatar-box {
+  margin: 2.5rem auto;
+  width: fit-content;
+  padding: 14px;
+  border-radius: 50%;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.15), transparent),
+    rgba(0,0,0,0.25);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 12px 30px rgba(0,0,0,0.5);
+}
+
+#avatar {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* === CTA BUTTON === */
 #start-delibs-meeting {
-  background: linear-gradient(90deg, rgb(17, 0, 208),rgb(180, 0, 180));
+  display: block;
+  margin: 2.5rem auto 0;
+  background: linear-gradient(
+    90deg,
+    rgb(17, 0, 208),
+    rgb(180, 0, 180)
+  );
   border: none;
-  color: white;
-  font-size: 1.1rem;
-  padding: 0.9rem 2rem;
-  border-radius: 12px;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 500;
+  padding: 1rem 2.5rem;
+  border-radius: 14px;
   cursor: pointer;
-  margin-top: 2rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  letter-spacing: 0.03em;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 
 #start-delibs-meeting:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(125,0,208,0.5);
+  filter: brightness(1.1);
+  box-shadow: 0 10px 30px rgba(125,0,208,0.55);
+}
+
+/* === FOOTNOTE === */
+.preamble-footnote {
+  font-size: 0.85rem;
+  opacity: 0.65;
+  margin-top: 2rem;
+  text-align: center;
 }
 </style>
 
 
-
 <div id="preamble">
   <!-- Lawmaker avatar picture sections -->
-  {#if data?.status === 200 && data?.imageGenerationObject?.data?.length > 0}
-      <img id="avatar" src={data.imageGenerationObject.data[0].url} alt="avatar-of-lawmaker" />
-  {:else}
-      <img id="avatar" src={failed_image} alt="avatar-failed-to-render" />
-  {/if}
 
   <div id="text-content">
-
   <!-- Text section -->
   <h2 in:fade={{duration:400}}>Welcome, {data.form.username},</h2>
   <h3 in:fade={{ delay:300 , duration:500 }}>
@@ -125,8 +198,23 @@ ul {
     <li>✅ Get feedback to improve message delivery</li>
   </ul>
 
-  <p in:fade={{delay:1600}} style="font-size:0.9rem; opacity:0.7;">
-    Supported by the Strategic Training Initiative for the Prevention of Eating Disorders and University of Michigan.
+  <div class="avatar-box">
+  {#if data?.status === 200 && data?.imageGenerationObject?.data?.length > 0}
+      <img id="avatar" src={data.imageGenerationObject.data[0].url} alt="avatar-of-lawmaker" />
+  {:else}
+      <img id="avatar" src={failed_image} alt="avatar-failed-to-render" />
+  {/if}
+  </div>
+
+
+
+  <div class="disclaimer">
+    <strong>Disclaimer:</strong> This experience uses an AI-generated simulation of a public official for educational and training purposes only. The views expressed do not represent real individuals, institutions, or policy positions. Moreover, 
+    the lawmaker avatar profile is AI-generated which may contain visual discrepancies. 
+  </div>
+  
+  <p in:fade={{delay:1600}} class="preamble-footnote">
+    This training tool is developed by teams at the Strategic Training Initiative for the Prevention of Eating Disorders and University of Michigan.
   </p>
 
   {#if revealDeliberationStatus}

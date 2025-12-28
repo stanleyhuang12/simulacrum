@@ -6,16 +6,20 @@ import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async( {cookies} )=>{
     const sess_cookies = cookies.get('session-id-delibs');
-    const deliberationObject = await validateAndRetrieveDeliberation(sess_cookies)
-    
+    const lawmakerAvatarCache = cookies.get('persistent-avatar-cache'); 
+    const deliberationObject = await validateAndRetrieveDeliberation(sess_cookies) 
     console.log(sess_cookies)
     console.log(deliberationObject)
-
     if (deliberationObject == null) {
         // No session cookie detected or match with PostgreSQL DB, redirect to login or show error
         throw redirect(303, '/form');
     }
-    return {sess_cookies: sess_cookies}; 
+
+
+    return {
+        sess_cookies: sess_cookies, 
+        lawmakerAvatarURL: lawmakerAvatarCache
+    }; 
 
     // Need transport hooks if we are going to load arbitrary non-POJOS data
 }

@@ -8,7 +8,6 @@
     let { data }: PageProps = $props(); 
 
     let wsEventAdded = false;
-
     // params for video streaming 
     let audioStreams: MediaStream | undefined;
     let videoStreams: MediaStream | undefined;
@@ -344,6 +343,7 @@ video {
   box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.4);
 }
 </style>
+
 
 <div class="video-grid">
     <video id="agent-video-track" bind:this={videoElem2} muted autoplay playsinline>

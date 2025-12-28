@@ -1,31 +1,80 @@
-import type { PageServerLoad } from "./$types"
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async (event) => { 
+export const load: PageServerLoad = async (event) => {
+  const { cookies, url, fetch } = event;
 
-    const sess_cookies = event.cookies.get('session-id-delibs');
-    console.log(sess_cookies)
+  const sessionId = cookies.get('session-id-delibs');
+  let avatarCacheStatus = cookies.get('persistent-avatar-cache');
 
-    //decode URI of JSON string of payload 
-    const uriData = event.url.searchParams.get("data");
-    const form = uriData ? JSON.parse(decodeURIComponent(uriData)) : null; 
-    const response = await event.fetch("/api/instantiate-lawmaker-avatar", {
-        method: "POST", 
-        body: JSON.stringify(form)
-        }
-    )
-    console.log(form)
+  const uriData = url.searchParams.get('data');
+  let form: any = null;
 
+  try {
+    form = uriData ? JSON.parse(decodeURIComponent(uriData)) : null;
+  } catch {
+    cookies.set('persistent-avatar-cache', 'failed', {
+      path: '/',
+      httpOnly: true,
+      maxAge: 60 * 60
+    });
+    return { status: 400 };
+  }
 
-    const imageGenerationObject = await response.json()
+  if (avatarCacheStatus && avatarCacheStatus !== 'failed') {
+    return {
+      form,
+      imageGenerationObject: { data: [{ url: avatarCacheStatus }] },
+      sess_cookies: sessionId,
+      status: 200
+    };
+  }
 
-    if (form != null) { 
-        return {
-            form: form,
-            imageGenerationObject: imageGenerationObject,
-            sess_cookies: sess_cookies,
-            status: 200
-        }
-    }
+  if (!form) {
+    cookies.set('persistent-avatar-cache', 'failed', {
+      path: '/',
+      httpOnly: true,
+      maxAge: 60 * 60
+    });
+    return { status: 400 };
+  }
 
-    else return { status: 500 }
-}
+  // Generate avatar
+  const response = await fetch('/api/instantiate-lawmaker-avatar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(form)
+  });
+
+  if (!response.ok) {
+    cookies.set('persistent-avatar-cache', 'failed', {
+      path: '/',
+      httpOnly: true,
+      maxAge: 60 * 60
+    });
+    return { status: 500 };
+  }
+
+  const imageGenerationObject = await response.json();
+
+  const generatedUrl = imageGenerationObject?.data?.[0]?.url;
+  if (generatedUrl) {
+    cookies.set('persistent-avatar-cache', generatedUrl, {
+      path: '/',
+      httpOnly: true,
+      maxAge: 60 * 60
+    });
+  } else {
+    cookies.set('persistent-avatar-cache', 'failed', {
+      path: '/',
+      httpOnly: true,
+      maxAge: 60 * 60
+    });
+  }
+
+  return {
+    form,
+    imageGenerationObject,
+    sess_cookies: sessionId,
+    status: 200
+  };
+};
