@@ -27,6 +27,11 @@ export const POST: RequestHandler = async ({ request }) => {
 
     const res = await response.json();
     console.log(res)
+
+    if (!res.ok) { 
+        console.error("Error calling OpenAI's Image Generation API:");
+        return error(500, `Image Generation API call failed. See: ${res}`)
+    }
     return json(res);
   } catch (err) {
     console.error("Error calling OpenAI's Image Generation API:", err);

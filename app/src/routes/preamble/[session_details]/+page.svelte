@@ -29,6 +29,17 @@
 </script>
 
 <style>
+:root { 
+  --surface: rgba(69, 6, 121, 0.9);
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --surface: rgba(69, 6, 121, 0.9);
+  --border: rgba(255, 255, 255, 0.1);
+  --text: rgba(255, 255, 255, 0.904);
+}
+}
+
 #preamble {
   color: white;
   max-width: 720px;
@@ -36,7 +47,7 @@
   text-align: center;
   padding: 2rem;
   border-radius: 16px;
-  background: (--primary);
+  background: (--surface);
   backdrop-filter: blur(12px) saturate(140%);
   box-shadow: 0 12px 40px rgba(0,0,0,0.5);
 }
@@ -88,10 +99,10 @@ ul {
 
 <div id="preamble">
   <!-- Lawmaker avatar picture sections -->
-  {#if (data.status==200) && (data.imageGenerationObject != null)}
+  {#if data?.status === 200 && data?.imageGenerationObject?.data?.length > 0}
       <img id="avatar" src={data.imageGenerationObject.data[0].url} alt="avatar-of-lawmaker" />
   {:else}
-      <img id="avatar" src={failed_image} alt="avatar-failed-to-render"/>
+      <img id="avatar" src={failed_image} alt="avatar-failed-to-render" />
   {/if}
 
   <div id="text-content">
