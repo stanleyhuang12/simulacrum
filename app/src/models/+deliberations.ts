@@ -1,7 +1,8 @@
 import { Simulacrum } from './+simulacrum';
 import type { ChatMessage, Dialogue } from './+utils';
 import { random_beta_sampler, ADVOCACY_GUARDRAILS } from './+utils';
-import { GuardrailsOpenAI, GuardrailTripwireTriggered } from 'guardrails';
+import { GuardrailsOpenAI, GuardrailTripwireTriggered } from "@openai/guardrails";
+import * as path from 'path';
 
 type VirtualLawmakerInstructionsTemplateType = Record<
   "support" | "support_with_caution" | "disagree_with_caution",
@@ -16,6 +17,7 @@ export type Memory = {
     "model": string,
     "episodeNumber": number
 }
+
 
 const virtualLawmakerInstructionsTemplate: VirtualLawmakerInstructionsTemplateType= {
     "support": `Begin by greeting the constituent in a cordial manner and actively listening to their concerns. 
@@ -47,6 +49,7 @@ const initChatTemplate: InitChatTemplate = {
     1: `Before we start, tell me a little bit more about yourself and what got you into advocacy?`,
     2: `OK I see. Thank you so much for letting me know. So, tell me a little more about this campaign you are working on: {issue}. What is the main idea of this bill you are advocating for?`
 }
+
 
 export class Lawmaker {
     public name: string;
@@ -210,6 +213,8 @@ export class Lawmaker {
 export class Deliberation extends Simulacrum {
     public ideology: string;
     public lawmaker_name: string;
+    public guard!: GuardrailsOpenAI; 
+    private guardPromise?: Promise<GuardrailsOpenAI>;
     public conversation_turn: number = 0; 
 
     constructor(
@@ -227,14 +232,27 @@ export class Deliberation extends Simulacrum {
         this.lawmaker_name = lawmaker_name;
         this._init_virtual_lawmaker(); 
 
-
     }
 
     public _init_virtual_lawmaker() {
         this.lawmaker = new Lawmaker(this._username, this.lawmaker_name, this.state, this.ideology, this.policy_topic)
     }
 
+    // private async _init_guard(): Promise<GuardrailsOpenAI> {
+    //     const guard = await GuardrailsOpenAI.create(
+    //         path.resolve("guardrails_config.json")
+    //     );
+    //     this.guard = guard; 
+    //     return guard;
+    // }
+    // private async getGuard(): Promise<GuardrailsOpenAI> {
+    //     if (this.guard) return this.guard; 
+    //     if (this.guardPromise) return await this.guardPromise; 
+    //     return await this._init_guard();
+    // }
+
     public async _guardrail_moderation(text: string) {
+        // const guard = await this.getGuard(); 
 
         const agentResponse = await fetch("/api/llm-process", {
             method: "POST",
@@ -242,11 +260,17 @@ export class Deliberation extends Simulacrum {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                "model": "gpt-4o",
+                "model": "gpt-4.1-mini",
                 "messages": text
             })
-        
         });
+
+        const guardrail_text = await agentResponse.text()
+        if (guardrail_text.includes("BLOCK")){
+            throw new Error("Guardrail has blocked this input. Execution stopped.")
+        } 
+        
+        return true 
     }
     
 
@@ -261,25 +285,23 @@ export class Deliberation extends Simulacrum {
         return templateText
         };
     
+    public async panel_discussion(input: string) {
+        const turn = this.conversation_turn;
+        this.conversation_turn += 1;
 
-    
-    public panel_discussion(input:string) {
-        /* Uses a templated conversation in the first few conversation stages before switching over to stochastic conversation.
-        Also enables guardrails in between to ensure conversation is safe 
-        */
-        this.conversation_turn += 1 
-        if (this.conversation_turn < 2)  {
-            return this.initial_perma_template(this.conversation_turn as 0|1|2)
-        };
+        if (turn <= 1) {
+            return this.initial_perma_template(turn as 0 | 1 | 2);
+        }
 
-        const response = this.lawmaker.process(input); 
+        if (turn === 2) {
+            await this._guardrail_moderation(input); 
+            return this.lawmaker.process(input)
+        }
 
-        return response 
-
+        return this.lawmaker.process(input);
     }
-
-
 }
+
 export function hydrateDeliberationInstance( deliberationRecord: any) { 
     const deliberationObject = new Deliberation(
         deliberationRecord.username, 
