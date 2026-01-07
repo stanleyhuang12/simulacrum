@@ -25,6 +25,7 @@
 		"vite": "^7.0.4"
 	},
 	"dependencies": {
+		"@openai/guardrails": "^0.2.1",
 		"jspdf": "^3.0.2",
 		"jstat": "^1.9.6",
 		"mathjs": "^15.1.0",

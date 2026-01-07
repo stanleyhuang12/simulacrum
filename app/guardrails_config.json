@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "pre_flight": {
+    "version": 1,
+    "guardrails": [
+      {
+        "name": "Moderation",
+        "config": {
+          "categories": [
+            "sexual",
+            "sexual/minors",
+            "hate",
+            "hate/threatening",
+            "harassment",
+            "harassment/threatening",
+            "self-harm",
+            "self-harm/intent",
+            "self-harm/instructions",
+            "violence",
+            "violence/graphic",
+            "illicit",
+            "illicit/violent"
+          ]
+        }
+      }
+    ]
+  },
+  "input": {
+    "version": 1,
+    "guardrails": []
+  },
+  "output": {
+    "version": 1,
+    "guardrails": []
+  }
+}

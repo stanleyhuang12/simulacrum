@@ -1,11 +1,14 @@
 import { Simulacrum } from './+simulacrum';
 import type { ChatMessage, Dialogue } from './+utils';
-import { random_beta_sampler } from './+utils';
+import { random_beta_sampler, ADVOCACY_GUARDRAILS } from './+utils';
+import { GuardrailsOpenAI, GuardrailTripwireTriggered } from 'guardrails';
 
 type VirtualLawmakerInstructionsTemplateType = Record<
   "support" | "support_with_caution" | "disagree_with_caution",
   string
 >;
+
+type InitChatTemplate = Record<0|1|2, string>
 
 export type Memory = {
     "prompt": ChatMessage[], 
@@ -39,6 +42,11 @@ const virtualLawmakerInstructionsTemplate: VirtualLawmakerInstructionsTemplateTy
                               Just respond without prepending your name.`           
 }
 
+const initChatTemplate: InitChatTemplate = {
+    0: `Hi {username}, thanks for joining a call with me today. It is great to meet you.`,
+    1: `Before we start, tell me a little bit more about yourself and what got you into advocacy?`,
+    2: `OK I see. Thank you so much for letting me know. So, tell me a little more about this campaign you are working on: {issue}. What is the main idea of this bill you are advocating for?`
+}
 
 export class Lawmaker {
     public name: string;
@@ -147,7 +155,6 @@ export class Lawmaker {
         return this.persona
     };
 
-
     public async process(
         input: string,
         model: string = "gpt-4.1", 
@@ -203,6 +210,7 @@ export class Lawmaker {
 export class Deliberation extends Simulacrum {
     public ideology: string;
     public lawmaker_name: string;
+    public conversation_turn: number = 0; 
 
     constructor(
         _username: string, 
@@ -218,16 +226,58 @@ export class Deliberation extends Simulacrum {
         this.ideology = ideology;
         this.lawmaker_name = lawmaker_name;
         this._init_virtual_lawmaker(); 
+
+
     }
 
     public _init_virtual_lawmaker() {
         this.lawmaker = new Lawmaker(this._username, this.lawmaker_name, this.state, this.ideology, this.policy_topic)
     }
 
-    public panel_discussion(input:string) {
-        const response = this.lawmaker.process(input)
-        return response 
+    public async _guardrail_moderation(text: string) {
+
+        const agentResponse = await fetch("/api/llm-process", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                "model": "gpt-4o",
+                "messages": text
+            })
+        
+        });
     }
+    
+
+    public initial_perma_template(
+        template_number: 0|1|2,
+    ) {
+        let templateText =  initChatTemplate[template_number]
+        templateText = templateText
+                .replace("{username}", this._username)
+                .replace("{issue}", this.policy_topic);
+
+        return templateText
+        };
+    
+
+    
+    public panel_discussion(input:string) {
+        /* Uses a templated conversation in the first few conversation stages before switching over to stochastic conversation.
+        Also enables guardrails in between to ensure conversation is safe 
+        */
+        this.conversation_turn += 1 
+        if (this.conversation_turn < 2)  {
+            return this.initial_perma_template(this.conversation_turn as 0|1|2)
+        };
+
+        const response = this.lawmaker.process(input); 
+
+        return response 
+
+    }
+
 
 }
 export function hydrateDeliberationInstance( deliberationRecord: any) { 
