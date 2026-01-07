@@ -290,7 +290,22 @@ export class Deliberation extends Simulacrum {
         this.conversation_turn += 1;
 
         if (turn <= 1) {
-            return this.initial_perma_template(turn as 0 | 1 | 2);
+            const text = this.initial_perma_template(turn as 0 | 1 | 2);
+            const prompt: ChatMessage = {
+                role: "user",
+                content: input 
+            }
+            const assistantMessage: ChatMessage = {
+                role: "assistant", 
+                content: text
+            }
+
+            const currentDialogue: Dialogue = {
+                prompt: input,
+                response: text
+            }
+            
+            this.lawmaker.log_episodal_memory([prompt, assistantMessage],currentDialogue, "automated_response")
         }
 
         if (turn === 2) {

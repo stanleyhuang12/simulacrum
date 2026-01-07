@@ -6,7 +6,7 @@ export type Dialogue = {
 };
 
 export type ChatMessage = {
-    role: "system" | "user",
+    role: "system" | "user" | "assistant",
     content: string
 }
 
