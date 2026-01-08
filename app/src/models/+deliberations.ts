@@ -129,6 +129,10 @@ export class Lawmaker {
     }
 
     private _init_virtual_lawmaker() {
+        if (this.persona){
+            /** When we rehydrate the persona attribute could be automatically set */
+            return this.persona  
+        }
         this.degree_of_support = random_beta_sampler();
 
         let key: keyof VirtualLawmakerInstructionsTemplateType;
@@ -137,6 +141,7 @@ export class Lawmaker {
         else key = "disagree_with_caution";
 
         this.persona = virtualLawmakerInstructionsTemplate[key];
+        return this.persona 
     }
     /*
     LLM INTERACTION

@@ -1,4 +1,4 @@
-import { json, error } from '@sveltejs/kit';
+
 import { Sequelize, Model, DataTypes } from "sequelize"; 
 import type { ModelOptions } from "sequelize"; 
 import { type Memory } from "../models/+deliberations";

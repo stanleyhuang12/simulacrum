@@ -1,6 +1,6 @@
 import { Coach, AdvocacyTrainer } from './+support';
 import { Lawmaker } from './+deliberations';
-import type { Memory, ChatMessage, Dialogue } from "./+utils"
+import type { Memory, ChatMessage, } from "./+utils"
 import { should_display_coach } from './+utils';
 
 
@@ -14,10 +14,11 @@ export abstract class Simulacrum {
         public num_agents: number,
     ) {};
 
-    protected _memory: Memory[] = [];
-    protected coach!: Coach; 
     public lawmaker!: Lawmaker; 
-    protected trainer!: AdvocacyTrainer; 
+    public _memory: Memory[] = []; 
+
+    public coach!: Coach; 
+    public trainer!: AdvocacyTrainer; 
 
     abstract _init_virtual_lawmaker(): void; 
 
@@ -33,20 +34,22 @@ export abstract class Simulacrum {
         }
         if (on_call) {
             const response = this.coach.process(episodalMemory);
-            
             return should_display_coach() ? response : "" 
         };
+
     };
 
     public trainer_end_of_session() {
         if (!this.trainer) {
             this.trainer = new AdvocacyTrainer(); 
         } 
-
+        
         const LongTermMemory = this.lawmaker.retrieve_memory('long_term'); 
+        
         if (!LongTermMemory) {
             throw new Error("No memory stored yet.")
         }
+       
         const response = this.trainer.process(LongTermMemory);
         return response
     }
