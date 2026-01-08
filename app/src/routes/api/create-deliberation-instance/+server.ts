@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json, error, redirect } from '@sveltejs/kit';
 import { DeliberationORM } from "$db/+server";
-
+import { Deliberation } from "$models/+deliberations"
 
 /* GET request will retrieve the DeliberationORM object if it exists in the database  */
 
@@ -10,17 +10,30 @@ export const POST: RequestHandler = async ( {cookies, request} ) => {
     const res = await request.json(); 
     console.log(userID)
     console.log(res)
+    
+    const d = new Deliberation(
+        res.username,
+        res.organization,
+        "deliberations",
+        res.policy_topic,
+        res.state, // make sure res.state exists
+        1,
+        res.ideology,
+        res.lawmaker_name
+    );
+
     try {
         await DeliberationORM.create(
         {
-            username: res.username, 
+            username: d._username, 
             unique_id: userID, 
-            organization: res.organization,
-            state: res.state,
-            policy_topic: res.policy_topic,
-            ideology: res.ideology,
-            lawmaker_name: res.lawmaker_name,
-
+            organization: d._group,
+            state: d.state,
+            policy_topic: d.policy_topic,
+            ideology: d.ideology,
+            lawmaker_name: d.lawmaker_name,
+            persona: d.lawmaker.persona,
+            conversation_turn: d.conversation_turn,
             /* No discussion history because this is initialization*/
         }
     ) 

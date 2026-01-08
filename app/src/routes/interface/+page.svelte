@@ -7,29 +7,30 @@
 
     let { data }: PageProps = $props(); 
 
-    let wsEventAdded = false;
-    // params for video streaming 
     let audioStreams: MediaStream | undefined;
     let videoStreams: MediaStream | undefined;
     let videoElem: HTMLVideoElement;
-    let videoElem2: HTMLVideoElement; //will remove
-    let buttonElemState = $state(false); //when user clicks turn on/off mic
+    let micOn = $state(false)
     let camOn = $state(false)
     let isProcessingAudio = false 
-    // params for audio management 
-    // let ws: WebSocket; //websocket
-    
-    // let recorder: MediaRecorder; //recorder 
-    // let audioBlobs: Blob[] = []; 
+  
     let audioElement: HTMLAudioElement;
 
     let EPHEMERAL_KEY: string | null;
-
-    // params for realtime transcription 
     let peerConnection: RTCPeerConnection | null;
     let dc: RTCDataChannel | null = null; 
     let isActiveSession: boolean = false; 
 
+
+    onMount(() => { 
+        console.log('Establishing WebRTC Peer Connection with OpenAI.')
+        establishOAIConnection()
+
+        console.log('Establishing video streams.');
+        getVideoStream();
+    });
+
+    /** CAMERA MANAGEMENT **/
     async function getVideoStream() { 
         try { 
             const videoAccept = window.navigator.mediaDevices; 
@@ -37,40 +38,38 @@
                 console.error('Browser does not support video streaming.')
                 throw MediaError;
             }
-
             videoStreams = await window.navigator.mediaDevices.getUserMedia( { video: true }); 
             videoElem.srcObject = videoStreams
-            videoElem2.srcObject = videoStreams
             console.log("Video streams enabled.")
         } catch (err) { 
             console.error(err)
         }
     }
 
-function toggleCamera() {
-    if (!videoStreams) return;
+    function toggleCamera() {
+        if (!videoStreams) return;
 
-    if (camOn) {
-        // Stop all video tracks
-        videoStreams.getVideoTracks().forEach(track => {
-        track.enabled = false; // disable the track
-        track.stop(); // stop sending video
-        });
-        camOn = false; // update state
-    } else {
-        // Camera is OFF — re-enable or create a new track
-        navigator.mediaDevices.getUserMedia({ video: true })
-        .then((newStream) => {
-            const newVideoTrack = newStream.getVideoTracks()[0];
-            if (videoStreams?.getVideoTracks().length) {
-                videoStreams.removeTrack(videoStreams.getVideoTracks()[0]);
-            }
-            videoStreams?.addTrack(newVideoTrack);
-            camOn = true;
-        })
-        .catch(err => console.error("Failed to enable camera:", err));
+        if (camOn) {
+            // Stop all video tracks
+            videoStreams.getVideoTracks().forEach(track => {
+            track.enabled = false; // disable the track
+            track.stop(); // stop sending video
+            });
+            camOn = false; // update state
+        } else {
+            // Camera is OFF — re-enable or create a new track
+            navigator.mediaDevices.getUserMedia({ video: true })
+            .then((newStream) => {
+                const newVideoTrack = newStream.getVideoTracks()[0];
+                if (videoStreams?.getVideoTracks().length) {
+                    videoStreams.removeTrack(videoStreams.getVideoTracks()[0]);
+                }
+                videoStreams?.addTrack(newVideoTrack);
+                camOn = true;
+            })
+            .catch(err => console.error("Failed to enable camera:", err));
+        }
     }
-}
 
     
 
@@ -93,9 +92,10 @@ function toggleCamera() {
     
     async function establishOAIConnection() {
         if (isActiveSession && peerConnection) {
-            console.log("WebRTC session already active, skipping new connection.");
+            console.log("WebRTC session already active.");
         return;
         }
+
         const pc = new RTCPeerConnection();
         console.log("Requesting ephemeral key")
 
@@ -107,6 +107,7 @@ function toggleCamera() {
             echoCancellation: true,
             autoGainControl: true,
         }});
+
         audioElement = document.createElement("audio");
         audioElement.autoplay = true;
 
@@ -118,6 +119,7 @@ function toggleCamera() {
         pc.addTrack(audioStreams.getTracks()[0])
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
+        
         const sdpResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
             method: "POST",
             body: offer.sdp,
@@ -132,52 +134,43 @@ function toggleCamera() {
             sdp: await sdpResponse.text(),
         }; 
         await pc.setRemoteDescription(answer);
-        console.log("Established remote connection")
-        peerConnection = pc
-        isActiveSession = true 
-        buttonElemState = true 
+
+        console.log("Established remote connection");
+
+        peerConnection = pc;
+        isActiveSession = true;
+        micOn = true;
+    
     }
 
     function closeOAIConnection() {
         if (!isActiveSession) {
             console.log("No active session to close.");
             return;
-        }
+        };
 
         if (isProcessingAudio){
-            console.log("Audio is still processing, finishing up before closing WebRTC connection.")
-            buttonElemState = false; // visual turns red BUT 
+            console.log("Audio is still processing, finishing up before closing WebRTC connection.") 
             setTimeout(closeOAIConnection, 2000); 
-        }
+        };
+
         console.log("Closing WebRTC connection...");
+        
         if (dc) {
             dc.close();
             dc = null;
-        }
+        };
+
         if (peerConnection) {
             peerConnection.getSenders().forEach((sender) => sender.track?.stop());
             peerConnection.close();
             peerConnection = null;
         }
-        isActiveSession = false;
-        buttonElemState = false // update store
-    }   
-    // function closeOAIConnection() {
-    //     if (dc) {
-    //         dc.close()
-    //         if (peerConnection) {
-    //             peerConnection.getSenders().forEach((sender) => {
-    //                 sender.track?.stop();}); 
 
-    //             peerConnection.close();
-    //         }
-    //         peerConnection = null; 
-    //         dc = null; 
-    //         isActiveSession = false 
-    //     } else {
-    //         console.log('All WebRTC P2P connection is already closed. ')
-    //     }
-    // }
+        isActiveSession = false;
+        micOn = false // update store
+    }   
+
 
     async function receiveEmittedEvents(evt: any) {
 
@@ -216,21 +209,6 @@ function toggleCamera() {
                 isProcessingAudio = false; 
     }} 
 
-
-    // function getWebSocket() {
-
-    //     if (!ws || ws.readyState === WebSocket.CLOSED) { 
-    //         ws =  new WebSocket("ws://localhost:8000/transcribe-audio")
-    //         console.log('Established WebSocket connection.')
-    //         if (!wsEventAdded) {
-    //             ws.addEventListener("message", handleAgentResponse);
-    //             wsEventAdded = true;
-    //         }
-    //     } 
-    //     return ws 
-    // }
-
-
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
         console.log("Agent's response: ", agentResponse)
@@ -256,14 +234,6 @@ function toggleCamera() {
     //     console.log(`Toggled microphone ${buttonElemState}`)
     // }
 
-    onMount(() => { 
-        console.log('Establishing WebRTC Peer Connection with OpenAI')
-        establishOAIConnection()
-        // console.log('Establishing websocket connections...')
-        // ws = getWebSocket();
-        console.log('Establishing video streams..');
-        getVideoStream();
-    });
 
     function completeSimulation() {
         console.log("Closing WebRTC peer connection")

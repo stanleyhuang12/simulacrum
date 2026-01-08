@@ -6,9 +6,9 @@ import { should_display_coach } from './+utils';
 
 export abstract class Simulacrum {
     constructor(
-        protected _username: string,
-        protected _group: string,
-        protected _simulacrum_type: string,
+        public _username: string,
+        public _group: string,
+        public _simulacrum_type: string,
         public policy_topic: string,
         public state: string,
         public num_agents: number,

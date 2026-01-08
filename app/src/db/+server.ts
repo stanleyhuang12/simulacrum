@@ -69,6 +69,10 @@ export const DeliberationORM = sequelize.define(
             type: DataTypes.JSON, 
             allowNull: true
         },
+        conversation_turn: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        }
     }, {
         sequelize, 
         modelName: "deliberations",

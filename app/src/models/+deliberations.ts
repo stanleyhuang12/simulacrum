@@ -308,7 +308,7 @@ export function hydrateDeliberationInstance( record: any) {
         record.state,
         1,  
         record.ideology,
-        record.lawmaker_name   
+        record.lawmaker_name  ,
     )
     if (record.memory) {
         d.lawmaker._rehydrate_memory(record.memory);
@@ -316,6 +316,10 @@ export function hydrateDeliberationInstance( record: any) {
 
     if (record.persona) {
         d.lawmaker.persona = record.persona
+    }
+
+    if (record.conversation_turn) {
+        d.conversation_turn = record.conversation_turn
     }
 
     return d
