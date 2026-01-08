@@ -20,6 +20,9 @@ export abstract class Simulacrum {
     public coach!: Coach; 
     public trainer!: AdvocacyTrainer; 
 
+    public guardrail_triggered: boolean = false; 
+    public guardrail_reason?: string;
+
     abstract _init_virtual_lawmaker(): void; 
 
     public coach_on_call(on_call:boolean=false) {

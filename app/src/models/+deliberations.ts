@@ -261,13 +261,16 @@ export class Deliberation extends Simulacrum {
 
         const guardrail_text = await agentResponse.text()
         if (guardrail_text.includes("BLOCK")){
+            this.guardrail_reason = guardrail_text
+            this.guardrail_triggered = true
+
             return {
                 triggered: true,
                 reason: guardrail_text 
             };
         } 
         
-        return { triggered: false}
+        return { triggered: false }
     };
 
     private initial_template(n: 0|1|2,) {
