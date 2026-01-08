@@ -77,6 +77,15 @@ export const DeliberationORM = sequelize.define(
         guardrail_tripwire: {
             type: DataTypes.BOOLEAN,
             allowNull: true 
+        },
+        guardrail_reason: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
+        guardrail_timestamp: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            defaultValue: DataTypes.NOW
         }
     }, {
         sequelize, 
@@ -86,12 +95,19 @@ export const DeliberationORM = sequelize.define(
 );
 
 export async function validateAndRetrieveDeliberation( uuid:any ) { 
-    const deliberationObject = await sequelize.models.deliberations.findByPk(uuid)
-    if (deliberationObject == null || deliberationObject == undefined){
+    const delibsRecord = await sequelize.models.deliberations.findByPk(uuid)
+    if (delibsRecord?.getDataValue('guardrail_reason') === true) {
+        
+    }
+    if (delibsRecord == null || delibsRecord == undefined){
         console.error("No deliberation instance found.")
         return null;
     }
-    return deliberationObject;
+
+   
+
+
+    return delibsRecord;
 }
 
 export async function updateDeliberationRecord ( record: Model, d: Deliberation, savedMemory:Array<Memory> ) { 

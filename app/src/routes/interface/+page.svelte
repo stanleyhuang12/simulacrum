@@ -3,6 +3,7 @@
     import { SSE } from 'sse.js'
     import { goto } from "$app/navigation";
     import type { PageProps} from "./$types";
+  import { redirect } from "@sveltejs/kit";
 
 
     let { data }: PageProps = $props(); 
@@ -213,9 +214,8 @@
         switch (res.type) {
             case "guardrail.triggered": 
                 console.log("Guardrail is triggered.");
-                blockPageWithGuardrail();
+                redirect(403, 'forbidden')
                 //** Handle UI/UX changes. */
-                break; 
             case "automated.response": 
                 handleAgentResponse(res.response); 
                 break; 
@@ -241,33 +241,6 @@
         audioElem.src = blobURL;
         audioElem.play();
 
-    }
-
-    function blockPageWithGuardrail() {
-        document.body.innerHTML = "";
-        let errorMessage = `504 - You were blocked because our system's guardrails were triggered. This may have been a mistake. 
-        Please contact the STRIPED team. 
-        `
-
-        document.body.style.backgroundColor = "#000"; 
-        document.body.style.color = "#fff";
-        document.body.style.display = "flex";
-        document.body.style.flexDirection = "column";
-        document.body.style.justifyContent = "center";
-        document.body.style.alignItems = "center";
-        document.body.style.height = "100vh";
-        document.body.style.margin = "0";
-        document.body.style.fontFamily = "Arial, sans-serif";
-
-        const messageEl = document.createElement("div");
-        messageEl.style.fontSize = "2rem";
-        messageEl.style.textAlign = "center";
-        messageEl.textContent = errorMessage;
-
-        document.body.appendChild(messageEl);
-
-        document.body.onclick = () => {};
-        document.body.onkeydown = () => {};
     }
 
 

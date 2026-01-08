@@ -1,18 +1,30 @@
 import type { RequestHandler } from './$types';
 import { json, error, text } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { validateAndRetrieveDeliberation, updateDeliberationRecord } from "$db/+server";
 import { hydrateDeliberationInstance } from '$models/+deliberations';
 /* GET request will retrieve the DeliberationORM object if it exists in the database  */
 
 
-export const POST: RequestHandler = async ( {cookies, request} ) => {
-    const userID = await cookies.get('session-id-delibs'); 
-    const input = await request.text(); 
+export const POST: RequestHandler = async ( event ) => {
+    const userID = await event.cookies.get('session-id-delibs'); 
+    const input = await event.request.text(); 
     console.log(userID)
     console.log(input)
 
     try { 
         const delibsRecord = await validateAndRetrieveDeliberation(userID)
+         
+        if (delibsRecord?.getDataValue('guardrail_tripwire')){
+            event.cookies.set('session-id-delibs', event.cookies.get('session-id-delibs')!, {
+                path: '/',
+                httpOnly: true,
+                sameSite: 'lax',
+                maxAge: 7 * 24 * 60 * 60 
+            });
+            redirect(403, 'forbidden')
+        }
+
         if (delibsRecord == null ) { return error(404, "No deliberation object found.")}
         const d = hydrateDeliberationInstance(delibsRecord)
 
