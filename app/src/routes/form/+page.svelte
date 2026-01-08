@@ -2,6 +2,8 @@
     import { enhance } from '$app/forms';
     import { boolean, number } from 'mathjs';
     import { onMount } from "svelte";
+    import { fade } from 'svelte/transition';
+    import {  random_lawmaker_persona_generator } from "$models/+utils"
       
 
     type FormMetadata = {
@@ -33,6 +35,9 @@
         selectedGender: "",
     });
 
+    let lawmakerSelectionMade = $state(false); 
+    let showRandomForm = $state(false); 
+    let showPreSpecForm = $state(false); 
 
     // let currentStep = "";
     
@@ -44,6 +49,25 @@
         });
         console.log("Fetch status", res.status)
     });
+
+    function handlePreSpecClick() {
+      lawmakerSelectionMade = true;
+      showPreSpecForm = true;
+    }
+
+    function handleRandomClick() {
+      lawmakerSelectionMade = true;
+      showRandomForm = true;
+      // Example: generate random lawmaker persona
+      const randomPersona = random_lawmaker_persona_generator();
+      form.selectedLawmaker = randomPersona.lawmaker_name;
+      form.selectedGender = randomPersona.gender;
+      form.selectedEthnicity = randomPersona.ethnicity;
+      form.selectedRace = randomPersona.race;
+      form.selectedIdeology = randomPersona.ideology;
+      form.selectedState = randomPersona.ideology;
+    }
+
     
 
 </script>
@@ -246,57 +270,69 @@ button:disabled {
 </style>
 <!--  -->
 
-
 <form id="begin-delibs-survey-form" method="POST" action="?/submit" use:enhance>
-      <div class="form-grid">
-        <section class="user-section">
-            <h1 color="purple"> Legislative Simulacrum </h1>
-            <p>Fill out the form to start interacting with virtual lawmakers.</p>
+  <div class="form-grid">
 
-          <div class="user-data">
-              <h3>User data</h3>
-                  <label class="label-question"  id="user-data-field">
-                    What is your name?
-                    <input type="text" name="username" bind:value={form.userName} id="username" placeholder="John Doe">
-                  </label>
-                  
-                  <label class="label-question" id="user-data-field">
-                    What is your email?
-                    <input type="email" bind:value={form.userEmail} id="email" name="userEmail" placeholder="johndoe@gmail.com" size=50>
-                  </label>
+    <!-- User Section -->
+    <section class="user-section">
+      <h1 color="purple">Legislative Simulacrum</h1>
+      <p>Fill out the form to start interacting with virtual lawmakers.</p>
 
-                  <label class="label-question">
-                      What organization are you part of?
-                      <input type="text" name="organization" bind:value={form.userOrg} id="organization" placeholder="Strategic Training Initiative for the Prevention of Eating Disorders" size="70">
-                  </label>
-                <label class="label-question">
-                  What is the policy topic you are discussing with the lawmaker?
-                  <textarea name="policy_topic" id="policy-topic" bind:value={form.selectedPolicyTopic} placeholder="Out of Kids' Hands campaign: A bill to restrict the sale of over-the-counter dietary supplements to minors"></textarea>
-              </label>
+      <div class="user-data">
+        <h3>User Data</h3>
+        <label class="label-question">
+          What is your name?
+          <input type="text" name="username" bind:value={form.userName} placeholder="John Doe" />
+        </label>
 
-          </div>
-        </section> 
+        <label class="label-question">
+          What is your email?
+          <input type="email" name="userEmail" bind:value={form.userEmail} placeholder="johndoe@gmail.com" />
+        </label>
 
-        <section class="lawmaker-section">
-          <div class="lawmaker-data">
-            
-            <label class="label-question">
-                Lawmaker name
-                <input type="text" name="lawmaker_name" bind:value={form.selectedLawmaker} placeholder="Representative John Doe" size="60"> 
-            </label>
-            <label for="lawmakerGender" class="label-question">
-              Gender
-              <select name="lawmakerGender" bind:value={form.selectedGender}>
-                <option value="">-- Select gender --</option>
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-                <option value="non-binary">Non-binary</option>
-                <option value="other">Other</option>
-                <option value="prefer-not-to-say">Prefer not to say</option>
-              </select>
+        <label class="label-question">
+          What organization are you part of?
+          <input type="text" name="organization" bind:value={form.userOrg} placeholder="Strategic Training Initiative for the Prevention of Eating Disorders" />
+        </label>
+
+        <label class="label-question">
+          Policy topic:
+          <textarea name="policy_topic" bind:value={form.selectedPolicyTopic} placeholder="Out of Kids' Hands campaign..."></textarea>
+        </label>
+      </div>
+    </section>
+
+    <!-- Lawmaker Section -->
+    <section class="lawmaker-section">
+      {#if !lawmakerSelectionMade}
+        <div class="lawmaker-selection-buttons" transition:fade>
+          <button type="button" onclick={handleRandomClick}>Generate Random Lawmaker</button>
+          <button type="button" onclick={handlePreSpecClick}>Pre-specify Lawmaker Profile</button>
+        </div>
+      {/if}
+
+      {#if showPreSpecForm}
+        <div class="lawmaker-data" transition:fade>
+          <h3>Pre-specify Lawmaker</h3>
+
+          <label class="label-question">
+            Name
+            <input type="text" name="lawmaker_name" bind:value={form.selectedLawmaker} placeholder="Representative John Doe" />
           </label>
 
-          <label for="lawmakerEthnicity" class="label-question">
+          <label class="label-question">
+            Gender
+            <select name="lawmakerGender" bind:value={form.selectedGender}>
+              <option value="">-- Select gender --</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="non-binary">Non-binary</option>
+              <option value="other">Other</option>
+              <option value="prefer-not-to-say">Prefer not to say</option>
+            </select>
+          </label>
+
+          <label class="label-question">
             Ethnicity
             <select name="lawmakerEthnicity" bind:value={form.selectedEthnicity}>
               <option value="">-- Select ethnicity --</option>
@@ -311,7 +347,7 @@ button:disabled {
             </select>
           </label>
 
-          <label for="race" class="label-question">
+          <label class="label-question">
             Race
             <select name="lawmakerRace" bind:value={form.selectedRace}>
               <option value="">-- Select race --</option>
@@ -325,106 +361,36 @@ button:disabled {
             </select>
           </label>
 
-          <label for="lawmakerAge" class="label-question">
-            Age range
-            <select name="lawmakerAge">
-              <option value="">-- Select age range --</option>
-              <option value="18-24">18-24</option>
-              <option value="25-34">25-34</option>
-              <option value="35-44">35-44</option>
-              <option value="45-54">45-54</option>
-              <option value="55-64">55-64</option>
-              <option value="65+">65+</option>
-            </select>
+          <label class="label-question">
+            State
+            <input type="text" name="state" bind:value={form.selectedState} placeholder="e.g., California" />
           </label>
 
-
-            <label for="state" class="label-question">
-            Select the state of the lawmaker you wish to talk with?
-            <select id="state" name="state" bind:value={form.selectedState} class="label-question">
-                <option value="">-- Select a state --</option>
-                <option value="AL">Alabama</option>
-                <option value="AK">Alaska</option>
-                <option value="AZ">Arizona</option>
-                <option value="AR">Arkansas</option>
-                <option value="CA">California</option>
-                <option value="CO">Colorado</option>
-                <option value="CT">Connecticut</option>
-                <option value="DE">Delaware</option>
-                <option value="FL">Florida</option>
-                <option value="GA">Georgia</option>
-                <option value="HI">Hawaii</option>
-                <option value="ID">Idaho</option>
-                <option value="IL">Illinois</option>
-                <option value="IN">Indiana</option>
-                <option value="IA">Iowa</option>
-                <option value="KS">Kansas</option>
-                <option value="KY">Kentucky</option>
-                <option value="LA">Louisiana</option>
-                <option value="ME">Maine</option>
-                <option value="MD">Maryland</option>
-                <option value="MA">Massachusetts</option>
-                <option value="MI">Michigan</option>
-                <option value="MN">Minnesota</option>
-                <option value="MS">Mississippi</option>
-                <option value="MO">Missouri</option>
-                <option value="MT">Montana</option>
-                <option value="NE">Nebraska</option>
-                <option value="NV">Nevada</option>
-                <option value="NH">New Hampshire</option>
-                <option value="NJ">New Jersey</option>
-                <option value="NM">New Mexico</option>
-                <option value="NY">New York</option>
-                <option value="NC">North Carolina</option>
-                <option value="ND">North Dakota</option>
-                <option value="OH">Ohio</option>
-                <option value="OK">Oklahoma</option>
-                <option value="OR">Oregon</option>
-                <option value="PA">Pennsylvania</option>
-                <option value="RI">Rhode Island</option>
-                <option value="SC">South Carolina</option>
-                <option value="SD">South Dakota</option>
-                <option value="TN">Tennessee</option>
-                <option value="TX">Texas</option>
-                <option value="UT">Utah</option>
-                <option value="VT">Vermont</option>
-                <option value="VA">Virginia</option>
-                <option value="WA">Washington</option>
-                <option value="WV">West Virginia</option>
-                <option value="WI">Wisconsin</option>
-                <option value="WY">Wyoming</option>   
-            </select>
+          <div class="radio-group">
+            <label>Political orientation:
+            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="very conservative" /> Very conservative</label>
+            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="conservative" /> Conservative</label>
+            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="independent" /> Independent</label>
+            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="liberal" /> Liberal</label>
+            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="very liberal" /> Very liberal</label>
             </label>
-            <div class="radio-group">
-                <label class="label-question" for="radio">Choose your lawmaker type or political orientation:</label>
-                
-                <label>
-                  <input type="radio" name="ideology" bind:group={form.selectedIdeology} value="very conservative">
-                  Very conservative
-                </label>
-                
-                <label>
-                  <input type="radio" name="ideology" bind:group={form.selectedIdeology} value="conservative">
-                  Conservative
-                </label>
-                
-                <label>
-                  <input type="radio" name="ideology" bind:group={form.selectedIdeology} value="independent">
-                  Independent
-                </label>
-                
-                <label>
-                  <input type="radio" name="ideology" bind:group={form.selectedIdeology} value="liberal">
-                  Liberal
-                </label>
-                
-                <label>
-                  <input type="radio" name="ideology" bind:group={form.selectedIdeology} value="very liberal">
-                  Very liberal
-                </label>
-            </div>
           </div>
-        </section>
-      </div>
-    <button type="submit" onsubmit={(e) => e.preventDefault()} formaction="?/submit">Enter simulated Deliberations with your virtual lawmaker!</button>
+        </div>
+      {/if}
+
+      {#if showRandomForm}
+        <div class="lawmaker-data" transition:fade>
+          <h3>Random Lawmaker Generated</h3>
+          <p><strong>Name:</strong> {form.selectedLawmaker}</p>
+          <p><strong>Gender:</strong> {form.selectedGender}</p>
+          <p><strong>Ethnicity:</strong> {form.selectedEthnicity}</p>
+          <p><strong>Race:</strong> {form.selectedRace}</p>
+          <p><strong>State:</strong> {form.selectedState}</p>
+          <p><strong>Political orientation:</strong> {form.selectedIdeology}</p>
+        </div>
+      {/if}
+    </section>
+  </div>
+
+  <button type="submit" formaction="?/submit">Enter simulated Deliberations with your virtual lawmaker!</button>
 </form>

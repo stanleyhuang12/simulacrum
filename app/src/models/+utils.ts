@@ -80,10 +80,10 @@ export type Persona = {
     "race": "white" | "black" | "asian" | "native-american" | "pacific-islander" | "prefer-not-to-say"
     "age": "18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+";
     "state": USState,
-    "political_orientation":  "Very conservative" | "Conservative" | "Independent"| "Liberal" | "Very liberal";
+    "ideology":  "Very conservative" | "Conservative" | "Independent"| "Liberal" | "Very liberal";
 }
 
-const neutralNames = [
+export const neutralNames = [
   "Bright Star",
   "Silver Leaf",
   "Moonbeam",
@@ -96,8 +96,8 @@ const neutralNames = [
   "Frost Whisper"
 ];
 
-const genders: Persona["gender"][] = ["female", "male", "nonbinary", "prefer-not-to-say"];
-const ethnicities: Persona["ethnicity"][] = [
+export const genders: Persona["gender"][] = ["female", "male", "nonbinary", "prefer-not-to-say"];
+export const ethnicities: Persona["ethnicity"][] = [
   "hispanic-latino",
   "white-non-hispanic",
   "black-african-american",
@@ -106,9 +106,9 @@ const ethnicities: Persona["ethnicity"][] = [
   "pacific-islander",
   "prefer-not-to-say",
 ];
-const races: Persona["race"][] = ["white", "black", "asian", "native-american", "pacific-islander", "prefer-not-to-say"];
-const ageBrackets: Persona["age"][] = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
-const politicalOrientations: Persona["political_orientation"][] = [
+export const races: Persona["race"][] = ["white", "black", "asian", "native-american", "pacific-islander", "prefer-not-to-say"];
+export const ageBrackets: Persona["age"][] = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
+export const ideology: Persona["ideology"][] = [
   "Very conservative",
   "Conservative",
   "Independent",
@@ -124,7 +124,7 @@ const usStates: USState[] = [
   "Wisconsin","Wyoming","District of Columbia"
 ];
 
-function randomElement<T>(arr: T[]): T {
+export function randomElement<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
@@ -136,11 +136,11 @@ export function random_lawmaker_persona_generator(): Persona {
     race: randomElement(races),
     age: randomElement(ageBrackets),
     state: randomElement(usStates),
-    political_orientation: randomElement(politicalOrientations),
+    ideology: randomElement(ideology),
   };
 }
 
-type VirtualLawmakerInstructionsTemplateType = Record<
+export type VirtualLawmakerInstructionsTemplateType = Record<
   "support" | "support_with_caution" | "disagree_with_caution",
   string
 >;

@@ -42,13 +42,13 @@
   }
 }
 
-body {
+/* body {
   background: radial-gradient(
     circle at top,
     rgba(125, 0, 208, 0.15),
     transparent 70%
   );
-}
+} */
 
 /* === MAIN PANEL === */
 #preamble {

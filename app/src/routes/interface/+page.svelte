@@ -341,13 +341,13 @@ button:hover {
 
 
 
-.complete-simulation {
+/* .complete-simulation {
     color: white; 
     background: black; 
     border-radius: 20px; 
     border: none;
     padding: 10px 10px; 
-}
+} */
 
 #enable-microphone, #enable-camera {
   background-color: forestgreen;
