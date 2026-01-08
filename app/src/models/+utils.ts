@@ -1,9 +1,11 @@
 import jStat from 'jstat';
+import type { Json } from 'sequelize/lib/utils';
 
 export type Dialogue = {
     prompt: string; 
     response: string;
 };
+
 
 export type ChatMessage = {
     role: "system" | "user" | "assistant",
@@ -15,6 +17,113 @@ export type Memory = {
     "dialogue": Dialogue, 
     "model": string,
     "episodeNumber": number
+}
+
+export type USState =
+  | "Alabama"
+  | "Alaska"
+  | "Arizona"
+  | "Arkansas"
+  | "California"
+  | "Colorado"
+  | "Connecticut"
+  | "Delaware"
+  | "Florida"
+  | "Georgia"
+  | "Hawaii"
+  | "Idaho"
+  | "Illinois"
+  | "Indiana"
+  | "Iowa"
+  | "Kansas"
+  | "Kentucky"
+  | "Louisiana"
+  | "Maine"
+  | "Maryland"
+  | "Massachusetts"
+  | "Michigan"
+  | "Minnesota"
+  | "Mississippi"
+  | "Missouri"
+  | "Montana"
+  | "Nebraska"
+  | "Nevada"
+  | "New Hampshire"
+  | "New Jersey"
+  | "New Mexico"
+  | "New York"
+  | "North Carolina"
+  | "North Dakota"
+  | "Ohio"
+  | "Oklahoma"
+  | "Oregon"
+  | "Pennsylvania"
+  | "Rhode Island"
+  | "South Carolina"
+  | "South Dakota"
+  | "Tennessee"
+  | "Texas"
+  | "Utah"
+  | "Vermont"
+  | "Virginia"
+  | "Washington"
+  | "West Virginia"
+  | "Wisconsin"
+  | "Wyoming"
+  | "District of Columbia";
+
+export type Persona = {
+    "lawmaker_name": string, 
+    "gender": "female" | "male" | "nonbinary" | "prefer-not-to-say"
+    "ethnicity": "hispanic-latino"| "white-non-hispanic" | "black-african-american"| "asian" | "native-american" | "pacific-islander" | "prefer-not-to-say"
+    "race": "white" | "black" | "asian" | "native-american" | "pacific-islander" | "prefer-not-to-say"
+    "age": "18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+";
+    "state": USState,
+    "political_orientation":  "Very conservative" | "Conservative" | "Independent"| "Liberal" | "Very liberal";
+}
+
+const genders: Persona["gender"][] = ["female", "male", "nonbinary", "prefer-not-to-say"];
+const ethnicities: Persona["ethnicity"][] = [
+  "hispanic-latino",
+  "white-non-hispanic",
+  "black-african-american",
+  "asian",
+  "native-american",
+  "pacific-islander",
+  "prefer-not-to-say",
+];
+const races: Persona["race"][] = ["white", "black", "asian", "native-american", "pacific-islander", "prefer-not-to-say"];
+const ageBrackets: Persona["age"][] = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
+const politicalOrientations: Persona["political_orientation"][] = [
+  "Very conservative",
+  "Conservative",
+  "Independent",
+  "Liberal",
+  "Very liberal",
+];
+const usStates: USState[] = [
+  "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia",
+  "Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts",
+  "Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey",
+  "New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island",
+  "South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
+  "Wisconsin","Wyoming","District of Columbia"
+];
+
+function randomElement<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+export function random_lawmaker_persona_generator(): Persona {
+  return {
+    lawmaker_name: "French Fries",
+    gender: randomElement(genders),
+    ethnicity: randomElement(ethnicities),
+    race: randomElement(races),
+    age: randomElement(ageBrackets),
+    state: randomElement(usStates),
+    political_orientation: randomElement(politicalOrientations),
+  };
 }
 
 type VirtualLawmakerInstructionsTemplateType = Record<
@@ -51,6 +160,8 @@ export function random_beta_sampler(
 ):number {
     return (jStat as any).beta.sample(a, b)
 };
+
+
 
 export function should_display_coach(
     threshold=0.5
