@@ -12,6 +12,7 @@ export type ChatMessage = {
     content: string
 }
 
+
 export type Memory = {
     "prompt": ChatMessage[], 
     "dialogue": Dialogue, 
@@ -82,6 +83,19 @@ export type Persona = {
     "political_orientation":  "Very conservative" | "Conservative" | "Independent"| "Liberal" | "Very liberal";
 }
 
+const neutralNames = [
+  "Bright Star",
+  "Silver Leaf",
+  "Moonbeam",
+  "Golden Echo",
+  "Crimson Cloud",
+  "Twilight Spark",
+  "Aurora Mist",
+  "Shadow Flicker",
+  "Echo Vale",
+  "Frost Whisper"
+];
+
 const genders: Persona["gender"][] = ["female", "male", "nonbinary", "prefer-not-to-say"];
 const ethnicities: Persona["ethnicity"][] = [
   "hispanic-latino",
@@ -116,7 +130,7 @@ function randomElement<T>(arr: T[]): T {
 
 export function random_lawmaker_persona_generator(): Persona {
   return {
-    lawmaker_name: "French Fries",
+    lawmaker_name: randomElement(neutralNames),
     gender: randomElement(genders),
     ethnicity: randomElement(ethnicities),
     race: randomElement(races),
