@@ -195,20 +195,34 @@
                 if (!event.transcript) {
                     break;
                 }
-                // ws.send(text); 
-                const result = await fetch("/api/manage-deliberation-instance", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "text/plain",
-                    }, 
-                    body: text
-                })
-
-                const agentResponse = await result.text()
-                handleAgentResponse(agentResponse)
+                processText(text)
                 isProcessingAudio = false; 
     }} 
 
+    async function processText(text: string) {
+        const result = await fetch("/api/manage-deliberation-instance", {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain",
+            }, 
+            body: text
+        });
+
+        const res = await result.json();
+
+        switch (res.type) {
+            case "guardrail.triggered": 
+                console.log("Guardrail is triggered.");
+                blockPageWithGuardrail();
+                //** Handle UI/UX changes. */
+                break; 
+            case "automated.response": 
+                handleAgentResponse(res.response); 
+                break; 
+        }
+    }
+
+    
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
         console.log("Agent's response: ", agentResponse)
@@ -226,18 +240,40 @@
         const audioElem = new Audio();
         audioElem.src = blobURL;
         audioElem.play();
+
     }
 
+    function blockPageWithGuardrail() {
+        document.body.innerHTML = "";
+        let errorMessage = `504 - You were blocked because our system's guardrails were triggered. This may have been a mistake. 
+        Please contact the STRIPED team. 
+        `
+
+        document.body.style.backgroundColor = "#000"; 
+        document.body.style.color = "#fff";
+        document.body.style.display = "flex";
+        document.body.style.flexDirection = "column";
+        document.body.style.justifyContent = "center";
+        document.body.style.alignItems = "center";
+        document.body.style.height = "100vh";
+        document.body.style.margin = "0";
+        document.body.style.fontFamily = "Arial, sans-serif";
+
+        const messageEl = document.createElement("div");
+        messageEl.style.fontSize = "2rem";
+        messageEl.style.textAlign = "center";
+        messageEl.textContent = errorMessage;
+
+        document.body.appendChild(messageEl);
+
+        document.body.onclick = () => {};
+        document.body.onkeydown = () => {};
+    }
 
 
     function completeSimulation() {
         console.log("Closing WebRTC peer connection")
         closeOAIConnection()
-        // if (ws && ws.readyState == WebSocket.OPEN) {
-        //     ws.close()
-        //     console.log("Closing WebSocket connection.")
-        // }
-
         try {
             if (videoStreams) {
                 videoStreams.getTracks().forEach(track => track.stop());
@@ -389,7 +425,7 @@ button:hover {
 
     <div class="controls">
         <!--Microphone toggle -->
-        {#if $state.snapshot(buttonElemState) === false } 
+        {#if $state.snapshot(micOn) === false } 
             <button class="microphone" id='enable-microphone' onclick={establishOAIConnection} aria-label="enable-microphone">🎙️ Turn on mic</button>
         {:else}
             <button class="microphone" id='disable-microphone' onclick={closeOAIConnection} aria-label="disable-microphone">🔇 Turn off mic</button>
