@@ -223,7 +223,19 @@ export class Deliberation extends Simulacrum {
         this.lawmaker = new Lawmaker(this._username, this.lawmaker_name, this.state, this.ideology, this.policy_topic)
     }
 
-    public async _guardrail_moderation(text: string) {
+    public async _guardrail_moderation(text: string, last_n: number=3) {
+        /** Passes in the last n exchanges to do guardrail moderations **/
+        let userTranscript: string = ""; 
+        
+        this._memory.slice(last_n).forEach(item => {
+            userTranscript += item.dialogue.prompt.trim() + ""
+        });
+        userTranscript.trim(); 
+
+        if (userTranscript === "") {
+            return {    triggered: false    }
+        }
+ 
         let guardrail_persona: ChatMessage = {
             "role": "system",
             "content": ADVOCACY_GUARDRAILS
@@ -249,11 +261,15 @@ export class Deliberation extends Simulacrum {
 
         const guardrail_text = await agentResponse.text()
         if (guardrail_text.includes("BLOCK")){
-            throw new Error("Guardrail has blocked this input. Execution stopped.")
+            return {
+                triggered: true,
+                reason: guardrail_text 
+            };
         } 
         
-        return true 
+        return { triggered: false}
     };
+
     private initial_template(n: 0|1|2,) {
         let templateText =  initChatTemplate[n]
         
@@ -267,7 +283,7 @@ export class Deliberation extends Simulacrum {
         const turn = this.conversation_turn;
         this.conversation_turn +1;
 
-        if (turn <= 1) {
+        if (turn <= 2) {
             const text = this.initial_template(turn as 0 | 1 | 2);
             const currentDialogue: Dialogue = {
                 prompt: input,
@@ -276,22 +292,7 @@ export class Deliberation extends Simulacrum {
             
             this.lawmaker.log_episodal_memory(currentDialogue, "automated_response")
         }
-
-
-        if (turn === 2) {
-
-            let userTranscript: string = ""; 
-            this._memory.forEach(item => {
-                userTranscript += item.dialogue.prompt.trim() + ""
-            });
-
-            userTranscript.trim(); 
-            await this._guardrail_moderation(input); 
-
-            return this.lawmaker.process(input)
-        }
-
-        return this.lawmaker.process(input);
+        return this.lawmaker.process(input); /*Note that process automatically perform logging of episodal memory*/
     }
 }
 
@@ -321,6 +322,7 @@ export function hydrateDeliberationInstance( record: any) {
     if (record.conversation_turn) {
         d.conversation_turn = record.conversation_turn
     }
+
 
     return d
 }

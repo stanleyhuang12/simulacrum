@@ -229,11 +229,6 @@
     }
 
 
-    // function toggleMicrophone() { 
-    //     buttonElemState = !buttonElemState
-    //     console.log(`Toggled microphone ${buttonElemState}`)
-    // }
-
 
     function completeSimulation() {
         console.log("Closing WebRTC peer connection")

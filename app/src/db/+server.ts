@@ -1,5 +1,6 @@
 
-import { Sequelize, Model, DataTypes } from "sequelize"; 
+import { Sequelize, Model, DataTypes } from "sequelize";
+import { Deliberation } from "../models/+deliberations"; 
 import type { ModelOptions } from "sequelize"; 
 import { type Memory } from "../models/+deliberations";
 import { DB_USER, DB_HOST, DB_NAME, DB_PASS } from "$env/static/private";
@@ -72,6 +73,10 @@ export const DeliberationORM = sequelize.define(
         conversation_turn: {
             type: DataTypes.INTEGER,
             allowNull: false
+        },
+        guardrail_tripwire: {
+            type: DataTypes.BOOLEAN,
+            allowNull: true 
         }
     }, {
         sequelize, 
@@ -89,10 +94,11 @@ export async function validateAndRetrieveDeliberation( uuid:any ) {
     return deliberationObject;
 }
 
-export async function updateDeliberationRecord ( deliberationRecord: Model, savedMemory:Array<Memory> ) { 
+export async function updateDeliberationRecord ( record: Model, d: Deliberation, savedMemory:Array<Memory> ) { 
     try {
-        return deliberationRecord.update({
-            memory: savedMemory
+        return record.update({
+            memory: savedMemory,
+            conversation_turn: d.conversation_turn
         }) 
     } catch(err) {
         console.error(`Failed to update deliberation record in PostgreSQL database. ${err}`)
