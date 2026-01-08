@@ -1,7 +1,6 @@
 import { Simulacrum } from './+simulacrum';
 import type { ChatMessage, Dialogue } from './+utils';
 import { random_beta_sampler, ADVOCACY_GUARDRAILS } from './+utils';
-import { GuardrailsOpenAI, GuardrailTripwireTriggered } from "@openai/guardrails";
 
 /**
  * TYPES 
@@ -220,6 +219,18 @@ export class Deliberation extends Simulacrum {
     }
 
     public async _guardrail_moderation(text: string) {
+        let guardrail_persona: ChatMessage = {
+            "role": "system",
+            "content": ADVOCACY_GUARDRAILS
+        }
+
+        let task: ChatMessage = {
+            "role": "user",
+            "content": text
+        }
+
+        let prompt: ChatMessage[] = [guardrail_persona, task]
+
         const agentResponse = await fetch("/api/llm-process", {
             method: "POST",
             headers: {
@@ -227,7 +238,7 @@ export class Deliberation extends Simulacrum {
             },
             body: JSON.stringify({
                 "model": "gpt-4.1-mini",
-                "messages": text
+                "messages": prompt
             })
         });
 
