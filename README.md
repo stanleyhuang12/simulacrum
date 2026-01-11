@@ -7,4 +7,4 @@ which can be one-to-one deliberations or hearings.
 Our tool empowers and encourages community advocates to engage with democratic processes by lowering the barrier and providing a stepping-stone experience.
 
 
-![poster-conference-at-boston-children-hospital-on-legislative-simulacrum](/assets/bch_poster.pdf)
+![poster-conference-at-boston-children-hospital-on-legislative-simulacrum](/assets/bch_poster_png.png)
