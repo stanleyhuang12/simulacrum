@@ -196,6 +196,8 @@
                 if (!event.transcript) {
                     break;
                 }
+                console.log(text)
+                
                 processText(text)
                 isProcessingAudio = false; 
     }} 

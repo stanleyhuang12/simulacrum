@@ -38,7 +38,8 @@ export const POST: RequestHandler = async ( event ) => {
             }
         }
 
-        const response = await d.panel_discussion(input)
+        const response = await d.panel_discussion(input, event.fetch)
+        console.log(response)
         await updateDeliberationRecord( delibsRecord, d, await d.lawmaker._retrieve_deserialized_memory() )
         console.log('Deliberation record in PostgreSQL updated!')
         

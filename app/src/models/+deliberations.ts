@@ -1,7 +1,6 @@
 import { Simulacrum } from './+simulacrum';
 import type { ChatMessage, Dialogue } from './+utils';
 import { random_beta_sampler, ADVOCACY_GUARDRAILS } from './+utils';
-
 /**
  * TYPES 
  **/
@@ -148,6 +147,7 @@ export class Lawmaker {
     */
     public async process(
         input: string,
+        fetchFn: typeof fetch,
         model: string = "gpt-4.1", 
     ) { 
         const systemInstructions: ChatMessage = {
@@ -167,7 +167,7 @@ export class Lawmaker {
         const messages: ChatMessage[] = [systemInstructions, userInstructions]
         
         try {
-            const response = await fetch("/api/llm-process", {
+            const response = await fetchFn("/api/llm-process", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -282,9 +282,9 @@ export class Deliberation extends Simulacrum {
 
         return templateText
     };
-    public async panel_discussion(input: string) {
+    public async panel_discussion(input: string, fetchFn: typeof fetch) {
         const turn = this.conversation_turn;
-        this.conversation_turn +1;
+        this.conversation_turn++;
 
         if (turn <= 2) {
             const text = this.initial_template(turn as 0 | 1 | 2);
@@ -295,7 +295,7 @@ export class Deliberation extends Simulacrum {
             
             this.lawmaker.log_episodal_memory(currentDialogue, "automated_response")
         }
-        return this.lawmaker.process(input); /*Note that process automatically perform logging of episodal memory*/
+        return this.lawmaker.process(input, fetchFn); /*Note that process automatically perform logging of episodal memory*/
     }
 }
 

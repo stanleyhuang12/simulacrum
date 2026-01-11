@@ -398,8 +398,10 @@ button:disabled {
       <p><strong>Political orientation:</strong> {form.selectedIdeology}</p>
       <input type="hidden" name="selectedIdeology" bind:value={form.selectedIdeology} />
     </div>
+
   {/if}
 
+  </section>
   </div>
 
   <button type="submit" formaction="?/submit">Enter simulated Deliberations with your virtual lawmaker!</button>
