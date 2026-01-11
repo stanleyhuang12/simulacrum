@@ -11,6 +11,7 @@ export const load: PageServerLoad = async (event) => {
 
   try {
     form = uriData ? JSON.parse(decodeURIComponent(uriData)) : null;
+    console.log(form);
   } catch {
     cookies.set('persistent-avatar-cache', 'failed', {
       path: '/',
@@ -28,6 +29,8 @@ export const load: PageServerLoad = async (event) => {
       status: 200
     };
   }
+
+
 
   if (!form) {
     cookies.set('persistent-avatar-cache', 'failed', {

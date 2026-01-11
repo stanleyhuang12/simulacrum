@@ -7,7 +7,7 @@
 
     let { data }: PageProps = $props();
     let revealDeliberationStatus = $state(false);
-    let alertMessage = `${data.form.lawmaker_name} has joined the meeting and is inviting you in. Whenever you are ready, you can click join to enter the call!`;
+    let alertMessage = `${data.form.selectedLawmaker} has joined the meeting and is inviting you in. Whenever you are ready, you can click join to enter the call!`;
     
     onMount(() => {
         startButtonTimer(); 
@@ -187,9 +187,11 @@ ul li {
   </h3>
 
   <p in:fade={{delay:700}}>
-    Your meeting on <strong>{data.form.policy_topic.toUpperCase()}</strong> 
-    with an AI-persona of <strong>{data.form.lawmaker_name.toUpperCase()}</strong>, 
-    a <strong>{data.form.ideology}</strong> lawmaker from <strong>{data.form.state}</strong>, is starting...
+    
+    Your meeting on <strong>{data.form.policy_topic}</strong> 
+    with an AI-persona of <strong>{data.form.selectedLawmaker}</strong>, 
+    a <strong>{data.form.selectedIdeology}</strong> lawmaker from <strong>{data.form.selectedState}</strong>, is starting...
+  
   </p>
 
   <ul in:fade={{delay:1200}}>
@@ -207,10 +209,9 @@ ul li {
   </div>
 
 
-
   <div class="disclaimer">
     <strong>Disclaimer:</strong> This experience uses an AI-generated simulation of a public official for educational and training purposes only. The views expressed do not represent real individuals, institutions, or policy positions. Moreover, 
-    the lawmaker avatar profile is AI-generated which may contain visual discrepancies. 
+    the lawmaker avatar profile is AI-generated which may contain visual discrepancies. Through out this experience, only the virtual lawmaker's political orientation and location are used to simulate conversations. 
   </div>
   
   <p in:fade={{delay:1600}} class="preamble-footnote">

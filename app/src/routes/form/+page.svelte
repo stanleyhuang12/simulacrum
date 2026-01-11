@@ -317,12 +317,12 @@ button:disabled {
 
           <label class="label-question">
             Name
-            <input type="text" name="lawmaker_name" bind:value={form.selectedLawmaker} placeholder="Representative John Doe" />
+            <input type="text" name="selectedLawmaker" bind:value={form.selectedLawmaker} placeholder="Representative John Doe" />
           </label>
 
           <label class="label-question">
             Gender
-            <select name="lawmakerGender" bind:value={form.selectedGender}>
+            <select name="selectedGender" bind:value={form.selectedGender}>
               <option value="">-- Select gender --</option>
               <option value="female">Female</option>
               <option value="male">Male</option>
@@ -334,7 +334,7 @@ button:disabled {
 
           <label class="label-question">
             Ethnicity
-            <select name="lawmakerEthnicity" bind:value={form.selectedEthnicity}>
+            <select name="selectedEthnicity" bind:value={form.selectedEthnicity}>
               <option value="">-- Select ethnicity --</option>
               <option value="hispanic-latino">Hispanic / Latino</option>
               <option value="non-hispanic-white">White Non-Hispanic</option>
@@ -349,7 +349,7 @@ button:disabled {
 
           <label class="label-question">
             Race
-            <select name="lawmakerRace" bind:value={form.selectedRace}>
+            <select name="selectedRace" bind:value={form.selectedRace}>
               <option value="">-- Select race --</option>
               <option value="white">White</option>
               <option value="black">Black</option>
@@ -363,33 +363,43 @@ button:disabled {
 
           <label class="label-question">
             State
-            <input type="text" name="state" bind:value={form.selectedState} placeholder="e.g., California" />
+            <input type="text" name="selectedState" bind:value={form.selectedState} placeholder="e.g., California" />
           </label>
 
           <div class="radio-group">
             <label>Political orientation:
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="very conservative" /> Very conservative</label>
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="conservative" /> Conservative</label>
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="independent" /> Independent</label>
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="liberal" /> Liberal</label>
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="very liberal" /> Very liberal</label>
+            <label><input type="radio" name="selectedIdeology" bind:group={form.selectedIdeology} value="very conservative" /> Very conservative</label>
+            <label><input type="radio" name="selectedIdeology" bind:group={form.selectedIdeology} value="conservative" /> Conservative</label>
+            <label><input type="radio" name="selectedIdeology" bind:group={form.selectedIdeology} value="independent" /> Independent</label>
+            <label><input type="radio" name="selectedIdeology" bind:group={form.selectedIdeology} value="liberal" /> Liberal</label>
+            <label><input type="radio" name="selectedIdeology" bind:group={form.selectedIdeology} value="very liberal" /> Very liberal</label>
             </label>
           </div>
         </div>
       {/if}
+  {#if showRandomForm}
+    <div class="lawmaker-data" transition:fade>
+      <h3>Random Lawmaker Generated</h3>
+      <p><strong>Name:</strong> {form.selectedLawmaker}</p>
+      <input type="hidden" name="selectedLawmaker" bind:value={form.selectedLawmaker} />
 
-      {#if showRandomForm}
-        <div class="lawmaker-data" transition:fade>
-          <h3>Random Lawmaker Generated</h3>
-          <p><strong>Name:</strong> {form.selectedLawmaker}</p>
-          <p><strong>Gender:</strong> {form.selectedGender}</p>
-          <p><strong>Ethnicity:</strong> {form.selectedEthnicity}</p>
-          <p><strong>Race:</strong> {form.selectedRace}</p>
-          <p><strong>State:</strong> {form.selectedState}</p>
-          <p><strong>Political orientation:</strong> {form.selectedIdeology}</p>
-        </div>
-      {/if}
-    </section>
+      <p><strong>Gender:</strong> {form.selectedGender}</p>
+      <input type="hidden" name="selectedGender" bind:value={form.selectedGender} />
+
+      <p><strong>Ethnicity:</strong> {form.selectedEthnicity}</p>
+      <input type="hidden" name="selectedEthnicity" bind:value={form.selectedEthnicity} />
+
+      <p><strong>Race:</strong> {form.selectedRace}</p>
+      <input type="hidden" name="selectedRace" bind:value={form.selectedRace} />
+
+      <p><strong>State:</strong> {form.selectedState}</p>
+      <input type="hidden" name="selectedState" bind:value={form.selectedState} />
+
+      <p><strong>Political orientation:</strong> {form.selectedIdeology}</p>
+      <input type="hidden" name="selectedIdeology" bind:value={form.selectedIdeology} />
+    </div>
+  {/if}
+
   </div>
 
   <button type="submit" formaction="?/submit">Enter simulated Deliberations with your virtual lawmaker!</button>
