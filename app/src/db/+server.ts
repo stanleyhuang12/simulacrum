@@ -14,6 +14,7 @@ export const sequelize = new Sequelize(`postgresql://${DB_USER}:${DB_PASS}@${DB_
         logging: true,
         dialectOptions: {
             ssl: {
+                alter: true,
                 require: true,           // Enforce SSL
                 rejectUnauthorized: false // Ignore self-signed certificates
             }
@@ -72,7 +73,7 @@ export const DeliberationORM = sequelize.define(
         },
         conversation_turn: {
             type: DataTypes.INTEGER,
-            allowNull: false
+            allowNull: true
         },
         guardrail_tripwire: {
             type: DataTypes.BOOLEAN,
