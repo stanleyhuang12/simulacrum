@@ -3,32 +3,8 @@ Our tool simulates multi-turn conversation, multimodal (e.g. audio + visual) int
 and public health issues. Community advocates can specify the virtual lawmakers' political ideology, demographic details, and conversation settings 
 which can be one-to-one deliberations or hearings. 
 
+
 Our tool empowers and encourages community advocates to engage with democratic processes by lowering the barrier and providing a stepping-stone experience.
 
 
-To Do: 
-
-* Update the interaction interface + WebSocket to support audio-streaming, STT transcription, and TTS transcriptions [DONE]
-* Polishing front-end [DONE]
-* Building interface that supports variable intermittent feedback from a coach [TODO]
-* Fetch API endpoints for end-of-call feedback to help community advocates better improve/localize/tailor their advocacy and messaging [DONE]
- * Update errors 
-* Update the database management system to PostgreSQL on AWS [DONE]
-* Refactor code for SSR [DONE]
-* Improve feedback page to incorporate latest literature public health communication, risk communication strategy [DONE]
-
-* Enhance conversational experience with VAD (voice activity detection) [TODO]
-    * Use OpenAI's real time audio-transcription for audio-transcriptions workflow
-* Enhance conversational experience with text-to-speech streaming and audio playing [DONE]
-    * Verify this is working in SSR console [DONE]
-* Refactor code to create base Lawmaker class [TODO]
-* Find ways to shave off latency while simultaneously reducing costs [DONE] (best way is realtime transcription and audio streaming)... 
-* Verify audio streaming is fast and efficient [TODO]
-* Hint boxes for community advocates if they need help
-
-* Update the code for 
-* Re-deploy API endpoints via Docker/zip files if shaved off dependencies to Lambda Serverless 
-* Ensure unified brand color and visual experience
-* Upload an image of a lawmaker for the first zoom background 
-
-
+![poster-conference-at-boston-children-hospital-on-legislative-simulacrum](/assets/bch_poster.pdf)
