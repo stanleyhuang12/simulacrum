@@ -282,6 +282,7 @@ export class Deliberation extends Simulacrum {
 
         return templateText
     };
+
     public async panel_discussion(input: string, fetchFn: typeof fetch) {
         const turn = this.conversation_turn;
         this.conversation_turn++;
@@ -292,8 +293,8 @@ export class Deliberation extends Simulacrum {
                 prompt: input,
                 response: text
             }
-            
             this.lawmaker.log_episodal_memory(currentDialogue, "automated_response")
+            return text 
         }
         return this.lawmaker.process(input, fetchFn); /*Note that process automatically perform logging of episodal memory*/
     }
@@ -304,6 +305,7 @@ export class Deliberation extends Simulacrum {
 ========================= */
 
 export function hydrateDeliberationInstance( record: any) { 
+    console.log("Hydrating deliberation instance")
     const d = new Deliberation(
         record.username, 
         record.organization, 
@@ -312,7 +314,7 @@ export function hydrateDeliberationInstance( record: any) {
         record.state,
         1,  
         record.ideology,
-        record.lawmaker_name  ,
+        record.lawmaker_name,
     )
     if (record.memory) {
         d.lawmaker._rehydrate_memory(record.memory);
@@ -326,6 +328,7 @@ export function hydrateDeliberationInstance( record: any) {
         d.conversation_turn = record.conversation_turn
     }
 
+    console.log(d)
 
     return d
 }

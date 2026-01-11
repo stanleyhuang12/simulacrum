@@ -27,9 +27,12 @@ export const POST: RequestHandler = async ( event ) => {
 
         if (delibsRecord == null ) { return error(404, "No deliberation object found.")}
         const d = hydrateDeliberationInstance(delibsRecord)
+        console.log(d.conversation_turn); 
 
         if (d.conversation_turn === 2) {
+            console.log("Running guardrail functions")
             let guardrailResponse = await d._guardrail_moderation(input)
+            console.log(`Guardrail response ${guardrailResponse}`)
             if (guardrailResponse.triggered) {
                 return json({
                     type: 'guardrail.triggered',
