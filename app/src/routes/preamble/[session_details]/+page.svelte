@@ -7,7 +7,13 @@
 
     let { data }: PageProps = $props();
     let revealDeliberationStatus = $state(false);
-    let alertMessage = `${data.form.selectedLawmaker} has joined the meeting and is inviting you in. Whenever you are ready, you can click join to enter the call!`;
+    let showNotification = $state(false);
+    let alertMessage = $derived(
+            data?.form?.lawmaker_name 
+                ? `${data.form.lawmaker_name} has joined the meeting and is inviting you in. Whenever you are ready, you can click join to enter the call!`
+                : 'Your lawmaker has joined the meeting. Click join when ready!'
+        );  
+    
     
     onMount(() => {
         startButtonTimer(); 
@@ -15,7 +21,8 @@
 
     function startButtonTimer() { 
         setTimeout(() => {
-            alert(alertMessage);
+            showNotification = true;  // ✅ Show custom notification instead of alert
+
             revealDeliberationsButton();
         }, 12500)
     }
@@ -26,6 +33,9 @@
         }
     }
 
+    function dismissNotification() {
+        showNotification = false;
+    }
 </script>
 <style>
 :root { 
@@ -173,11 +183,64 @@ ul li {
   margin-top: 2rem;
   text-align: center;
 }
+
+/* === NOTIFICATION === */
+.notification {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  max-width: 400px;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  z-index: 1000;
+}
+
+.notification-content {
+  display: flex;
+  gap: 1rem;
+  align-items: start;
+}
+
+.notification-icon {
+  font-size: 1.5rem;
+}
+
+.notification-text {
+  flex: 1;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.25rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.notification-close:hover {
+  opacity: 1;
+}
+
 </style>
 
 
 <div id="preamble">
   <!-- Lawmaker avatar picture sections -->
+  {#if showNotification}
+    <div class="notification" in:fade out:fade>
+      <div class="notification-content">
+        <div class="notification-icon">🎯</div>
+        <div class="notification-text">{alertMessage}</div>
+        <button class="notification-close" onclick={dismissNotification}>×</button>
+      </div>
+    </div>
+  {/if}
 
   <div id="text-content">
   <!-- Text section -->
@@ -189,8 +252,8 @@ ul li {
   <p in:fade={{delay:700}}>
     
     Your meeting on <strong>{data.form.policy_topic}</strong> 
-    with an AI-persona of <strong>{data.form.selectedLawmaker}</strong>, 
-    a <strong>{data.form.selectedIdeology}</strong> lawmaker from <strong>{data.form.selectedState}</strong>, is starting...
+    with an AI-persona of <strong>{data.form.lawmaker_name}</strong>, 
+    a <strong>{data.form.ideology}</strong> lawmaker from <strong>{data.form.state}</strong>, is starting...
   
   </p>
 
