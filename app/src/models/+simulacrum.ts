@@ -42,7 +42,7 @@ export abstract class Simulacrum {
 
     };
 
-    public trainer_end_of_session() {
+    public trainer_end_of_session(fetchFn: typeof fetch) {
         if (!this.trainer) {
             this.trainer = new AdvocacyTrainer(); 
         } 
@@ -53,7 +53,7 @@ export abstract class Simulacrum {
             throw new Error("No memory stored yet.")
         }
        
-        const response = this.trainer.process(LongTermMemory);
+        const response = this.trainer.process(LongTermMemory, fetchFn);
         return response
     }
 }

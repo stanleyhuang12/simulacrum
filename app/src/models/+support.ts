@@ -8,7 +8,7 @@ export interface CoachInterface {
 
 export interface AdvocacyTrainerInterface {
     init_advocacy_persona: string 
-    process(input:string): string | Promise<string>;
+    process(input:string, fetchFn:typeof fetch): string | Promise<string>;
 }
 
 
@@ -56,7 +56,7 @@ export class AdvocacyTrainer implements AdvocacyTrainerInterface {
         this.messages.push(system_instruction)
     };
 
-    async process(input: string) {
+    async process(input: string, fetchFn: typeof fetch) {
         this.set_system_instructions();
         const userAPIMessageCall: ChatMessage = {
             role: "user", 
@@ -65,7 +65,7 @@ export class AdvocacyTrainer implements AdvocacyTrainerInterface {
         this.messages.push(userAPIMessageCall);
 
         try {
-            const agentResponse = await fetch("/api/llm-process", {
+            const agentResponse = await fetchFn("/api/llm-process", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
