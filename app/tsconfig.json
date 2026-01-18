@@ -12,7 +12,9 @@
 		"moduleResolution": "bundler",
 		"baseUrl": "src",
 		"paths": {
-			"$models/*": ["models/*"]
+			"$models/*": ["models/*"],
+			"$db/*": ["db/*"],
+			"$lib/*": ["lib/*"]
 			}},
 	"include": [
 		"src/**/*.ts",
