@@ -65,7 +65,7 @@
       form.selectedEthnicity = randomPersona.ethnicity;
       form.selectedRace = randomPersona.race;
       form.selectedIdeology = randomPersona.ideology;
-      form.selectedState = randomPersona.ideology;
+      form.selectedState = randomPersona.state;
     }
 
     
