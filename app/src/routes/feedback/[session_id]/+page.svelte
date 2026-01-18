@@ -8,6 +8,8 @@
     let isDownloading = $state(false);  
 
     async function queryFeedback(event: Event) { 
+        console.log("Querying feedback for user.")
+        console.log(data)
         isDownloading = true; 
         if (data.memory == null) {
           throw new Error("Error returning feedback. Reason: No conversation started")
@@ -20,7 +22,7 @@
                 'Cookie': `session-id-delibs=${data.sess_cookies}`
             },
             credentials: "include",
-            body: data.memory
+            body: JSON.stringify(data.memory)
           });
 
           if (!response.ok) { throw new Error("Error returning Trainer agent feedback.")}

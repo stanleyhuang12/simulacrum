@@ -227,7 +227,7 @@ export class Deliberation extends Simulacrum {
         /** Passes in the last n exchanges to do guardrail moderations **/
         let userTranscript: string = ""; 
         
-        this._memory.slice(last_n).forEach(item => {
+        this.lawmaker._memory.slice(last_n).forEach(item => {
             userTranscript += item.dialogue.prompt.trim() + ""
         });
         userTranscript.trim(); 
@@ -248,30 +248,44 @@ export class Deliberation extends Simulacrum {
 
         let prompt: ChatMessage[] = [guardrail_persona, task]
 
-        const agentResponse = await fetch("/api/llm-process", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                "model": "gpt-4.1-mini",
-                "messages": prompt
-            })
-        });
+       
+        try {
+            const agentResponse = await fetch("/api/llm-process", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "model": "gpt-4o-mini",  // ✅ Valid model
+                    "messages": prompt
+                })
+            });
 
-        const guardrail_text = await agentResponse.text()
-        if (guardrail_text.includes("BLOCK")){
-            this.guardrail_reason = guardrail_text
-            this.guardrail_triggered = true
+            const res = await agentResponse.json();
+            
+            if (res.error) {
+                console.error("Guardrail API error:", res.error);
+                return { triggered: false };  // Fail open
+            }
 
-            return {
-                triggered: true,
-                reason: guardrail_text 
-            };
-        } 
-        
-        return { triggered: false }
-    };
+            const guardrail_text = res.choices[0].message.content;
+            
+            if (guardrail_text.includes("BLOCK")) {
+                this.guardrail_reason = guardrail_text
+                this.guardrail_triggered = true
+
+                return {
+                    triggered: true,
+                    reason: guardrail_text 
+                };
+            } 
+            
+            return { triggered: false }
+        } catch (err) {
+            console.error("Guardrail check failed:", err);
+            return { triggered: false };  // Fail open on errors
+        }
+    };  
 
     private initial_template(n: 0|1|2,) {
         let templateText =  initChatTemplate[n]
