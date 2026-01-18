@@ -200,6 +200,7 @@
                 
                 processText(text)
                 isProcessingAudio = false; 
+                break;
     }} 
 
     async function processText(text: string) {

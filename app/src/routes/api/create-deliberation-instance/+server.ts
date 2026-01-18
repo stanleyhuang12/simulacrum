@@ -19,11 +19,11 @@ export const POST: RequestHandler = async ( {cookies, request} ) => {
         res.state, // make sure res.state exists
         1,
         res.ideology,
-        res.lawmaker_name
+        res.lawmaker_name,
     );
 
     try {
-        await DeliberationORM.create(
+        const created = await DeliberationORM.create(
         {
             username: d._username, 
             unique_id: userID, 
@@ -37,7 +37,10 @@ export const POST: RequestHandler = async ( {cookies, request} ) => {
             /* No discussion history because this is initialization*/
         }
     ) 
+        console.log('Created deliberation:', created.toJSON());
+        console.log('===========================');
     } catch(err: any) { 
+        console.log("Database error")
         return error(500, `Deliberation event not create in PostgreSQL ${err}`)
     }
 

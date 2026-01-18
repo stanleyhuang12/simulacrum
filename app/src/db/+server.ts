@@ -107,15 +107,16 @@ export async function validateAndRetrieveDeliberation( uuid:any ) {
 
 export async function updateDeliberationRecord ( record: Model, d: Deliberation, savedMemory:Array<Memory> ) { 
     try {
-        return record.update({
+        return await record.update({
             memory: savedMemory,
             conversation_turn: d.conversation_turn,
-            guardrail_blocked: d.guardrail_triggered ?? false,
+            guardrail_tripwire: d.guardrail_triggered ?? false,
             guardrail_reason: d.guardrail_reason ?? null,
             guardrail_timestamp: d.guardrail_triggered ? new Date() : null
 
         }) 
     } catch(err) {
         console.error(`Failed to update deliberation record in PostgreSQL database. ${err}`)
+        throw err;
     }
 }
