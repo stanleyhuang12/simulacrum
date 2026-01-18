@@ -155,16 +155,25 @@ export class Lawmaker {
             content: this.persona,
         };
 
-        const memoryContext = this.retrieve_memory("long_term")
-       
-        const userInstructions: ChatMessage = {
+        const messages: ChatMessage[] = [systemInstructions];
+        
+        // ✅ Add conversation history from memory
+        for (const memory of this._memory) {
+            messages.push({
+                role: "user",
+                content: memory.dialogue.prompt
+            });
+            messages.push({
+                role: "assistant",
+                content: memory.dialogue.response
+            });
+        }
+        
+        // ✅ Add current user input
+        messages.push({
             role: "user",
-            content:memoryContext
-            ? `${memoryContext}\n${this.advocateName}: ${input}`
-            : `${this.advocateName}: ${input}`
-        };
-
-        const messages: ChatMessage[] = [systemInstructions, userInstructions]
+            content: input
+        });
         
         try {
             const response = await fetchFn("/api/llm-process", {

@@ -32,6 +32,7 @@ export const POST: RequestHandler = async ( {cookies, request} ) => {
             policy_topic: d.policy_topic,
             ideology: d.ideology,
             lawmaker_name: d.lawmaker_name,
+            degree_of_support: d.lawmaker.degree_of_support,
             persona: d.lawmaker.persona,
             conversation_turn: d.conversation_turn,
             /* No discussion history because this is initialization*/

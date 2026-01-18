@@ -32,12 +32,11 @@ export const POST: RequestHandler = async ( event ) => {
         }
 
         const d = hydrateDeliberationInstance(delibsRecord)
-        console.log(d.conversation_turn); 
 
-        if (d.conversation_turn === 2) {
+        if (d.conversation_turn === 3) {
             console.log("Running guardrail functions")
             let guardrailResponse = await d._guardrail_moderation(input)
-            console.log(`Guardrail response ${guardrailResponse}`)
+            console.log(`Guardrail response ${JSON.stringify(guardrailResponse)}`)
             if (guardrailResponse.triggered) {
                 return json({
                     type: 'guardrail.triggered',
