@@ -10,12 +10,12 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler",
-		"baseUrl": "src",
-		"paths": {
-			"$models/*": ["models/*"],
-			"$db/*": ["db/*"],
-			"$lib/*": ["lib/*"]
-			}},
+		// "baseUrl": "src",
+		// "paths": {
+		// 	"$models/*": ["models/*"],
+		// 	"$db/*": ["db/*"],
+		// 	}},
+		},
 	"include": [
 		"src/**/*.ts",
 		"src/**/*.svelte",
