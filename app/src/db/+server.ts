@@ -98,11 +98,13 @@ export const DeliberationORM = sequelize.define(
 export async function validateAndRetrieveDeliberation( uuid:any ) { 
     const delibsRecord = await sequelize.models.deliberations.findByPk(uuid)
  
+    console.log(delibsRecord)
     if (delibsRecord == null || delibsRecord == undefined){
         console.error("No deliberation instance found.")
         return null;
     }
     return delibsRecord;
+
 }
 
 export async function updateDeliberationRecord ( record: Model, d: Deliberation, savedMemory:Array<Memory> ) { 
@@ -119,4 +121,5 @@ export async function updateDeliberationRecord ( record: Model, d: Deliberation,
         console.error(`Failed to update deliberation record in PostgreSQL database. ${err}`)
         throw err;
     }
+
 }

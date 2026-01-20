@@ -111,7 +111,7 @@ export class Lawmaker {
 
     public log_episodal_memory(dialogue: Dialogue, model: string) {
         const memory: Memory = {
-            dialogue: dialogue, 
+        dialogue: dialogue, 
             model: model, 
             episodeNumber: this._memory.length + 1
         };
