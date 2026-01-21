@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ( event ) => {
 
         const d = hydrateDeliberationInstance(delibsRecord)
 
-        if (d.conversation_turn === 3) {
+        if (d.conversation_turn === 3 || d.conversation_turn % 3 === 0) {
             console.log("Running guardrail functions")
             let guardrailResponse = await d._guardrail_moderation(input)
             console.log(`Guardrail response ${JSON.stringify(guardrailResponse)}`)
