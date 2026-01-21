@@ -236,7 +236,7 @@ export class Deliberation extends Simulacrum {
         /** Passes in the last n exchanges to do guardrail moderations **/
         let userTranscript: string = ""; 
         
-        this.lawmaker._memory.slice(last_n).forEach(item => {
+        this.lawmaker._memory.slice(-last_n).forEach(item => {
             userTranscript += item.dialogue.prompt.trim() + ""
         });
         userTranscript.trim(); 
@@ -350,9 +350,6 @@ export function hydrateDeliberationInstance( record: any) {
     if (record.conversation_turn) {
         d.conversation_turn = record.conversation_turn
     }
-
-    console.log(d)
-
     return d
 }
 

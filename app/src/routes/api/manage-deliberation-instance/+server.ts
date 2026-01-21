@@ -11,8 +11,14 @@ export const POST: RequestHandler = async ( event ) => {
     const sessionId = event.cookies.get('session-id-delibs'); 
     if (!sessionId) throw error(401, 'Missing session-id-delibs')
     const input = await event.request.text(); 
-    console.log(userID)
-    console.log(input)
+    console.group(`Running manage_deliberation_instance endpoint.`)
+    console.log(`
+        Step 1: Retrieve deliberation instance from database
+        Step 2: Rehydrate a new deliberation instance.
+            Step 2a: Run through guardrails every 3 turns if specified.
+        Step 3: Process the input response given the past memory 
+        Step 4: Update the database 
+        `)
  
     try { 
         const delibsRecord = await validateAndRetrieveDeliberation(userID)
@@ -29,6 +35,8 @@ export const POST: RequestHandler = async ( event ) => {
                  maxAge: 72460*60 
                 }
             )
+
+            redirect(500, "forbidden")
         }
 
         const d = hydrateDeliberationInstance(delibsRecord)
@@ -46,10 +54,14 @@ export const POST: RequestHandler = async ( event ) => {
         }
 
         const response = await d.panel_discussion(input, event.fetch)
-        console.log(response)
-        await updateDeliberationRecord( delibsRecord, d, d.lawmaker._retrieve_deserialized_memory() )
-        console.log('Deliberation record in PostgreSQL updated!')
+        console.log(`Model response: ${response}`)
+        let savedMemory = d.lawmaker._retrieve_deserialized_memory()
+        console.log(savedMemory)
+        await updateDeliberationRecord( delibsRecord, d, savedMemory )
         
+        console.log('Deliberation record in PostgreSQL updated!')
+        console.log('Completed load function ')
+        console.groupEnd()
         return json({
             type: 'automated.response', 
             response: response}, 
@@ -59,6 +71,7 @@ export const POST: RequestHandler = async ( event ) => {
         );
     } catch(err) {
         console.error(`Error retrieving Deliberation instance from PostgreSQL database, ${err}`)
+        console.groupEnd()
         return error(500, `${err}`)
     }
 }; 
