@@ -537,7 +537,7 @@ footer {
     <div class="status-card">
       {#if errorMessage}
         <div class="error-message">
-          <strong>Error:</strong> {errorMessage}
+          <strong>Error:</strong> {JSON.stringify(errorMessage)}
         </div>
       {/if}
       
