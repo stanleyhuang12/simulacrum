@@ -316,134 +316,131 @@
         console.log("Comprehensive PDF generated successfully:", filename);
     }
 </script>
-
 <style>
 :root {
-  --primary: #7d00d0;
-  --primary-dark: #5a0099;
-  --accent: #00cccc;
-  --surface: #1a1a2e;
-  --surface-light: #16213e;
-  --text: #e0e0e0;
-  --text-muted: #a0a0a0;
+  --primary: #160bf7;        /* deep blue-purple for highlights */
+  --primary-hover: #0a00c0;
+  --surface: rgba(255,255,255,0.05); /* semi-transparent cards */
+  --border: rgba(255,255,255,0.2);
+  --bg: #2a0d6e;             /* main purple box background */
+  --text: #f8f8f8;           /* main text white */
+  --text-muted: rgba(248, 248, 248, 0.7);
+  --radius: 12px;
+  --shadow: 0 8px 24px rgba(0,0,0,0.5);
+  --gap: 1rem;
 }
 
+/* --------------------------
+   Outer Purple Container
+--------------------------- */
 .container {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #0a1b2a 0%, #111827 50%, #1a1a2e 100%);
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   color: var(--text);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+/* --------------------------
+   Header
+--------------------------- */
 header {
-  padding: 1.5rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
+  flex-wrap: wrap;
+  margin-bottom: 3rem;
 }
 
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  flex: 1;
+.header-content h1 {
+  font-size: 2rem;
+  margin: 0;
+  color: #fff;
 }
 
-h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.tagline {
-  max-width: 500px;
+.header-content .tagline {
+  font-size: 1rem;
   color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-nav {
-  display: flex;
-  gap: 1.5rem;
+  max-width: 500px;
 }
 
 nav a {
-  color: var(--text);
+  margin-left: 1.5rem;
   text-decoration: none;
-  transition: color 0.2s;
+  color: var(--text);
+  font-weight: 500;
+  transition: color 0.2s ease;
 }
 
 nav a:hover {
-  color: var(--accent);
+  color: var(--primary);
 }
 
+/* --------------------------
+   Hero Section
+--------------------------- */
 .hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   text-align: center;
-  padding: 4rem 2rem;
-  min-height: 50vh;
+  margin-bottom: 4rem;
 }
 
 .hero-title {
-  font-size: clamp(2rem, 5vw, 3.5rem);
-  font-weight: 800;
-  background: linear-gradient(135deg, #60a5fa, #34d399, var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 2rem;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: #fff;
 }
 
 .status-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 2rem;
   max-width: 600px;
-  margin: 2rem auto;
-  padding: 1.5rem;
-  background: var(--surface-light);
-  border: 1px solid rgba(125, 0, 208, 0.3);
-  border-radius: 12px;
+  margin: 0 auto 2rem auto;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  color: var(--text);
+  backdrop-filter: blur(10px) saturate(120%);
 }
 
 .error-message {
-  padding: 1rem;
-  background: rgba(220, 38, 38, 0.1);
-  border: 1px solid rgba(220, 38, 38, 0.5);
-  border-radius: 8px;
-  color: #fca5a5;
+  color: #ff6b6b;
+  font-weight: 600;
   margin-bottom: 1rem;
 }
 
 .success-message {
-  padding: 1rem;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.5);
-  border-radius: 8px;
-  color: #86efac;
-  margin-bottom: 1rem;
+  color: #00c851;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
 }
 
+.status-card ul {
+  text-align: left;
+  margin: 1rem auto;
+  max-width: 400px;
+  color: var(--text-muted);
+}
+
+/* --------------------------
+   Button
+--------------------------- */
 .download-btn {
-  padding: 1rem 2.5rem;
-  font-size: 1.1rem;
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
   font-weight: 600;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  color: white;
+  border-radius: var(--radius);
   border: none;
-  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 4px 15px rgba(125, 0, 208, 0.4);
+  background-color: var(--primary);
+  color: #fff;
+  transition: all 0.2s ease;
 }
 
 .download-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(125, 0, 208, 0.6);
+  background-color: var(--primary-hover);
 }
 
 .download-btn:disabled {
@@ -451,59 +448,70 @@ nav a:hover {
   cursor: not-allowed;
 }
 
-.features {
-  padding: 4rem 2rem;
-  background: rgba(0, 0, 0, 0.2);
+/* --------------------------
+   Features Section
+--------------------------- */
+/* .features {
+  text-align: center;
+  margin-bottom: 4rem;
 }
 
 .features h3 {
-  text-align: center;
-  font-size: 2rem;
-  margin-bottom: 3rem;
-  color: var(--text);
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  color: #fff;
 }
 
 .feature-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 .feature-card {
-  padding: 2rem;
-  background: var(--surface-light);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  color: var(--text);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(125, 0, 208, 0.3);
-  border-color: var(--primary);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.6);
 }
 
 .feature-card h4 {
-  color: var(--accent);
-  font-size: 1.25rem;
   margin-bottom: 0.75rem;
-}
+  color: #fff;
+} */
 
-.feature-card p {
-  color: var(--text-muted);
-  line-height: 1.6;
-}
-
+/* --------------------------
+   Footer
+--------------------------- */
 footer {
-  padding: 2rem;
   text-align: center;
+  padding: 2rem 1rem 1rem 1rem;
+  font-size: 0.875rem;
   color: var(--text-muted);
-  font-size: 0.9rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ----------------------------
+   Dark Mode (Optional)
+---------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: rgba(69, 6, 121, 0.9);;
+    --surface: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.2);
+    --text: #f8f8f8;
+    --text-muted: rgba(248,248,248,0.7);
+  }
 }
 </style>
+
 
 <div class="container">
   <!-- Header -->
@@ -511,7 +519,7 @@ footer {
     <div class="header-content">
       <h1>Legislative Simulacrum</h1>
       <p class="tagline">
-        Empower communities to explore, question, and understand legislative debates through safe and intelligent simulations.
+        Empower communities to learn, understand, and practice legislative and public policy advocacy through risk-free virtual and AI-enabled simulations.
       </p>
     </div>
     <nav>
@@ -520,7 +528,6 @@ footer {
       <a href="#contact">Contact</a>
     </nav>
   </header>
-
   <!-- Hero Section -->
   <section class="hero">
     <h2 class="hero-title">
@@ -571,23 +578,7 @@ footer {
   </section>
 
   <!-- Feature Highlights -->
-  <section class="features" id="features">
-    <h3>Upcoming Features</h3>
-    <div class="feature-grid">
-      <div class="feature-card">
-        <h4>🎙️ Multimodal Interaction</h4>
-        <p>Converse using text, audio, and soon visual channels for deeper engagement and more realistic practice.</p>
-      </div>
-      <div class="feature-card">
-        <h4>📊 Advanced Analytics</h4>
-        <p>Track your progress over time with detailed metrics on messaging effectiveness and confidence building.</p>
-      </div>
-      <div class="feature-card">
-        <h4>👥 Custom Personas</h4>
-        <p>Interact with lawmakers tailored to specific policies, values, and perspectives matching real-world scenarios.</p>
-      </div>
-    </div>
-  </section>
+
 
   <!-- Footer -->
   <footer>
