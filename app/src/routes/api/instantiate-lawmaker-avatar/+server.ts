@@ -11,8 +11,9 @@ export const POST: RequestHandler = async ({ request }) => {
     console.log(form)
     const body = { 
         prompt: `Generate a single, semi-photo-realistic avatar of a lawmaker who is ${form.lawmakerGender}, ${form.lawmakerEthnicity}, ${form.lawmakerAge}. Be careful to not replicate harmful stereotypes.`,
-        model: "dall-e-2",
-        size: "256x256",
+        model: "gpt-image-1-mini",
+        size: "auto",
+        background: "transparent",
     }
     const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
@@ -27,12 +28,12 @@ export const POST: RequestHandler = async ({ request }) => {
     console.log(res)
 
     if (!response.ok) { 
-        console.error("Error calling OpenAI's Image Generation API:");
-        return error(500, `Image Generation API call failed. See: ${res}`)
+        console.error(`Error calling OpenAI's Image Generation API: ${JSON.stringify(res)}`);
+        return error(500, `Image Generation API call failed. See: ${JSON.stringify(res)}`)
     }
     return json(res);
   } catch (err) {
-    console.error("Error calling OpenAI's Image Generation API:", err);
+    console.error("Error calling OpenAI's Image Generation API from endpoint:", err);
     return error(500, `Image Generation API call failed: ${err}`)
   }
 };
