@@ -117,7 +117,6 @@ export async function updateDeliberationRecord ( record: Model, d: Deliberation,
             guardrail_reason: d.guardrail_reason ?? null,
             guardrail_timestamp: d.guardrail_triggered ? new Date() : null
         }) 
-        
     } catch(err) {
         console.error(`Failed to update deliberation record in PostgreSQL database. ${err}`)
         throw err;

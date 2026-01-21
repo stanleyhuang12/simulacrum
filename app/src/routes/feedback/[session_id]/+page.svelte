@@ -12,9 +12,7 @@
     const MAX_RETRIES = 3;
 
     async function queryFeedback() {
-        console.log("Querying feedback for user.");
-        console.log("Session data:", data);
-        
+        console.log("Querying feedback for user.");        
         // Validation
         if (!data?.sess_cookies) {
             errorMessage = "Session expired. Please start a new session.";
