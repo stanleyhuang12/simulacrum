@@ -158,15 +158,20 @@ export class Lawmaker {
         input: string,
         fetchFn: typeof fetch,
         model: string = "gpt-4.1", 
+        winddown: boolean = false,
     ) { 
+
         const systemInstructions: ChatMessage = {
             role: "system",
-            content: this.persona,
+            content: winddown ? this.persona : closeConversation,
         };
 
         const messages: ChatMessage[] = [systemInstructions];
+        let extractedMemory = this._memory 
         
-        for (const memory of this._memory) {
+        extractedMemory = winddown ? extractedMemory.slice(-3) : extractedMemory
+
+        for (const memory of extractedMemory) {
             messages.push({
                 role: "user",
                 content: memory.dialogue.prompt
