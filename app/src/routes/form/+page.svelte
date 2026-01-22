@@ -1,4 +1,4 @@
-  <script lang="ts">
+<script lang="ts">
     import { enhance } from '$app/forms';
     import { boolean, number } from 'mathjs';
     import { onMount } from "svelte";
@@ -16,7 +16,7 @@
         selectedIdeology: string;
         selectedState: string;
         selectedEthnicity: string; 
-        selectedRace: string; 
+        // selectedRace: string; 
         selectedGender: string; 
     };
 
@@ -31,7 +31,7 @@
         selectedIdeology: "",
         selectedState: "",
         selectedEthnicity: "",
-        selectedRace: "", 
+        // selectedRace: "", 
         selectedGender: "",
     });
 
@@ -63,7 +63,6 @@
       form.selectedLawmaker = randomPersona.lawmaker_name;
       form.selectedGender = randomPersona.gender;
       form.selectedEthnicity = randomPersona.ethnicity;
-      form.selectedRace = randomPersona.race;
       form.selectedIdeology = randomPersona.ideology;
       form.selectedState = randomPersona.state;
     }
@@ -347,7 +346,7 @@ button:disabled {
             </select>
           </label>
 
-          <label class="label-question">
+          <!-- <label class="label-question">
             Race
             <select name="race" bind:value={form.selectedRace}>
               <option value="">-- Select race --</option>
@@ -358,8 +357,8 @@ button:disabled {
               <option value="pacific-islander">Pacific Islander</option>
               <option value="other">Other</option>
               <option value="prefer-not-to-say">Prefer not to say</option>
-            </select>
-          </label>
+            </select> -->
+          <!-- </label> -->
 
           <label class="label-question">
             State
@@ -389,8 +388,8 @@ button:disabled {
       <p><strong>Ethnicity:</strong> {form.selectedEthnicity}</p>
       <input type="hidden" name="ethnicity" bind:value={form.selectedEthnicity} />
 
-      <p><strong>Race:</strong> {form.selectedRace}</p>
-      <input type="hidden" name="race" bind:value={form.selectedRace} />
+      <!-- <p><strong>Race:</strong> {form.selectedRace}</p>
+      <input type="hidden" name="race" bind:value={form.selectedRace} /> -->
 
       <p><strong>State:</strong> {form.selectedState}</p>
       <input type="hidden" name="state" bind:value={form.selectedState} />

@@ -77,7 +77,7 @@ export type Persona = {
     "lawmaker_name": string, 
     "gender": "female" | "male" | "nonbinary" | "prefer-not-to-say"
     "ethnicity": "hispanic-latino"| "white-non-hispanic" | "black-african-american"| "asian" | "native-american" | "pacific-islander" | "prefer-not-to-say"
-    "race": "white" | "black" | "asian" | "native-american" | "pacific-islander" | "prefer-not-to-say"
+    // "race": "white" | "black" | "asian" | "native-american" | "pacific-islander" | "prefer-not-to-say"
     "age": "18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+";
     "state": USState,
     "ideology":  "Very conservative" | "Conservative" | "Independent"| "Liberal" | "Very liberal";
@@ -106,7 +106,7 @@ export const ethnicities: Persona["ethnicity"][] = [
   "pacific-islander",
   "prefer-not-to-say",
 ];
-export const races: Persona["race"][] = ["white", "black", "asian", "native-american", "pacific-islander", "prefer-not-to-say"];
+// export const races: Persona["race"][] = ["white", "black", "asian", "native-american", "pacific-islander", "prefer-not-to-say"];
 export const ageBrackets: Persona["age"][] = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
 export const ideology: Persona["ideology"][] = [
   "Very conservative",
@@ -133,7 +133,7 @@ export function random_lawmaker_persona_generator(): Persona {
     lawmaker_name: randomElement(neutralNames),
     gender: randomElement(genders),
     ethnicity: randomElement(ethnicities),
-    race: randomElement(races),
+    // race: randomElement(races),
     age: randomElement(ageBrackets),
     state: randomElement(usStates),
     ideology: randomElement(ideology),

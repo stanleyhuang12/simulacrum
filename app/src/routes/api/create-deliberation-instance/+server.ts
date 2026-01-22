@@ -20,6 +20,8 @@ export const POST: RequestHandler = async ( {cookies, request} ) => {
         1,
         res.ideology,
         res.lawmaker_name,
+        res.createdAt,
+        res.updatedAt
     );
 
     try {
