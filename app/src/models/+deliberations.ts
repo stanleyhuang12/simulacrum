@@ -373,6 +373,8 @@ export function hydrateDeliberationInstance( record: any) {
         1,  
         record.ideology,
         record.lawmaker_name,
+        record.createdAt, 
+        record.updatedAt
     )
     if (record.memory) {
         d.lawmaker._rehydrate_memory(record.memory);
