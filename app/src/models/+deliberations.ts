@@ -9,6 +9,8 @@ type VirtualLawmakerInstructionsTemplateType = Record<
   string
 >;
 
+type closeConversationTemplate = string
+    
 type InitChatTemplate = Record<0|1|2, string>
 
 export type Memory = {
@@ -17,9 +19,13 @@ export type Memory = {
     "episodeNumber": number
 }
 
+const closeConversation: closeConversationTemplate = `
+    You are a lawmaker. The conversation is slowly winding down. Address their comments or questions if they have any. Thank them for their time.
+`
 
 const virtualLawmakerInstructionsTemplate: VirtualLawmakerInstructionsTemplateType= {
-    "support": `Begin by greeting the constituent in a cordial manner and actively listening to their concerns. 
+    "support": `You are supportive of this policy. But, do not explicitly mention it. 
+                Begin by greeting the constituent in a cordial manner and actively listening to their concerns. 
                 Express genuine understanding and validate their experiences if advocate shares personal stories.
                 Ask occassional thoughtful questions. Sometimes, note some ideas that you have to further improve the advocate's legislative outreach.
                 As you hear more, you grow in more support of this policy. But, do not explicitly mention this but instead hint at it.
@@ -50,6 +56,8 @@ const initChatTemplate: InitChatTemplate = {
 }
 
 
+
+
 export class Lawmaker {
     public name: string;
     public advocateName: string; 
@@ -68,6 +76,7 @@ export class Lawmaker {
         state: string, 
         ideology: string, 
         policy_topic: string,
+
     ) {
         this.advocateName = advocateName
         this.name = name;
@@ -157,7 +166,6 @@ export class Lawmaker {
 
         const messages: ChatMessage[] = [systemInstructions];
         
-        // ✅ Add conversation history from memory
         for (const memory of this._memory) {
             messages.push({
                 role: "user",
@@ -169,7 +177,6 @@ export class Lawmaker {
             });
         }
         
-        // ✅ Add current user input
         messages.push({
             role: "user",
             content: input
@@ -210,6 +217,9 @@ export class Deliberation extends Simulacrum {
     public ideology: string;
     public lawmaker_name: string;
     public conversation_turn: number = 0; 
+    public elapsed_time!: number; 
+    public createdAt: Date;
+    public updatedAt: Date;
 
     constructor(
         username: string, 
@@ -219,17 +229,32 @@ export class Deliberation extends Simulacrum {
         state: string,
         num_agents: number=1,
         ideology: string,
-        lawmaker_name: string
+        lawmaker_name: string,
+        createdAt: Date,
+        updatedAt: Date,
     ) {
         super(username, group, simulacrum_type, policy_topic, state, num_agents); // call parent constructor first
         this.ideology = ideology;
         this.lawmaker_name = lawmaker_name;
+        this.createdAt = createdAt
+        this.updatedAt = updatedAt
+
 
         this._init_virtual_lawmaker(); 
+        this._diffMinSec(this.createdAt, this.updatedAt)
     }
 
     public _init_virtual_lawmaker() {
         this.lawmaker = new Lawmaker(this._username, this.lawmaker_name, this.state, this.ideology, this.policy_topic)
+    }
+    public _diffMinSec(createdAt: Date, updatedAt: Date) {
+        const diffMs = updatedAt.getTime() - createdAt.getTime();
+        const totalSeconds = Math.floor(diffMs / 1000);
+        if (totalSeconds > 3600) {
+            console.warn("Greater than one hour session, likely an error")
+        }
+        this.elapsed_time = totalSeconds
+        return this.elapsed_time;
     }
 
     public async _guardrail_moderation(text: string, last_n: number=3) {
@@ -318,6 +343,11 @@ export class Deliberation extends Simulacrum {
             }
             this.lawmaker.log_episodal_memory(currentDialogue, "automated_response")
             return text 
+        }
+
+        if (this.elapsed_time > 1200 || this.conversation_turn >= 11) {
+            console.warn(`Conversation reached ${this.elapsed_time/60} minutes and ${this.conversation_turn} number of turns`)
+            return this.lawmaker.process(input, fetchFn)
         }
         return this.lawmaker.process(input, fetchFn); /*Note that process automatically perform logging of episodal memory*/
     }
