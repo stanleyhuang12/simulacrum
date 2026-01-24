@@ -8,7 +8,7 @@ export const POST: RequestHandler = async ({ request }) => {
     console.log("Fetching lawmaker avatar API generation")
     const form = await request.json();
     let body: { [key:string]:any } = { 
-        prompt: `Generate a single, semi-photo-realistic avatar of a lawmaker who is ${form.lawmakerGender}, ${form.lawmakerEthnicity}, ${form.lawmakerAge}. Be careful to not replicate harmful stereotypes.`,
+        prompt: `Generate a single, semi-photo-realistic avatar of a lawmaker who is ${form.lawmakerGender}, ${form.lawmakerEthnicity}, ${form.lawmakerAge}. Be careful to not replicate harmful stereotypes. Make sure any revised prompts with details adhere to the demographic parameters specified!`,
         model: "dall-e-3",
         size: "1024x1024",
     }

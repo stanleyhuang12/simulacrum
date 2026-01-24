@@ -270,18 +270,29 @@
 <style>
 /* ---------- Layout ---------- */
 
+
+
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 16px;
-  max-width: 1200px;
+  max-width: auto;
   margin: 0 auto;
-  padding: 20px;
+  padding: 40px;
   align-items: center;
-  background: linear-gradient(180deg, #0a0a0a, #111827);
+  background: rgba(69, 6, 121, 0.9);
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   box-sizing: border-box;
+}
+.video-grid video,
+.video-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* or 'contain' */
+  border-radius: 8px;
+  
 }
 
 /* ---------- Video Elements ---------- */
@@ -293,6 +304,20 @@ video {
   background-color: #000;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
+
+.video-grid strong {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.5rem; 
+    font-weight: bold; 
+    letter-spacing: 0.05em;
+}
+
+.video-grid strong:hover {
+    color: rgba(255, 255, 255, 1.0);
+    transition: color 0.3s;
+}
+
+
 
 /* ---------- Microphone Buttons ---------- */
 
