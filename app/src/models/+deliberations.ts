@@ -262,7 +262,7 @@ export class Deliberation extends Simulacrum {
         return this.elapsed_time;
     }
 
-    public async _guardrail_moderation(text: string, last_n: number=3) {
+    public async _guardrail_moderation(text: string, fetchFn: typeof fetch, last_n: number=3) {
         /** Passes in the last n exchanges to do guardrail moderations **/
         let userTranscript: string = ""; 
         
@@ -289,7 +289,7 @@ export class Deliberation extends Simulacrum {
 
        
         try {
-            const agentResponse = await fetch("/api/llm-process", {
+            const agentResponse = await fetchFn("/api/llm-process", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

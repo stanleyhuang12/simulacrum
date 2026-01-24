@@ -3,7 +3,7 @@
     import { SSE } from 'sse.js'
     import { goto } from "$app/navigation";
     import type { PageProps} from "./$types";
-  import { redirect } from "@sveltejs/kit";
+    import { redirect } from "@sveltejs/kit";
 
 
     let { data }: PageProps = $props(); 
@@ -41,6 +41,7 @@
             }
             videoStreams = await window.navigator.mediaDevices.getUserMedia( { video: true }); 
             videoElem.srcObject = videoStreams
+            camOn = true
             console.log("Video streams enabled.")
         } catch (err) { 
             console.error(err)
@@ -52,13 +53,14 @@
 
         if (camOn) {
             videoStreams.getVideoTracks().forEach(track => {
-            track.enabled = false;
-            track.stop();
+                track.stop();
+                track.enabled = false;
             });
             videoElem.srcObject = null; 
             camOn = false;
         } else {
             getVideoStream()
+            
             // Camera is OFF — re-enable or create a new track
             // await window.navigator.mediaDevices.getUserMedia( { video: true })
             // navigator.mediaDevices.getUserMedia({ video: true })
@@ -95,14 +97,14 @@
     async function establishOAIConnection() {
         if (isActiveSession && peerConnection) {
             console.log("WebRTC session already active.");
-        return;
+            return;
         }
 
         const pc = new RTCPeerConnection();
         console.log("Requesting ephemeral key")
 
         if (!EPHEMERAL_KEY) {
-            getEphemeralKey(); 
+            await getEphemeralKey(); 
         }
 
         audioStreams = await window.navigator.mediaDevices.getUserMedia( { audio: {
@@ -198,7 +200,7 @@
                     break;
                 }
                 console.log(text)
-                
+    
                 processText(text)
                 isProcessingAudio = false; 
                 break;
@@ -219,6 +221,7 @@
             case "guardrail.triggered": 
                 console.log("Guardrail is triggered.");
                 redirect(403, 'forbidden')
+                break;
                 //** Handle UI/UX changes. */
             case "automated.response": 
                 handleAgentResponse(res.response); 

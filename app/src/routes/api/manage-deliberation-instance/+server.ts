@@ -38,12 +38,11 @@ export const POST: RequestHandler = async ( event ) => {
 
             redirect(500, "forbidden")
         }
-
         const d = hydrateDeliberationInstance(delibsRecord)
 
         if (d.conversation_turn === 3 || d.conversation_turn % 3 === 0) {
             console.log("Running guardrail functions")
-            let guardrailResponse = await d._guardrail_moderation(input)
+            let guardrailResponse = await d._guardrail_moderation(input, event.fetch)
             console.log(`Guardrail response ${JSON.stringify(guardrailResponse)}`)
             if (guardrailResponse.triggered) {
                 return json({
