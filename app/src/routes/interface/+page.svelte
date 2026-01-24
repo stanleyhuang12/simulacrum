@@ -268,36 +268,55 @@
 
 
 <style>
-/* ---------- Layout ---------- */
 
-
+.simulation-container {
+    display: grid; 
+    display: flex; 
+    flex-direction: column; 
+    background: rgba(69, 6, 121, 0.8);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.);
+    border-radius: 3em;
+    max-width: auto; 
+    margin: 0 auto; 
+    align-items: center; 
+}
 
 .video-grid {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 16px;
-  max-width: auto;
-  margin: 0 auto;
-  padding: 40px;
+  padding: 30px;
   align-items: center;
   background: rgba(69, 6, 121, 0.9);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  border-radius: 3em;
   box-sizing: border-box;
 }
+
 .video-grid video,
 .video-grid img {
+  aspect-ratio: 16 / 12;
   width: 100%;
   height: 100%;
-  object-fit: cover; /* or 'contain' */
+  object-fit: cover;
   border-radius: 8px;
   
 }
 
-/* ---------- Video Elements ---------- */
+
+.controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 16px; 
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+} 
+
+
 video {
-  width: 100%;
+  width: 70%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 12px;
@@ -309,8 +328,12 @@ video {
     color: rgba(255, 255, 255, 0.7);
     font-size: 1.5rem; 
     font-weight: bold; 
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
+    background: rgba(0,0,0,0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
 }
+
 
 .video-grid strong:hover {
     color: rgba(255, 255, 255, 1.0);
@@ -338,37 +361,38 @@ video {
   text-align: center;
   transition: all 0.2s ease;
 }
-/* .microphone-pos {
-  border-radius: 30px;
-  color: #fff;
-  font-weight: 600;
-  border: none;
-  padding: 12px 20px;
-  margin: 20px auto;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.2s ease;
-} */
 
-button:hover {
+
+
+button.microphone, button.camera, #leave-call {
+  border-radius: 50px;
+  padding: 12px 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+button.microphone:hover, button.camera:hover, #leave-call:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(125,0,208,0.5);
+  box-shadow: 0 6px 24px rgba(34, 139, 34, 0.4);
 }
 
-.microphone, .camera, #leave-call{
-  border-radius: 30px;
-  color: #fff;
-  font-weight: 600;
-  border: none;
-  padding: 12px 20px;
-  margin: 20px auto;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.2s ease;
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 8px;
+  animation: blink 2s infinite;
 }
 
-
-
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
+}
 /* .complete-simulation {
     color: white; 
     background: black; 
@@ -419,12 +443,14 @@ button:hover {
         </div>
         <div class="user-profile">
             <video bind:this={videoElem} autoplay playsinline muted></video>
-            <div><strong>{data.form.username} | {data.form.organization}</strong></div>
+            <div> 
+                <span class="status-dot" style="background-color: green;"></span>
+                <strong>{data.form.username} | {data.form.organization}</strong>
+            </div>
         </div>
     </div>
-
-
-    <div class="controls">
+    
+        <div class="controls">
         <!--Microphone toggle -->
         {#if $state.snapshot(micOn) === false } 
             <button class="microphone" id='enable-microphone' onclick={establishOAIConnection} aria-label="enable-microphone">🎙️ Turn on mic</button>
@@ -443,6 +469,7 @@ button:hover {
         </button>
 
     </div>
+
 
 </div>
 
