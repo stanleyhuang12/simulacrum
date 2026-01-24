@@ -63,7 +63,8 @@
 /* === MAIN PANEL === */
 #preamble {
   position: relative;
-  max-width: 760px;
+  max-width: min(95%, 900px);
+  height: min(95%, 70vh);
   margin: 5rem auto;
   padding: 3rem 3rem 3.5rem;
   border-radius: 22px;
