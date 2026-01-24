@@ -78,9 +78,10 @@
 
 div.form-grid { 
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
   align-items: start;
+  
 }
 
 :root {
@@ -94,7 +95,9 @@ div.form-grid {
 }
 
 #begin-delibs-survey-form {
-  max-width: 80%;
+  font-size: 1.35rem; 
+  width: min(95%, 1200px); /* always fits within viewport */
+  height: min(95%, 70vh);
   margin: 2rem auto;
   padding: 1.5rem;
   background: var(--surface);
@@ -202,12 +205,14 @@ button {
   padding: 0.75rem 1.5rem;
   background-color: var(--primary);
   color: #fff;
-  font-weight: 600;
+  font-size: 1rem; 
+  font-weight: 700;
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
 button:hover {
   background-color: var(--primary-hover);
 }
@@ -234,8 +239,9 @@ button:disabled {
   resize: vertical; /* allow vertical resizing only */
   overflow: auto;
   transition: all 0.2s ease;
-  font-family: inherit;
-  font-size: 1rem;
+  font-size: large; 
+  /* font-family: inherit; */
+  /* font-size: 1rem; */
 }
 
 /* ----------------------------
@@ -259,6 +265,7 @@ button:disabled {
     background-color: rgba(255, 255, 255, 0.05);
     color: var(--text);
     border: 1px solid var(--border);
+    font-size: large; 
   }
 
   .radio-group label {
