@@ -51,28 +51,29 @@
         if (!videoStreams) return;
 
         if (camOn) {
-            // Stop all video tracks
             videoStreams.getVideoTracks().forEach(track => {
-            track.enabled = false; // disable the track
-            track.stop(); // stop sending video
+            track.enabled = false;
+            track.stop();
             });
-            camOn = false; // update state
+            videoElem.srcObject = null; 
+            camOn = false;
         } else {
+            getVideoStream()
             // Camera is OFF — re-enable or create a new track
-            navigator.mediaDevices.getUserMedia({ video: true })
-            .then((newStream) => {
-                const newVideoTrack = newStream.getVideoTracks()[0];
-                if (videoStreams?.getVideoTracks().length) {
-                    videoStreams.removeTrack(videoStreams.getVideoTracks()[0]);
-                }
-                videoStreams?.addTrack(newVideoTrack);
-                camOn = true;
-            })
-            .catch(err => console.error("Failed to enable camera:", err));
+            // await window.navigator.mediaDevices.getUserMedia( { video: true })
+            // navigator.mediaDevices.getUserMedia({ video: true })
+            // .then((newStream) => {
+            //     const newVideoTrack = newStream.getVideoTracks()[0];
+            //     if (videoStreams?.getVideoTracks().length) {
+            //         videoStreams.removeTrack(videoStreams.getVideoTracks()[0]);
+            //     }
+            //     videoStreams?.addTrack(newVideoTrack);
+            //     camOn = true;
+            //     videoElem.srcObject = videoStreams
+            // }).catch(err => console.error("Failed to enable camera:", err));
         }
-    }
 
-    
+    }
 
     async function getEphemeralKey() {
         console.group("Retrieving ephemeral key.")
@@ -366,6 +367,7 @@ video {
 
 button.microphone, button.camera, #leave-call {
   border-radius: 50px;
+  color: white; 
   padding: 12px 20px;
   font-weight: 600;
   display: flex;
@@ -374,9 +376,11 @@ button.microphone, button.camera, #leave-call {
   transition: all 0.2s ease;
 }
 
-button.microphone:hover, button.camera:hover, #leave-call:hover {
+button.microphone:hover, button.camera:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 24px rgba(34, 139, 34, 0.4);
+  background-color: rgb(5, 44, 5);
+  box-shadow: 0 0 0 3px rgb(0, 79, 0);
 }
 
 .status-dot {
@@ -405,23 +409,23 @@ button.microphone:hover, button.camera:hover, #leave-call:hover {
   background-color: forestgreen;
 }
 
-#enable-microphone:hover,
+/* #enable-microphone:hover,
 #enable-microphone:focus-visible, 
 #enable-camera:hover, 
 #enable-camera:focus-visible{
   background-color: #228b22;
   box-shadow: 0 0 0 3px rgba(34, 139, 34, 0.4);
-}
-#disable-microphone, #disable-camera {
+} */
+/* #disable-microphone, #disable-camera {
   background-color: crimson;
-}
-#disable-microphone:hover,
+} */
+/* #disable-microphone:hover,
 #disable-microphone:focus-visible, 
 #disable-microphone:hover, 
 #disable-microphone:focus-visible {
   background-color: darkred;
   box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.4);
-}
+} */
 #leave-call {
   background: crimson;
 }
@@ -477,24 +481,3 @@ button.microphone:hover, button.camera:hover, #leave-call:hover {
 
 
        
-
-<!-- 
-
-<div class="video-grid">
-    <video id="agent-video-track" bind:this={videoElem2} muted autoplay playsinline>
-        <audio id="agent-audio-src" autoplay></audio>
-    </video>
-    <video id="user-video-track" bind:this={videoElem} muted autoplay playsinline></video>
-</div>
-
-<div class='microphone-pos'>
-{#if $state.snapshot(buttonElemState) === false } 
-    <button class="microphone" id='enable-microphone' onclick={establishOAIConnection} aria-label="enable-microphone">🎙️ Turn on mic</button>
-{:else}
-    <button class="microphone" id='disable-microphone' onclick={closeOAIConnection} aria-label="disable-microphone">🔇 Turn off mic</button>
-{/if}
-
-
-<button class="complete-simulation" onclick={() => { completeSimulation()}} aria-label="complete simulation">Leave call</button>
-</div>
-<!-- <button onclick={getAudioStream}>Turn on mic.</button> -->
