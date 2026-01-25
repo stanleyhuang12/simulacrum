@@ -198,6 +198,35 @@ div.form-grid {
 }
 
 
+/* .slider-labels span {
+  color: white;
+  margin-top: 2rem;
+  width: min-content;
+  height: min-content; 
+  transform: rotate(-40deg);
+  display: inline-block; 
+} */
+.slider-labels {
+  display: grid;
+  grid-template-columns: repeat(5, 0.5fr);
+  justify-content: center;
+  column-gap: 1.25rem; 
+  margin-top: 1.25rem;
+  pointer-events: none;
+}
+
+
+.slider-labels span {
+  color: white;
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1;
+  display: inline-block;
+  transform: rotate(-40deg) translateY(-65%);
+  transform-origin: top center;
+  white-space: nowrap;
+  margin-left: -1.5ch; 
+}
 /** Button **/
 button {
   margin: 2rem auto;
@@ -372,15 +401,26 @@ button:disabled {
             <input type="text" name="state" bind:value={form.selectedState} placeholder="e.g., California" />
           </label>
 
-          <div class="radio-group">
-            <label>Political orientation:
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="very conservative" /> Very conservative</label>
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="conservative" /> Conservative</label>
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="independent" /> Independent</label>
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="liberal" /> Liberal</label>
-            <label><input type="radio" name="ideology" bind:group={form.selectedIdeology} value="very liberal" /> Very liberal</label>
+          <label class="label-question">
+              Political orientation
+              <input
+                type="range"
+                name="ideology"
+                min="-2"
+                max="2"
+                step="1"
+
+                bind:value={form.selectedIdeology}
+              />
+              <div class="slider-labels">
+                <span>Very conservative</span>
+                <span>Conservative</span>
+                <span>Moderate</span>
+                <span>Liberal</span>
+                <span>Very liberal</span>
+              </div>
             </label>
-          </div>
+
         </div>
       {/if}
   {#if showRandomForm}
@@ -403,6 +443,9 @@ button:disabled {
 
       <p><strong>Political orientation:</strong> {form.selectedIdeology}</p>
       <input type="hidden" name="ideology" bind:value={form.selectedIdeology} />
+
+
+
     </div>
 
   {/if}

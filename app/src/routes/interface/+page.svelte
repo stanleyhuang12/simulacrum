@@ -250,7 +250,6 @@
 
     }
 
-
     function completeSimulation() {
         console.log("Closing WebRTC peer connection")
         closeOAIConnection()
