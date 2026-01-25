@@ -39,8 +39,17 @@
     let showRandomForm = $state(false); 
     let showPreSpecForm = $state(false); 
 
-    // let currentStep = "";
-    
+
+    const labels = [
+      "Very conservative",
+      "Conservative",
+      "Moderate",
+      "Liberal",
+      "Very liberal"
+    ];
+
+    // The slider value (numeric)
+    let sliderValue = $state(2); // starting at "Moderate"
     onMount(async () => {
         console.log("Component is mounted.")
         const res = await fetch("/form", {
@@ -159,6 +168,7 @@ div.form-grid {
   gap: 0.75rem;
   margin: 1.5rem 0;
 }
+
 .radio-group label {
   display: flex;
   align-items: center;
@@ -197,36 +207,10 @@ div.form-grid {
   background: rgba(255, 255, 255, 0.15);
 }
 
-
-/* .slider-labels span {
-  color: white;
-  margin-top: 2rem;
-  width: min-content;
-  height: min-content; 
-  transform: rotate(-40deg);
-  display: inline-block; 
-} */
-.slider-labels {
-  display: grid;
-  grid-template-columns: repeat(5, 0.5fr);
-  justify-content: center;
-  column-gap: 1.25rem; 
-  margin-top: 1.25rem;
-  pointer-events: none;
+.slider-wrapper {
+  width: 100%
 }
 
-
-.slider-labels span {
-  color: white;
-  text-align: center;
-  font-size: 1rem;
-  line-height: 1;
-  display: inline-block;
-  transform: rotate(-40deg) translateY(-65%);
-  transform-origin: top center;
-  white-space: nowrap;
-  margin-left: -1.5ch; 
-}
 /** Button **/
 button {
   margin: 2rem auto;
@@ -297,9 +281,9 @@ button:disabled {
     font-size: large; 
   }
 
-  .radio-group label {
+  /* .radio-group label {
     color: var(--text);
-  }
+  } */
 }
 
 </style>
@@ -400,26 +384,27 @@ button:disabled {
             State
             <input type="text" name="state" bind:value={form.selectedState} placeholder="e.g., California" />
           </label>
-
+        
           <label class="label-question">
-              Political orientation
+            Political orientation
+            <div class="slider-wrapper">
               <input
                 type="range"
-                name="ideology"
-                min="-2"
-                max="2"
+                name="selectedIdeology"
+                min="0"
+                max={labels.length - 1}
                 step="1"
-
-                bind:value={form.selectedIdeology}
+                bind:value={sliderValue}
               />
-              <div class="slider-labels">
-                <span>Very conservative</span>
-                <span>Conservative</span>
-                <span>Moderate</span>
-                <span>Liberal</span>
-                <span>Very liberal</span>
-              </div>
-            </label>
+              <!-- <div class="slider-labels">
+                {#each labels as label, i}
+                  <span>{label}</span>
+                {/each}
+              </div> -->
+            </div>
+
+            <p>Selected: <strong>{labels[sliderValue]}</strong></p>
+          </label>
 
         </div>
       {/if}
