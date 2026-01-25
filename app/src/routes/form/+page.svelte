@@ -105,7 +105,7 @@ div.form-grid {
 
 #begin-delibs-survey-form {
   font-size: 1.35rem; 
-  width: min(95%, 1200px); /* always fits within viewport */
+  width: min(95%, 1100px); /* always fits within viewport */
   height: min(95%, 70vh);
   margin: 2rem auto;
   padding: 1.5rem;
@@ -125,14 +125,22 @@ div.form-grid {
   gap: 1.5rem;
   border-top: 1px solid var(--border);
   padding-top: 1.5rem;
-
+  margin-left: 0.5rem;
 }
 
-.lawmaker-data {
-  border-top: 1px solid var(--border);
-  padding-top: 1.5rem;
+.user-data {
+  margin-right: 1rem;
 }
 
+
+.lawmaker-selection-buttons {
+  display: flex; 
+  flex-direction: column; /* stack content vertically */
+  align-items: center; 
+  justify-content: center; 
+  height: 100%;
+  transform: translateY(135%)
+}
 /* Labels + inputs */
 .label-question {
   display: flex;
