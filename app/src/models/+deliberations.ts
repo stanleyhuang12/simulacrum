@@ -255,6 +255,7 @@ export class Deliberation extends Simulacrum {
     public _init_virtual_lawmaker() {
         this.lawmaker = new Lawmaker(this._username, this.lawmaker_name, this.state, this.ideology, this.policy_topic)
     }
+
     public _diffMinSec(createdAt: Date, updatedAt: Date) {
         const diffMs = updatedAt.getTime() - createdAt.getTime();
         const totalSeconds = Math.floor(diffMs / 1000);
@@ -338,7 +339,35 @@ export class Deliberation extends Simulacrum {
 
         return templateText
     };
+    public compileTime() {
+        if (Object.hasOwn(this, "responseAwait") || (Object.hasOwn(this, "responseStart"))) {
+            const turnGap = this._diffMinSec(
+                this.responseAwait, 
+                this.responseStart
+            ); 
+            const responseTotalTime = this._diffMinSec(
+                this.responseAwait,
+                this.responseEnd
+            )
+            const responseDuration = this._diffMinSec(
+                this.responseStart, 
+                this.responseEnd
+            )
 
+            return {
+                "turnGap": turnGap, 
+                "responseDuration": responseDuration, 
+                "responseTotalTime": responseTotalTime,
+                "metadata": {
+                    "responseAwait": this.responseAwait, 
+                    "responseStart": this.responseStart, 
+                    "responseEnd": this.responseEnd
+                }
+            }
+            
+        } else 
+            return null; 
+    }
     public async panel_discussion(input: string, fetchFn: typeof fetch) {
         const turn = this.conversation_turn;
         this.conversation_turn++;
