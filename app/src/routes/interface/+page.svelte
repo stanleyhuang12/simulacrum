@@ -22,6 +22,10 @@
     let dc: RTCDataChannel | null = null; 
     let isActiveSession: boolean = false; 
 
+    let responseAwaitTime: Date; 
+    let responseStartTime: Date; 
+    let responseEndTime: Date; 
+
 
     onMount(() => { 
         console.log('Establishing WebRTC Peer Connection with OpenAI.')
@@ -191,10 +195,15 @@
                 console.log('Session established.');
                 isProcessingAudio = true; 
                 break;
-    
+            
+            case "conversation.item.input_audio_transcription.started": 
+                responseStartTime = new Date(); 
             case "conversation.item.input_audio_transcription.completed": 
                 console.log('Completed transcriptions');
                 console.log(event);
+
+                responseEndTime = new Date(); 
+                
                 const text = event.transcript 
                 if (!event.transcript) {
                     break;
@@ -229,7 +238,7 @@
         }
     }
 
-    
+ 
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
         console.log("Agent's response: ", agentResponse)
@@ -246,8 +255,12 @@
         const blobURL = URL.createObjectURL(audioResponseBlob);
         const audioElem = new Audio();
         audioElem.src = blobURL;
-        audioElem.play();
-
+        audioElem.onended = function() {
+            responseStartTime = new Date(); 
+        };
+        await audioElem.play();
+        
+       
     }
 
     function completeSimulation() {

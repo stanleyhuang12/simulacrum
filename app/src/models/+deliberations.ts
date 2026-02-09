@@ -225,6 +225,8 @@ export class Deliberation extends Simulacrum {
     public elapsed_time!: number; 
     public createdAt: Date;
     public updatedAt: Date;
+    public responseStart!: Date; 
+    public responseEnd!: Date; 
 
     constructor(
         username: string, 
@@ -241,10 +243,10 @@ export class Deliberation extends Simulacrum {
         super(username, group, simulacrum_type, policy_topic, state, num_agents); // call parent constructor first
         this.ideology = ideology;
         this.lawmaker_name = lawmaker_name;
-        this.createdAt = createdAt
-        this.updatedAt = updatedAt
-
-
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        // this.responseStart = responseStart;
+    
         this._init_virtual_lawmaker(); 
         this._diffMinSec(this.createdAt, this.updatedAt)
     }
@@ -255,8 +257,8 @@ export class Deliberation extends Simulacrum {
     public _diffMinSec(createdAt: Date, updatedAt: Date) {
         const diffMs = updatedAt.getTime() - createdAt.getTime();
         const totalSeconds = Math.floor(diffMs / 1000);
-        if (totalSeconds > 3600) {
-            console.warn("Greater than one hour session, likely an error")
+        if (totalSeconds > 540) {
+            console.warn("Greater than 15 minutes")
         }
         this.elapsed_time = totalSeconds
         return this.elapsed_time;
@@ -295,7 +297,7 @@ export class Deliberation extends Simulacrum {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    "model": "gpt-4o-mini",  // ✅ Valid model
+                    "model": "gpt-4o-mini", 
                     "messages": prompt
                 })
             });
