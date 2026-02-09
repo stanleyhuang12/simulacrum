@@ -22,6 +22,9 @@
     let dc: RTCDataChannel | null = null; 
     let isActiveSession: boolean = false; 
 
+    let responseAwaitTime: Date; 
+    let responseStartTime: Date; 
+    let responseEndTime: Date; 
 
     onMount(() => { 
         console.log('Establishing WebRTC Peer Connection with OpenAI.')
@@ -191,16 +194,22 @@
                 console.log('Session established.');
                 isProcessingAudio = true; 
                 break;
-    
+            
+            case "conversation.item.input_audio_transcription.started": 
+                responseStartTime = new Date(); 
+                console.log(responseStartTime);
+
             case "conversation.item.input_audio_transcription.completed": 
+                responseEndTime = new Date(); 
+                console.log(responseEndTime);
                 console.log('Completed transcriptions');
-                console.log(event);
+
                 const text = event.transcript 
                 if (!event.transcript) {
                     break;
                 }
+
                 console.log(text)
-    
                 processText(text)
                 isProcessingAudio = false; 
                 break;
@@ -212,7 +221,12 @@
             headers: {
                 "Content-Type": "text/plain",
             }, 
-            body: text
+            body: JSON.stringify({
+                text: text, 
+                responseAwaitTime: responseAwaitTime, 
+                responseStartTime: responseStartTime,
+                responseEndTime: responseEndTime, 
+            })
         });
 
         const res = await result.json();
@@ -221,18 +235,16 @@
             case "guardrail.triggered": 
                 console.log("Guardrail is triggered.");
                 redirect(403, 'forbidden')
-                break;
-                //** Handle UI/UX changes. */
+
             case "automated.response": 
                 handleAgentResponse(res.response); 
                 break; 
         }
     }
-
-    
+ 
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
-        console.log("Agent's response: ", agentResponse)
+        console.log("Agent's response:", agentResponse)
         const audioReadableStream = await fetch("/api/text-to-speech", {
             method: "POST", 
             headers: {
@@ -245,8 +257,13 @@
         const audioResponseBlob = new Blob([agentAudio], { type: "audio/wav" });
         const blobURL = URL.createObjectURL(audioResponseBlob);
         const audioElem = new Audio();
+        
         audioElem.src = blobURL;
-        audioElem.play();
+        audioElem.onended = function() {
+            responseAwaitTime = new Date(); 
+            console.log(responseAwaitTime);
+        };
+        await audioElem.play();
 
     }
 

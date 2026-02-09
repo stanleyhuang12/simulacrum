@@ -10,7 +10,13 @@ export const POST: RequestHandler = async ( event ) => {
     const userID = await event.cookies.get('session-id-delibs'); 
     const sessionId = event.cookies.get('session-id-delibs'); 
     if (!sessionId) throw error(401, 'Missing session-id-delibs')
-    const input = await event.request.text(); 
+
+    const res = await event.request.json(); 
+    const input = res.text
+    const responseAwaitTime = res.responseAwaitTime; 
+    const responseStartTime = res.responseStartTime; 
+    const responseEndTime = res.responseEndTime; 
+
     console.group(`Running manage_deliberation_instance endpoint.`)
     console.log(`
         Step 1: Retrieve deliberation instance from database
@@ -19,7 +25,7 @@ export const POST: RequestHandler = async ( event ) => {
         Step 3: Process the input response given the past memory 
         Step 4: Update the database 
         `)
- 
+
     try { 
         const delibsRecord = await validateAndRetrieveDeliberation(userID)
         if (delibsRecord == null) 
@@ -38,7 +44,12 @@ export const POST: RequestHandler = async ( event ) => {
 
             redirect(500, "forbidden")
         }
+        // this could be made more efficient by just trying to hydrate and returning the error
         const d = hydrateDeliberationInstance(delibsRecord)
+        
+        d.responseAwait = responseAwaitTime; 
+        d.responseStart = responseStartTime; 
+        d.responseEnd = responseEndTime; 
 
         if (d.conversation_turn === 3 || d.conversation_turn % 3 === 0) {
             console.log("Running guardrail functions")
@@ -55,6 +66,7 @@ export const POST: RequestHandler = async ( event ) => {
         const response = await d.panel_discussion(input, event.fetch)
         console.log(`Model response: ${response}`)
         let savedMemory = d.lawmaker._retrieve_deserialized_memory()
+
         console.log(savedMemory)
         await updateDeliberationRecord( delibsRecord, d, savedMemory )
         

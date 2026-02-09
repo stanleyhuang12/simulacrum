@@ -6,6 +6,7 @@ import { type Memory } from "../models/+deliberations";
 import { DB_USER, DB_HOST, DB_NAME, DB_PASS } from "$env/static/private";
 import pg from "pg"; 
 import type { Options } from '@sveltejs/vite-plugin-svelte';
+import { noTrueLogging } from "sequelize/lib/utils/deprecations";
 
 export const sequelize = new Sequelize(`postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB_NAME}`, 
     {
@@ -25,7 +26,7 @@ export const sequelize = new Sequelize(`postgresql://${DB_USER}:${DB_PASS}@${DB_
 (async () => {
     try {
         await sequelize.authenticate();
-        await sequelize.sync({alter: true});
+        await sequelize.sync({force: true});
         console.log('PostgreSQL connected and tables synced');
     } catch (err) {
         console.error('PostgreSQL connection failed:', err);
@@ -87,6 +88,10 @@ export const DeliberationORM = sequelize.define(
             type: DataTypes.DATE,
             allowNull: true,
             defaultValue: DataTypes.NOW
+        },
+        responseTracker: {
+            type: DataTypes.JSON, 
+            allowNull: true, 
         }
     }, {
         sequelize, 
@@ -115,7 +120,8 @@ export async function updateDeliberationRecord ( record: Model, d: Deliberation,
             conversation_turn: d.conversation_turn,
             guardrail_tripwire: d.guardrail_triggered ?? false,
             guardrail_reason: d.guardrail_reason ?? null,
-            guardrail_timestamp: d.guardrail_triggered ? new Date() : null
+            guardrail_timestamp: d.guardrail_triggered ? new Date() : null, 
+            responseTracker: d.compileTime() ?? null,
         }) 
     } catch(err) {
         console.error(`Failed to update deliberation record in PostgreSQL database. ${err}`)
