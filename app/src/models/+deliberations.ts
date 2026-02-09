@@ -225,6 +225,7 @@ export class Deliberation extends Simulacrum {
     public elapsed_time!: number; 
     public createdAt: Date;
     public updatedAt: Date;
+    public responseAwait!: Date; 
     public responseStart!: Date; 
     public responseEnd!: Date; 
 
