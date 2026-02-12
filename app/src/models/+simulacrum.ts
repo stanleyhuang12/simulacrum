@@ -23,6 +23,7 @@ export abstract class Simulacrum {
 
     public guardrail_triggered: boolean = false; 
     public guardrail_reason?: string;
+    public userSenseMaking!: SenseMaking[]; 
 
     public userSenseMaking!: SenseMaking[]; 
 
@@ -115,6 +116,11 @@ export abstract class Simulacrum {
                         }
                                 },
                     }, 
+                    start: time (in seconds), 
+                    end: time (in seconds), 
+                    turnGap: time (in seconds), 
+                    timeToFinish: time (in seconds), 
+                    timeToComplete: time (in seconds), 
                 },
             },
             start_time: (in seconds),
@@ -137,6 +143,8 @@ export abstract class Simulacrum {
         this.userSenseMaking.push(unit); 
     }
         
+
+
     public create_divergent_branch(divergentIndex: number, divergentResponse: Dialogue) {
         const longTermMemory = this.lawmaker._retrieve_deserialized_memory();
 
