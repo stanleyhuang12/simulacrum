@@ -144,6 +144,20 @@ export abstract class Simulacrum {
         this.userSenseMaking.push(unit); 
     }
 
+    public unwindTrialBranch(divergentIndex: number) {
+        /*
+        Given a branch, we can unwind the Simulacrum experience towards a previous time by 
+
+        (1) displaying the previous timer / schedule to give the illusion of unwinding
+        (2) replay the initial question or conversation thread that we let the audio play 
+        */
+
+        const prompt = this.lawmaker._memory[divergentIndex].dialogue.prompt
+        const startTime = this.lawmaker._memory[divergentIndex].time.timingDetails.responseAwait
+
+        return { prompt, startTime }; 
+    }; 
+
     public retryDivergentBranch(divergentIndex: number, divergentResponse: Dialogue) {
         let searchedDivergentBranches = false 
         for (const s of this.userSenseMaking) {

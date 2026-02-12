@@ -7,7 +7,7 @@
 
 
     let { data }: PageProps = $props(); 
-
+    
     let audioStreams: MediaStream | undefined;
     let videoStreams: MediaStream | undefined;
     let videoElem: HTMLVideoElement;
@@ -49,7 +49,7 @@
         } catch (err) { 
             console.error(err)
         }
-    }
+    }; 
 
     function toggleCamera() {
         if (!videoStreams) return;
@@ -78,7 +78,7 @@
             // }).catch(err => console.error("Failed to enable camera:", err));
         }
 
-    }
+    }; 
 
     async function getEphemeralKey() {
         console.group("Retrieving ephemeral key.")
@@ -94,7 +94,7 @@
         console.groupEnd();
 
         return EPHEMERAL_KEY
-    }
+    }; 
 
     
     async function establishOAIConnection() {
@@ -148,7 +148,7 @@
         isActiveSession = true;
         micOn = true;
     
-    }
+    }; 
 
     function closeOAIConnection() {
         if (!isActiveSession) {
@@ -176,7 +176,7 @@
 
         isActiveSession = false;
         micOn = false // update store
-    }   
+    }; 
 
 
     async function receiveEmittedEvents(evt: any) {
@@ -213,7 +213,7 @@
                 processText(text)
                 isProcessingAudio = false; 
                 break;
-    }} 
+    }}; 
 
     async function processText(text: string) {
         const result = await fetch("/api/manage-deliberation-instance", {
@@ -240,7 +240,7 @@
                 handleAgentResponse(res.response); 
                 break; 
         }
-    }
+    }; 
  
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
@@ -265,7 +265,7 @@
         };
         await audioElem.play();
 
-    }
+    }; 
 
     function completeSimulation() {
         console.log("Closing WebRTC peer connection")
@@ -282,8 +282,7 @@
         } catch(err) {
             console.error(err)
         }
-    }
-
+    }; 
 </script>
 
 
@@ -363,7 +362,6 @@ video {
 
 
 /* ---------- Microphone Buttons ---------- */
-
 
 /* Controls */
 .controls {
