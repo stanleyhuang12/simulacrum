@@ -89,10 +89,7 @@ export const DeliberationORM = sequelize.define(
             allowNull: true,
             defaultValue: DataTypes.NOW
         },
-        responseTracker: {
-            type: DataTypes.JSON, 
-            allowNull: true, 
-        }
+
     }, {
         sequelize, 
         modelName: "deliberations",
@@ -121,7 +118,6 @@ export async function updateDeliberationRecord ( record: Model, d: Deliberation,
             guardrail_tripwire: d.guardrail_triggered ?? false,
             guardrail_reason: d.guardrail_reason ?? null,
             guardrail_timestamp: d.guardrail_triggered ? new Date() : null, 
-            responseTracker: d.compileTime() ?? null,
         }) 
     } catch(err) {
         console.error(`Failed to update deliberation record in PostgreSQL database. ${err}`)
