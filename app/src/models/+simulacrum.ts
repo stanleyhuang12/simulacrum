@@ -1,6 +1,6 @@
 import { Coach, AdvocacyTrainer } from './+support';
 import { Lawmaker } from './+deliberations';
-import type { Memory, ChatMessage, } from "./+utils"
+import type { Memory, ChatMessage } from "./+utils"
 import { should_display_coach } from './+utils';
 import type { SenseMaking } from './+utils';
 import type { Dialogue } from './+utils';
@@ -137,26 +137,30 @@ export abstract class Simulacrum {
             "originalResponse": this.lawmaker._memory[divergentIndex].dialogue,
             "reflection": reflection,
             "abstraction": abstraction,
+            "branchedRetryAttempted": false, 
+            "branchedRetryNumber": 0, 
         }; 
         
         this.userSenseMaking.push(unit); 
     }
-        
 
-
-    public create_divergent_branch(divergentIndex: number, divergentResponse: Dialogue) {
-        const longTermMemory = this.lawmaker._retrieve_deserialized_memory();
-
-        const memory = longTermMemory[divergentIndex];
-
-        if (!memory.divergent) {
-            memory.divergent = [];
+    public retryDivergentBranch(divergentIndex: number, divergentResponse: Dialogue) {
+        let searchedDivergentBranches = false 
+        for (const s of this.userSenseMaking) {
+            if (s.episodeNumber == divergentIndex) {
+                if (s.branchedRetry)  {
+                    s.branchedRetry.push(divergentResponse)
+                    searchedDivergentBranches = true;  
+                } else {
+                    s.branchedRetry = [divergentResponse]
+                    searchedDivergentBranches; 
+                }
+            } 
         }
-
-        // Push a new branch 
-        memory.divergent.push(divergentResponse);        
-        };
-    
-
+        
+        if (searchedDivergentBranches == false) {
+            throw new Error('Could not find divergent branch that user wanted to edit!')
+        }; 
+    }
 }
 

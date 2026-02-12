@@ -19,6 +19,9 @@ export type SenseMaking = {
     "originalResponse": Dialogue, 
     "reflection": string, 
     "abstraction": string, 
+    "branchedRetryAttempted": boolean 
+    "branchedRetryNumber": 0 | 1
+    "branchedRetry"?: Array<Dialogue>
 }; 
 
 export type Memory = {
