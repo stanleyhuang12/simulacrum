@@ -2,8 +2,8 @@ import { Coach, AdvocacyTrainer } from './+support';
 import { Lawmaker } from './+deliberations';
 import type { Memory, ChatMessage, } from "./+utils"
 import { should_display_coach } from './+utils';
-import type { Dialogue } from './+utils';
 import type { SenseMaking } from './+utils';
+import type { Dialogue } from './+utils';
 
 export abstract class Simulacrum {
     constructor(
@@ -23,6 +23,8 @@ export abstract class Simulacrum {
 
     public guardrail_triggered: boolean = false; 
     public guardrail_reason?: string;
+    public userSenseMaking!: SenseMaking[]; 
+
     public userSenseMaking!: SenseMaking[]; 
 
     abstract _init_virtual_lawmaker(): void; 
@@ -103,6 +105,17 @@ export abstract class Simulacrum {
                     }, 
                     model: string, 
                     epsiodeNumber: number,
+                    time: {
+                        "turnGap": turnGap, 
+                        "responseDuration": responseDuration, 
+                        "responseTotalTime": responseTotalTime,
+                        "metadata": {
+                            "responseAwait": this.responseAwait, 
+                            "responseStart": this.responseStart, 
+                            "responseEnd": this.responseEnd
+                        }
+                                },
+                    }, 
                     start: time (in seconds), 
                     end: time (in seconds), 
                     turnGap: time (in seconds), 

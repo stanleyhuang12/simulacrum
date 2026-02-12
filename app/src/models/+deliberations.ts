@@ -11,12 +11,26 @@ type VirtualLawmakerInstructionsTemplateType = Record<
 
 type closeConversationTemplate = string
     
-type InitChatTemplate = Record<0|1|2, string>
+type InitChatTemplate = Record< 0|1|2, string>
+
+export type timeMetadata = {
+    "turnGap": Date, 
+    "responseDuration": Date, 
+    "responseTotalTime": Date, 
+    "timingDetails": timingDetails, 
+}; 
+
+export type timingDetails = {
+    "responseAwait": Date, 
+    "responseTotalTime": Date, 
+    "responseEnd": Date,
+}; 
 
 export type Memory = {
     "dialogue": Dialogue, 
     "model": string,
     "episodeNumber": number,
+    "time": timeMetadata, 
     "divergent"?: Dialogue[],
 }
 
@@ -119,11 +133,12 @@ export class Lawmaker {
         
     }
 
-    public log_episodal_memory(dialogue: Dialogue, model: string) {
+    public log_episodal_memory(dialogue: Dialogue, model: string, time: timeMetadata) {
         const memory: Memory = {
             dialogue: dialogue, 
             model: model, 
-            episodeNumber: this._memory.length + 1
+            episodeNumber: this._memory.length + 1, 
+            time: time, 
         };
 
         this._memory.push(memory);
@@ -158,6 +173,7 @@ export class Lawmaker {
     public async process(
         input: string,
         fetchFn: typeof fetch,
+        time: timeMetadata, 
         model: string = "gpt-4.1", 
         winddown: boolean = false,
     ) { 
@@ -209,7 +225,7 @@ export class Lawmaker {
                 response: text
             }
             
-            this.log_episodal_memory(currentDialogue, model)
+            this.log_episodal_memory(currentDialogue, model, time)
             
             return text;
         } catch(err) {
@@ -369,7 +385,7 @@ export class Deliberation extends Simulacrum {
         } else 
             return null; 
     }
-    public async panel_discussion(input: string, fetchFn: typeof fetch) {
+    public async panel_discussion(input: string, fetchFn: typeof fetch, time: timeMetadata) {
         const turn = this.conversation_turn;
         this.conversation_turn++;
 
@@ -379,15 +395,15 @@ export class Deliberation extends Simulacrum {
                 prompt: input,
                 response: text
             }
-            this.lawmaker.log_episodal_memory(currentDialogue, "automated_response")
+            this.lawmaker.log_episodal_memory(currentDialogue, "automated_response", time)
             return text 
         }
 
         if (this.elapsed_time > 1200 || this.conversation_turn >= 11) {
             console.warn(`Conversation reached ${this.elapsed_time/60} minutes and ${this.conversation_turn} number of turns`)
-            return this.lawmaker.process(input, fetchFn)
+            return this.lawmaker.process(input, fetchFn, time)
         }
-        return this.lawmaker.process(input, fetchFn); /*Note that process automatically perform logging of episodal memory*/
+        return this.lawmaker.process(input, fetchFn, time); /*Note that process automatically perform logging of episodal memory*/
     }
 }
 
