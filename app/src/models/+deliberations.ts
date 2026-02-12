@@ -14,15 +14,15 @@ type closeConversationTemplate = string
 type InitChatTemplate = Record< 0|1|2, string>
 
 export type timeMetadata = {
-    "turnGap": Date, 
-    "responseDuration": Date, 
-    "responseTotalTime": Date, 
+    "turnGap": number, 
+    "responseDuration": number, 
+    "responseTotalTime": number, 
     "timingDetails": timingDetails, 
 }; 
 
 export type timingDetails = {
     "responseAwait": Date, 
-    "responseTotalTime": Date, 
+    "responseStart": Date, 
     "responseEnd": Date,
 }; 
 
@@ -357,33 +357,30 @@ export class Deliberation extends Simulacrum {
         return templateText
     };
     public compileTime() {
-        if (Object.hasOwn(this, "responseAwait") || (Object.hasOwn(this, "responseStart"))) {
-            const turnGap = this._diffMinSec(
-                this.responseAwait, 
-                this.responseStart
-            ); 
-            const responseTotalTime = this._diffMinSec(
-                this.responseAwait,
-                this.responseEnd
-            )
-            const responseDuration = this._diffMinSec(
-                this.responseStart, 
-                this.responseEnd
-            )
-
-            return {
-                "turnGap": turnGap, 
-                "responseDuration": responseDuration, 
-                "responseTotalTime": responseTotalTime,
-                "metadata": {
-                    "responseAwait": this.responseAwait, 
-                    "responseStart": this.responseStart, 
-                    "responseEnd": this.responseEnd
-                }
+        const turnGap = this._diffMinSec(
+            this.responseAwait, 
+            this.responseStart
+        ); 
+        const responseTotalTime = this._diffMinSec(
+            this.responseAwait,
+            this.responseEnd
+        )
+        const responseDuration = this._diffMinSec(
+            this.responseStart, 
+            this.responseEnd
+        )
+        
+        return {
+            "turnGap": turnGap, 
+            "responseDuration": responseDuration, 
+            "responseTotalTime": responseTotalTime,
+            "timingDetails": {
+                "responseAwait": this.responseAwait, 
+                "responseStart": this.responseStart, 
+                "responseEnd": this.responseEnd
             }
+        }
             
-        } else 
-            return null; 
     }
     public async panel_discussion(input: string, fetchFn: typeof fetch, time: timeMetadata) {
         const turn = this.conversation_turn;

@@ -3,6 +3,7 @@ import { json, error, text } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
 import { validateAndRetrieveDeliberation, updateDeliberationRecord } from '$db/+server';
 import { hydrateDeliberationInstance } from '$models/+deliberations';
+import type { timeMetadata } from '$models/+deliberations';
 /* GET request will retrieve the DeliberationORM object if it exists in the database  */
 
 
@@ -61,9 +62,12 @@ export const POST: RequestHandler = async ( event ) => {
                     reason: guardrailResponse.reason
                 }, {status: 403, statusText: "Your session has ended abruptly due to guardrails put in place. Please contact the team to retry application use."})
             }
-        }
-
-        const response = await d.panel_discussion(input, event.fetch)
+        }; 
+        
+        const timeData: timeMetadata = d.compileTime()
+    
+        
+        const response = await d.panel_discussion(input, event.fetch, timeData); 
         console.log(`Model response: ${response}`)
         let savedMemory = d.lawmaker._retrieve_deserialized_memory()
 
