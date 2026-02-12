@@ -16,7 +16,8 @@ type InitChatTemplate = Record<0|1|2, string>
 export type Memory = {
     "dialogue": Dialogue, 
     "model": string,
-    "episodeNumber": number
+    "episodeNumber": number,
+    "divergent"?: Dialogue[],
 }
 
 const closeConversation: closeConversationTemplate = `
@@ -120,7 +121,7 @@ export class Lawmaker {
 
     public log_episodal_memory(dialogue: Dialogue, model: string) {
         const memory: Memory = {
-        dialogue: dialogue, 
+            dialogue: dialogue, 
             model: model, 
             episodeNumber: this._memory.length + 1
         };

@@ -2,7 +2,8 @@ import { Coach, AdvocacyTrainer } from './+support';
 import { Lawmaker } from './+deliberations';
 import type { Memory, ChatMessage, } from "./+utils"
 import { should_display_coach } from './+utils';
-
+import type { Dialogue } from './+utils';
+import type { SenseMaking } from './+utils';
 
 export abstract class Simulacrum {
     constructor(
@@ -22,6 +23,7 @@ export abstract class Simulacrum {
 
     public guardrail_triggered: boolean = false; 
     public guardrail_reason?: string;
+    public userSenseMaking!: SenseMaking[]; 
 
     abstract _init_virtual_lawmaker(): void; 
 
@@ -56,5 +58,93 @@ export abstract class Simulacrum {
         const response = this.trainer.process(LongTermMemory, fetchFn);
         return response
     }
+
+    public logUserReflection(divergentIndex: number, reflection: string, abstraction: string) {
+        /*
+        According to Kolb's theory for experiential learning, after a user tries something new, they will reflect and 
+        then abstract on what they learn (i.e., notice what they did? and then abstract new theories of implementation)
+        to make improvements. 
+
+        This method will push a new SenseMaking object into userSenseMaker array held in memory. 
+        userSenseMaking should be a comprehensive JSON object that contains the following details: 
+        deliberation: {
+            advocateName: 
+            advocateOrg: 
+            unique_id: 
+            senseMaking: {
+                "episodeNumber": number, # only a few divergent branches will be created 
+                "originalResponse": {
+                    "dialogue": string,  # what the user said in response in past 
+                    "response": string,  # what the lawmaker said in response in past  
+                },
+                "reflection": string,
+                "abstraction": string, 
+                "branchedRetryAttempted": boolean [0 for try and 1 for not try, default to 0]
+                "branchedRetryNumber": 1 [# of times they attempted retry]
+                "branchedRetry": 
+                    [
+                        {
+                        "dialogue": string, what the user said in response after retry 
+                        "response": string, what the lawmaker currently said after retry 
+                        },
+                    ]
+            },
+            lawmaker: {
+                name:
+                advocateName:
+                state:
+                ideology:
+                degree_of_support:
+                persona:
+                memory: {
+                    dialogue: {
+                        prompt: string
+                        response: string
+                    }, 
+                    model: string, 
+                    epsiodeNumber: number,
+                    start: time (in seconds), 
+                    end: time (in seconds), 
+                    turnGap: time (in seconds), 
+                    timeToFinish: time (in seconds), 
+                    timeToComplete: time (in seconds), 
+                },
+            },
+            start_time: (in seconds),
+            total_time: (in seconds),
+            conversation_turn: total; 
+            num_agents: 1,
+            guardrail_tripwire: 
+            guardrail_reason: 
+            guardrail_timestamp
+        }; 
+        */ 
+
+        const unit: SenseMaking  = {
+            "episodeNumber": divergentIndex, 
+            "originalResponse": this.lawmaker._memory[divergentIndex].dialogue,
+            "reflection": reflection,
+            "abstraction": abstraction,
+        }; 
+        
+        this.userSenseMaking.push(unit); 
+    }
+        
+
+
+    public create_divergent_branch(divergentIndex: number, divergentResponse: Dialogue) {
+        const longTermMemory = this.lawmaker._retrieve_deserialized_memory();
+
+        const memory = longTermMemory[divergentIndex];
+
+        if (!memory.divergent) {
+            memory.divergent = [];
+        }
+
+        // Push a new branch 
+        memory.divergent.push(divergentResponse);        
+        };
+    
+
 }
 

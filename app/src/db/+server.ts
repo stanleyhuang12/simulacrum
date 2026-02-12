@@ -127,5 +127,4 @@ export async function updateDeliberationRecord ( record: Model, d: Deliberation,
         console.error(`Failed to update deliberation record in PostgreSQL database. ${err}`)
         throw err;
     }
-
 }
