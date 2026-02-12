@@ -6,12 +6,7 @@ export type Dialogue = {
     response: string;
 };
 
-export type SenseMaking = {
-    "episodeNumber": number, 
-    "originalResponse": Dialogue, 
-    "reflection": string, 
-    "abstraction": string, 
-}
+
 
 export type ChatMessage = {
     role: "system" | "user" | "assistant",

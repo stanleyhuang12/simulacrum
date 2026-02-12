@@ -25,7 +25,6 @@ export abstract class Simulacrum {
     public guardrail_reason?: string;
     public userSenseMaking!: SenseMaking[]; 
 
-    public userSenseMaking!: SenseMaking[]; 
 
     abstract _init_virtual_lawmaker(): void; 
 
