@@ -10,15 +10,22 @@ export type Dialogue = {
 export type ChatMessage = {
     role: "system" | "user" | "assistant",
     content: string
-}
+};
 
+
+export type SenseMaking = {
+    "episodeNumber": number, 
+    "originalResponse": Dialogue, 
+    "reflection": string, 
+    "abstraction": string, 
+}; 
 
 export type Memory = {
     "prompt": ChatMessage[], 
     "dialogue": Dialogue, 
     "model": string,
     "episodeNumber": number
-}
+}; 
 
 export type USState =
   | "Alabama"
@@ -81,7 +88,7 @@ export type Persona = {
     "age": "18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+";
     "state": USState,
     "ideology":  "Very conservative" | "Conservative" | "Independent"| "Liberal" | "Very liberal";
-}
+}; 
 
 export const neutralNames = [
   "Bright Star",
