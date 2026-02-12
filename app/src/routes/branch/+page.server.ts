@@ -34,6 +34,7 @@ export const load: PageServerLoad =  async ( {cookies} ) => {
     
     return { 
         sessCookies: sessCookies,
+        retryBranches: userInitiateRetryBranch,
     }
     
 }
