@@ -1,8 +1,12 @@
 <script lang='ts'> 
 
     /*Audio implementation details: 
-        The AudioStream is a stream of audio content. The Audio Context is an audio processing interface.
-        We create an Analyser node. The Audio Streams 
+        The AudioStream is a stream of audio content. 
+        The Audio Context is an audio processing interface.
+            We create an Analyser node.  
+            The context has a method to create Media Stream Source, which creates a node
+            An Audio context or analyzer node has a method to connect which links the data source of one to another node's destination
+
     */
     let audioAccept; 
     let audioStream: MediaStream; 
@@ -25,12 +29,15 @@
 
     async function pauseAudioStream() {
         /* Pause audio stream temporarily. */
-    }
+    };
 
-    async function getAudioFeedback() {
+    async function getOscilloscopeSnapshot() {
         const source = audioCtx.createMediaStreamSource(audioStream); 
         source.connect(audioAnalyser); 
+        const dataArray = new Uint8Array(); 
+        audioAnalyser.getByteTimeDomainData(dataArray)
 
+        return dataArray; 
     }
 
 </script>
