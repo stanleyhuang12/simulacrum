@@ -1,4 +1,7 @@
-<script lang='ts'> 
+<script lang='ts'>
+  import { resolve } from "$app/paths";
+
+ 
     /*Audio implementation details: 
         The AudioStream is a stream of audio content. 
         The Audio Context is an audio processing interface.
@@ -30,7 +33,21 @@
         });
     }
 
-    async function saveAudioToIndexedDB(audioBuffer: ArrayBuffer): Promise<void> {
+    async function retrieveAudioFromIndexedDB(): Promise<Blob> {
+        const db = await openDB(); 
+
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(IDB_STORE, "readonly")
+            const store = tx.objectStore(IDB_STORE); 
+            const request = store.get('audioData'); 
+            request.onerror = () => reject(request.error); 
+            request.onsuccess = () => {
+                resolve(request.result); 
+        }
+    }); 
+    }
+
+    async function saveAudioToIndexedDB(audioBuffer: Blob): Promise<void> {
         const db = await openDB();
         return new Promise((resolve, reject) => {
             const tx = db.transaction(IDB_STORE, 'readwrite');
@@ -171,8 +188,8 @@
                 mediaRecorder!.onstop = async () => {
                     try {
                         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const audioBuffer = await audioBlob.arrayBuffer();
-                        await saveAudioToIndexedDB(audioBuffer);
+                        // const audioBuffer = await audioBlob.arrayBuffer();
+                        await saveAudioToIndexedDB(audioBlob);
                         console.log('Audio buffer saved to IndexedDB');
                         resolve();
                     } catch (err) {
@@ -185,6 +202,33 @@
             });
         }
     }
+
+    async function submitAudioData() {
+        /* Feeds the data by submitting audio blobs to localStorage so that we can have users play it again if needed  */
+        submitRecording(); 
+        
+        const audioBlob = await retrieveAudioFromIndexedDB()
+        
+        const formData = new FormData(); 
+        formData.append("file", audioBlob); 
+        formData.append("model", "gpt-4o-transcribe")
+        formData.append("language", "en")
+        /* Then, we make sure to retrieve the audio back */
+        const result = await fetch("/api/speech-to-text", {
+            method: "POST", 
+            body: formData
+        }); 
+
+        if (!result.ok) { throw new Error; }; 
+        const res = await result.json()
+        if (res.success) {
+            console.log(res.transcriptions); 
+
+        }
+
+
+    }
+
 
 </script>
 
