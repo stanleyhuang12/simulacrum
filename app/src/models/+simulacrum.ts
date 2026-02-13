@@ -152,10 +152,10 @@ export abstract class Simulacrum {
         (2) replay the initial question or conversation thread that we let the audio play 
         */
 
-        const prompt = this.lawmaker._memory[divergentIndex].dialogue.prompt
+        const dialogue = this.lawmaker._memory[divergentIndex].dialogue
         const startTime = this.lawmaker._memory[divergentIndex].time.timingDetails.responseAwait
 
-        return { prompt, startTime }; 
+        return { dialogue, startTime }; 
     }; 
 
     public retryDivergentBranch(divergentIndex: number, divergentResponse: Dialogue) {

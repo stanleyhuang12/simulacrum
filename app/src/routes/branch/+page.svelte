@@ -5,7 +5,7 @@
 
     const retryBranches: Array<number> = JSON.parse(data.retryBranches)
     
-        let greyTimerProgress = 0;
+    let greyTimerProgress = 0;
     let interval: ReturnType<typeof setInterval>;
     
     let i: number = 0 
@@ -13,8 +13,9 @@
         throw new Error("No branches selected")
     }
 
-    let currentMessageRaw = localStorage.getItem(String(retryBranches.at(i))); 
-    let currentMessage = currentMessageRaw ? JSON.parse(currentMessageRaw) : null; 
+    let rawDialogue = localStorage.getItem(String(retryBranches.at(i))); 
+    let dialogue = rawDialogue ? JSON.parse(rawDialogue) : null; 
+    
 
     const responseAwaitDate = new Date(data.responseAwait);
 
