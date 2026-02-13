@@ -535,25 +535,11 @@ footer {
         Empower communities to learn, understand, and practice legislative and public policy advocacy through risk-free virtual and AI-enabled simulations.
       </p>
     </div>
-    <div>
-      <div class="reflection-debrief">
-        Think out loud: What did you do? What happened during the experience? How did the lawmaker respond 
-      </div>
-      <div class="main-record-controls">
-        <button class="click-record" aria-label="record button"> Record </button>
-        <button class="click-stop" aria-label="stop record button"> Stop </button>
-      </div>
-      <div class="main-record-cache-controls">
-        <button class="reset-record" aria-label="reset recording"> Restart </button>
-        <button class="submit-record" aria-label="submit recording"> Submit </button>
-      </div>
-  
-    </div> 
-    <!-- <nav>
+    <nav>
       <a href="/">Home</a>
       <a href="#features">Features</a>
       <a href="#contact">Contact</a>
-    </nav> -->
+    </nav>
   </header>
   <!-- Hero Section -->
   <section class="hero">
