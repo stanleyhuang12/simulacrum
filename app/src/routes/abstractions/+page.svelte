@@ -14,8 +14,9 @@
         localStorage.setItem(episodeNumber.toString(), abstraction)
     }; 
 
-
-
+    function logUserAbstractions() {
+        
+    }
 </script>
 
     
@@ -27,8 +28,8 @@
         </h3>
         
         Here are some questions to motivate your feedback? 
-        * How could you have been more effective in communicating the importance of your policies? 
-        * Is there anything you wish you could've improved on? 
+        * How could you have been more <bold>effective in communicating the importance of your policies</bold>?
+        * Is there anything you wish you <bold>could've improved on</bold>? 
         * What did you wish you said that you didn't mention? What did you wish you said that you could've not included or shortened?
         * How do you feel about the way you positioned yourself, your experience, and your arguments for a particular policy? 
         
