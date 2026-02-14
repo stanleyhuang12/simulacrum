@@ -41,7 +41,7 @@ export const POST: RequestHandler = async ( {request} ) => {
             body: await request.formData()
         })
         
-        const res = await agentResponse.json();
+        const res = await agentResponse.text();
         
         console.log(res);
         console.groupEnd();

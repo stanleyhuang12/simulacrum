@@ -1,7 +1,6 @@
-<script lang='ts'>
-  import { resolve } from "$app/paths";
+<script lang="ts">
 
- 
+
     /*Audio implementation details: 
         The AudioStream is a stream of audio content. 
         The Audio Context is an audio processing interface.
@@ -9,6 +8,7 @@
             The context has a method to create Media Stream Source, which creates a node
             An Audio context or analyzer node has a method to connect which links the data source of one to another node's destination
     */
+   
     let audioAccept: MediaDevices; 
     let audioStream: MediaStream | undefined; 
     let canvasEl: HTMLCanvasElement;
@@ -20,39 +20,41 @@
     let audioChunks: Blob[] = [];
 
     const IDB_NAME = 'reflection-audio-db';
-    const IDB_STORE = 'recordings';
+    const IDB_STORE_AUDIO = 'recordings';
+    const IDB_STORE_TEXT = 'transcriptions'; 
 
-    function openDB(): Promise<IDBDatabase> {
+    function openDB(storeName: string): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
             const req = indexedDB.open(IDB_NAME, 1);
             req.onerror = () => reject(req.error);
             req.onsuccess = () => resolve(req.result);
             req.onupgradeneeded = (e) => {
-                (e.target as IDBOpenDBRequest).result.createObjectStore(IDB_STORE);
+                (e.target as IDBOpenDBRequest).result.createObjectStore(IDB_STORE_AUDIO);
+                (e.target as IDBOpenDBRequest).result.createObjectStore(IDB_STORE_TEXT);
+
             };
         });
     }
 
-    async function retrieveAudioFromIndexedDB(): Promise<Blob> {
-        const db = await openDB(); 
+    async function retrieveFromIndexedDB(storeName: string, idbKey: string): Promise<Blob|string> {
+        const db = await openDB(storeName); 
 
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(IDB_STORE, "readonly")
-            const store = tx.objectStore(IDB_STORE); 
-            const request = store.get('audioData'); 
-            request.onerror = () => reject(request.error); 
+            const tx = db.transaction(storeName, "readonly")
+            const store = tx.objectStore(storeName); 
+            const request = store.get(idbKey); 
+            request.onerror = () => reject(new Error(`Could not retrieve the item from IndexedDB from ${storeName} and key ${idbKey}`)); 
             request.onsuccess = () => {
                 resolve(request.result); 
-        }
-    }); 
-    }
+             }
+        })}; 
 
-    async function saveAudioToIndexedDB(audioBuffer: Blob): Promise<void> {
-        const db = await openDB();
+    async function saveToIndexedDB(storeName: string, idbKey: string, data: Blob | string): Promise<void> {
+        const db = await openDB(storeName);
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(IDB_STORE, 'readwrite');
-            const store = tx.objectStore(IDB_STORE);
-            store.put(audioBuffer, 'audioData');
+            const tx = db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+            store.put(data, idbKey);
             tx.oncomplete = () => {
                 db.close();
                 resolve();
@@ -64,11 +66,11 @@
         });
     }
 
-    async function clearAudioFromIndexedDB(): Promise<void> {
-        const db = await openDB();
+    async function clearFromIndexedDB(storeName: string, idbKey: string): Promise<void> {
+        const db = await openDB(storeName);
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(IDB_STORE, 'readwrite');
-            tx.objectStore(IDB_STORE).delete('audioData');
+            const tx = db.transaction(storeName, 'readwrite');
+            tx.objectStore(storeName).delete(idbKey);
             tx.oncomplete = () => {
                 db.close();
                 resolve();
@@ -80,7 +82,7 @@
         });
     }
 
-    async function getAudioStream() {
+    async function getAudioStream(): Promise<void> {
         try {
             // If already recording and paused, resume
             if (mediaRecorder && mediaRecorder.state === 'paused') {
@@ -116,7 +118,7 @@
         }
     }
 
-    function draw() {
+    function draw(): void {
         if (!canvasEl || !audioStream) return;
 
         const ctx = canvasEl.getContext('2d'); 
@@ -179,17 +181,17 @@
             audioStream = undefined;
         }
         stopDrawing();
-        await clearAudioFromIndexedDB();
+        await clearFromIndexedDB(IDB_STORE_AUDIO, 'audio-data');
     }
 
-    async function submitRecording() {
+    async function saveRecordingLocally() {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             return new Promise<void>((resolve, reject) => {
                 mediaRecorder!.onstop = async () => {
                     try {
                         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                         // const audioBuffer = await audioBlob.arrayBuffer();
-                        await saveAudioToIndexedDB(audioBlob);
+                        await saveToIndexedDB(IDB_STORE_AUDIO, 'audio-data', audioBlob);
                         console.log('Audio buffer saved to IndexedDB');
                         resolve();
                     } catch (err) {
@@ -205,10 +207,10 @@
 
     async function submitAudioData() {
         /* Feeds the data by submitting audio blobs to localStorage so that we can have users play it again if needed  */
-        submitRecording(); 
+        await saveRecordingLocally(); 
         
-        const audioBlob = await retrieveAudioFromIndexedDB()
-        
+        const audioBlob = await retrieveFromIndexedDB(IDB_STORE_AUDIO, 'audio-data')
+
         const formData = new FormData(); 
         formData.append("file", audioBlob); 
         formData.append("model", "gpt-4o-transcribe")
@@ -220,15 +222,15 @@
         }); 
 
         if (!result.ok) { throw new Error; }; 
+
         const res = await result.json()
         if (res.success) {
             console.log(res.transcriptions); 
-
+            await saveToIndexedDB(IDB_STORE_TEXT, 'transcription-data', res.transcriptions); 
         }
 
 
     }
-
 
 </script>
 
@@ -259,7 +261,7 @@
     <div class="main-record-cache-controls">
       
         <button class="reset-record" onclick={resetAudioStorage} aria-label="reset recording"> Restart </button>
-        <button class="submit-record" onclick={submitRecording} aria-label="submit recording"> Done </button>
+        <button class="submit-record" onclick={submitAudioData} aria-label="submit recording"> Done </button>
     
     </div>
 
