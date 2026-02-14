@@ -6,6 +6,18 @@ import { hydrateDeliberationInstance } from "$models/+deliberations";
 
 
 export const load: PageServerLoad =  async ( {cookies} ) => {
+    /*
+    Retrieves a subset of the conversation threads that user wants to retry. 
+    This load function uses local storage to store 
+        (1) the conversation ID or branch ID to diverge as key
+        (2) the value as a string representation of an object { dialogue, startTime }
+            dialogue: { prompt: # prompt, response: # response }; note that we are creating a divergent branch by "overwriting" the response
+            startTime: Date; the initial time when the user previously responded to the virtual lawmaker. Simulate unwinding time. 
+    
+    This load function returns 
+        (1) the session cookies or UUID to match user and 
+        (2) a parseable string representation of the different conversation threads to create divergent branches
+    */ 
     console.group()
     console.log("Running load function for branch retry")
     
@@ -24,14 +36,11 @@ export const load: PageServerLoad =  async ( {cookies} ) => {
         const retryBranches = JSON.parse(userInitiateRetryBranch);
         console.log("Branches to retry", retryBranches);
         for (const branchIndex of retryBranches) {
-            const { prompt, startTime } = d.unwindTrialBranch(branchIndex)
-            localStorage.setItem(branchIndex, JSON.stringify({prompt, startTime}))
+            const { dialogue, startTime } = d.unwindTrialBranch(branchIndex)
+            localStorage.setItem(branchIndex, JSON.stringify({dialogue, startTime}))
         }
     }
-    /*
-    The goal is to retrieve a subset of memory  
-    */
-    
+  
     return { 
         sessCookies: sessCookies,
         retryBranches: userInitiateRetryBranch,

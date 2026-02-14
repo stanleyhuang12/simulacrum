@@ -1,4 +1,17 @@
 <script lang="ts">
+    /*
+    The Feedback interface provides feedback from the Feedback module that iteratively maps, synthesize, and generate feedback
+    into an accessible format for the advocate. 
+    
+    Users will see the following: 
+      * A downloadable PDF that contains conversation threads, user details, and other information 
+      * A text box that allows them to reflect on the experience in audio format. A few prompts to guide them through this process 
+      * A matrix of conversation threads where you see lawmaker message, your previous response, timestamps, and 
+        a voice memo that asks user to describe which conversation threads they think they can improve? 
+        * On-demand (ask AI for help) 
+        * Accept suggestions  
+      * 
+    */
     import { onMount } from "svelte";
     import { jsPDF } from "jspdf";
     import type { PageProps } from './$types';
