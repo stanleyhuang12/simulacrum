@@ -1,6 +1,4 @@
 <script lang="ts">
-
-
     /*Audio implementation details: 
         The AudioStream is a stream of audio content. 
         The Audio Context is an audio processing interface.
