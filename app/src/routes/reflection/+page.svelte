@@ -23,7 +23,7 @@
     const IDB_STORE_AUDIO = 'recordings';
     const IDB_STORE_TEXT = 'transcriptions'; 
 
-    function openDB(storeName: string): Promise<IDBDatabase> {
+    function openDB(): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
             const req = indexedDB.open(IDB_NAME, 1);
             req.onerror = () => reject(req.error);
@@ -37,7 +37,7 @@
     }
 
     async function retrieveFromIndexedDB(storeName: string, idbKey: string): Promise<Blob|string> {
-        const db = await openDB(storeName); 
+        const db = await openDB(); 
 
         return new Promise((resolve, reject) => {
             const tx = db.transaction(storeName, "readonly")
@@ -46,11 +46,12 @@
             request.onerror = () => reject(new Error(`Could not retrieve the item from IndexedDB from ${storeName} and key ${idbKey}`)); 
             request.onsuccess = () => {
                 resolve(request.result); 
-             }
-        })}; 
+            }; 
+        }); 
+    }
 
     async function saveToIndexedDB(storeName: string, idbKey: string, data: Blob | string): Promise<void> {
-        const db = await openDB(storeName);
+        const db = await openDB();
         return new Promise((resolve, reject) => {
             const tx = db.transaction(storeName, 'readwrite');
             const store = tx.objectStore(storeName);
@@ -67,7 +68,7 @@
     }
 
     async function clearFromIndexedDB(storeName: string, idbKey: string): Promise<void> {
-        const db = await openDB(storeName);
+        const db = await openDB();
         return new Promise((resolve, reject) => {
             const tx = db.transaction(storeName, 'readwrite');
             tx.objectStore(storeName).delete(idbKey);
@@ -182,6 +183,7 @@
         }
         stopDrawing();
         await clearFromIndexedDB(IDB_STORE_AUDIO, 'audio-data');
+        await clearFromIndexedDB(IDB_STORE_AUDIO, 'transcription-data');
     }
 
     async function saveRecordingLocally() {
@@ -190,8 +192,9 @@
                 mediaRecorder!.onstop = async () => {
                     try {
                         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        // const audioBuffer = await audioBlob.arrayBuffer();
-                        await saveToIndexedDB(IDB_STORE_AUDIO, 'audio-data', audioBlob);
+                        // const audioBuffer = await audioBlob.arrayBuffer();                        await saveToIndexedDB(IDB_STORE_AUDIO, 'audio-data', audioBlob);
+                        if (!audioBlob) throw new Error('No audio found');
+
                         console.log('Audio buffer saved to IndexedDB');
                         resolve();
                     } catch (err) {
@@ -210,6 +213,8 @@
         await saveRecordingLocally(); 
         
         const audioBlob = await retrieveFromIndexedDB(IDB_STORE_AUDIO, 'audio-data')
+        
+        if (!audioBlob) throw new Error('No audio found');
 
         const formData = new FormData(); 
         formData.append("file", audioBlob); 
