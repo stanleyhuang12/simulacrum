@@ -5,8 +5,7 @@ import type { ModelOptions } from "sequelize";
 import { type Memory } from "../models/+deliberations";
 import { DB_USER, DB_HOST, DB_NAME, DB_PASS } from "$env/static/private";
 import pg from "pg"; 
-import type { Options } from '@sveltejs/vite-plugin-svelte';
-import { noTrueLogging } from "sequelize/lib/utils/deprecations";
+import type { SenseMaking } from "$models/+utils";
 
 export const sequelize = new Sequelize(`postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB_NAME}`, 
     {
@@ -72,6 +71,10 @@ export const DeliberationORM = sequelize.define(
             type: DataTypes.JSON, 
             allowNull: true
         },
+        sensemaking: {
+            type: DataTypes.JSON, 
+            allowNull: true
+        }, 
         conversation_turn: {
             type: DataTypes.INTEGER,
             allowNull: true
@@ -120,7 +123,19 @@ export async function updateDeliberationRecord ( record: Model, d: Deliberation,
             guardrail_timestamp: d.guardrail_triggered ? new Date() : null, 
         }) 
     } catch(err) {
-        console.error(`Failed to update deliberation record in PostgreSQL database. ${err}`)
+        console.error(`Failed to update deliberation record for memory and guardrails in PostgreSQL database. ${err}`)
         throw err;
+    }
+}
+
+export async function updateDeliberationSensemaking( record: Model, d: Deliberation) {
+    try {
+        await record.reload(); 
+        return await record.update({
+            sensemaking: d.userSenseMaking
+        })
+    } catch(err) {
+        console.error(`Failed to update deliberation record for sensemaking in PostgreSQL data. ${err}`)
+        throw err; 
     }
 }
