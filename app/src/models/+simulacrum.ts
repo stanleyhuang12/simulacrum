@@ -23,7 +23,7 @@ export abstract class Simulacrum {
 
     public guardrail_triggered: boolean = false; 
     public guardrail_reason?: string;
-    public userSenseMaking!: SenseMaking[]; 
+    public userSenseMaking!: SenseMaking; 
 
 
     abstract _init_virtual_lawmaker(): void; 
@@ -60,7 +60,7 @@ export abstract class Simulacrum {
         return response
     }
 
-    public logUserReflection(divergentIndex: number, reflection: string, abstraction: string) {
+    public logUserSenseMaking(divergentIndex: number, reflection: string, abstraction: object) {
         /*
         According to Kolb's theory for experiential learning, after a user tries something new, they will reflect and 
         then abstract on what they learn (i.e., notice what they did? and then abstract new theories of implementation)
@@ -73,22 +73,26 @@ export abstract class Simulacrum {
             advocateOrg: 
             unique_id: 
             senseMaking: {
+                
                 "episodeNumber": number, # only a few divergent branches will be created 
                 "originalResponse": {
                     "dialogue": string,  # what the user said in response in past 
                     "response": string,  # what the lawmaker said in response in past  
                 },
                 "reflection": string,
-                "abstraction": string, 
-                "branchedRetryAttempted": boolean [0 for try and 1 for not try, default to 0]
-                "branchedRetryNumber": 1 [# of times they attempted retry]
-                "branchedRetry": 
-                    [
-                        {
-                        "dialogue": string, what the user said in response after retry 
-                        "response": string, what the lawmaker currently said after retry 
-                        },
-                    ]
+                "abstraction": {
+                    "epsiodeNumber": string # not all of them by the way 
+                    "branchedRetryAttempted": boolean [0 for try and 1 for not try, default to 0]
+                    "branchedRetryNumber": 1 [# of times they attempted retry]
+                    "branchedRetry": 
+                        [
+                            {
+                            "dialogue": string, what the user said in response after retry 
+                            "response": string, what the lawmaker currently said after retry 
+                            },
+                        ]
+                }, 
+                
             },
             lawmaker: {
                 name:
@@ -132,16 +136,15 @@ export abstract class Simulacrum {
         }; 
         */ 
 
-        const unit: SenseMaking  = {
+        const sensemaker: SenseMaking  = {
             "episodeNumber": divergentIndex, 
-            "originalResponse": this.lawmaker._memory[divergentIndex].dialogue,
             "reflection": reflection,
             "abstraction": abstraction,
             "branchedRetryAttempted": false, 
             "branchedRetryNumber": 0, 
         }; 
         
-        this.userSenseMaking.push(unit); 
+        this.userSenseMaking = sensemaker
     }
 
     public unwindTrialBranch(divergentIndex: number) {
@@ -160,7 +163,7 @@ export abstract class Simulacrum {
 
     public retryDivergentBranch(divergentIndex: number, divergentResponse: Dialogue) {
         let searchedDivergentBranches = false 
-        for (const s of this.userSenseMaking) {
+        for (const s of this.userSenseMaking.) {
             if (s.episodeNumber == divergentIndex) {
                 if (s.branchedRetry)  {
                     s.branchedRetry.push(divergentResponse)

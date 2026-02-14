@@ -7,7 +7,6 @@ export type Dialogue = {
 };
 
 
-
 export type ChatMessage = {
     role: "system" | "user" | "assistant",
     content: string
@@ -16,13 +15,13 @@ export type ChatMessage = {
 
 export type SenseMaking = {
     "episodeNumber": number, 
-    "originalResponse": Dialogue, 
     "reflection": string, 
-    "abstraction": string, 
+    "abstraction": object, 
     "branchedRetryAttempted": boolean 
     "branchedRetryNumber": 0 | 1
     "branchedRetry"?: Array<Dialogue>
 }; 
+
 
 export type Memory = {
     "prompt": ChatMessage[], 
