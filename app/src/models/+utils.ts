@@ -16,7 +16,7 @@ export type ChatMessage = {
 export type SenseMaking = {
     "episodeNumber": number, 
     "reflection": string, 
-    "abstraction": object, 
+    "abstraction": Record<number, string>, 
     "branchedRetryAttempted": boolean 
     "branchedRetryNumber": 0 | 1
     "branchedRetry"?: Array<Dialogue>

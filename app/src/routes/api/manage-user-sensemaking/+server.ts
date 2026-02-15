@@ -51,9 +51,27 @@ export const PUT: RequestHandler = async( event ) => {
   /*
    * If user makes a request for AI-assisted support, we will request feedback, update the database, and return the AI assisted feedback 
    */
-  const body = event.request.body
-  // placeholdeer fn for now 
-  return json({
-    data: body 
-  })
+
+  
+  try {
+    const sessionId = event.cookies.get('session-id-delibs');
+    const dRecord = await validateAndRetrieveDeliberation(sessionId);
+    if (!dRecord) { return error(404, "Deliberation object not found. ")}; 
+    const d = hydrateDeliberationInstance(dRecord); 
+    
+    const res = await event.request.json(); 
+    const episodeNumber: number = res.episodeNumber; 
+    const coachFeedback: string = res.coachFeedback; 
+
+    d.userSenseMaking.abstraction[episodeNumber] = coachFeedback; 
+    return json({
+      data: coachFeedback 
+    }); 
+    
+  } catch(err){
+    return error(500, "Could not submit an update the database")
+  }
+  
+
+
 }

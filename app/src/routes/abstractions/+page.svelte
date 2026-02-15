@@ -23,6 +23,7 @@
         const userFeedback = localStorage.getItem(episodeNumber.toString())
         //** Need to write better context management for appending information to LLM-process*/
         const res = await fetch("/api/llm-process", {
+            method: "POST",
             body: userFeedback 
         })
 
@@ -31,6 +32,19 @@
             
         const response = await res.json();
         const coachFeedback = response.data;
+
+        await fetch("/api/manage-user-sensemaking", {
+            method: "PUT", 
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(JSON.stringify(
+                {
+                    episodeNumber: episodeNumber, 
+                    coachFeedback: coachFeedback, 
+                }
+            )),
+        }); 
 
         assistedFeedbackByEpisode[episodeNumber] = coachFeedback; 
     }
