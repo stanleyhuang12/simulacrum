@@ -46,3 +46,14 @@ export const POST: RequestHandler = async ( event ) => {
     return json({ error: "Failed to call OpenAI API" }, { status: 500 });
   }
 };
+
+export const PUT: RequestHandler = async( event ) => {
+  /*
+   * If user makes a request for AI-assisted support, we will request feedback, update the database, and return the AI assisted feedback 
+   */
+  const body = event.request.body
+  // placeholdeer fn for now 
+  return json({
+    data: body 
+  })
+}

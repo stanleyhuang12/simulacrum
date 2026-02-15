@@ -26,6 +26,6 @@ export const POST: RequestHandler = async ( event ) => {
 
   } catch (err) {
     console.error("Error calling OpenAI API:", err);
-    return json({ error: "Failed to call OpenAI API" }, { status: 500 });
+    return error(500, "Failed to call OpenAI API"); 
   }
 };

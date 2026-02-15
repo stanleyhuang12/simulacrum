@@ -9,6 +9,7 @@
     const { data } = $props();
     const memories: Memory[] = data.memory 
     let abstractionByEpisode = $state<Record<number, string>>({});
+    let assistedFeedbackByEpisode = $state<Record<number, string>>({});
 
     function storeAbstraction(episodeNumber: number, abstraction: string) {
         localStorage.setItem(episodeNumber.toString(), abstraction)
@@ -17,8 +18,33 @@
     function logUserAbstractions() {
         
     }
+
+    async function requestFeedbackCoach(episodeNumber:number) {
+        const userFeedback = localStorage.getItem(episodeNumber.toString())
+        //** Need to write better context management for appending information to LLM-process*/
+        const res = await fetch("/api/llm-process", {
+            body: userFeedback 
+        })
+
+        if (!res.ok) { return await res.text(); }
+
+            
+        const response = await res.json();
+        const coachFeedback = response.data;
+
+        assistedFeedbackByEpisode[episodeNumber] = coachFeedback; 
+    }
 </script>
 
+<style>
+.ai-feedback {
+    background-color: #e6ffe6;
+    border-left: 4px solid green;
+    padding: 8px;
+    margin-top: 6px;
+    font-size: 0.9rem;
+}
+</style>
     
 <div> 
     <section class="header">
@@ -66,6 +92,10 @@
                     >
                 </td>
                 <td> 
+                    <button onclick={() => requestFeedbackCoach(memory.episodeNumber)}>
+                        Get AI support and feedback
+                    </button>
+                        <div class="ai-feedback">{assistedFeedbackByEpisode[memory.episodeNumber]}</div>
                 </td>
             </tr>
             {/each}
