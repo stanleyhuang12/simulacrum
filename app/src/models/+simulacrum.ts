@@ -163,7 +163,7 @@ export abstract class Simulacrum {
 
     public retryDivergentBranch(divergentIndex: number, divergentResponse: Dialogue) {
         let searchedDivergentBranches = false 
-        for (const s of this.userSenseMaking.) {
+        for (const s of Object.values(this.userSenseMaking.abstraction)) {
             if (s.episodeNumber == divergentIndex) {
                 if (s.branchedRetry)  {
                     s.branchedRetry.push(divergentResponse)
