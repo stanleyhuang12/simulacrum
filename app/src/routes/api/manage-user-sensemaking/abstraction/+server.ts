@@ -14,7 +14,7 @@ export const GET: RequestHandler = async(event) => {
             data: d.userSenseMaking.abstraction, 
             success: true,
         })
-        
+
     } catch(err){
         return error(500, `Could not retrieve the abstractions. Error: ${err}`)
       }
@@ -45,7 +45,7 @@ export const POST: RequestHandler = async( event ) => {
         d.logAbstractConceptualization(episodeNumber, userAbstraction)
       }
 
-      updateDeliberationSensemaking(dRecord, d); 
+      await updateDeliberationSensemaking(dRecord, d); 
       
       return json({
         data: coachAbstraction 

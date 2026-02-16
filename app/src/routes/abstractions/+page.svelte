@@ -8,15 +8,41 @@
     import type { Memory } from "$models/+deliberations.ts";
     const { data } = $props();
     const memories: Memory[] = data.memory 
-    let abstractionByEpisode = $state<Record<number, string>>({});
+    let abstractionByEpisode = $state<Record<number, DraftRow>>({});
     let assistedFeedbackByEpisode = $state<Record<number, string>>({});
+
+    type DraftRow = {
+        userAbstraction: string, 
+        coachAbstraction: string, 
+        aiHelpRequested: boolean
+    }; 
+
+    let isSubmitting = $state(false);
+    let aiHelpUsedOnce = $state(false);
+    let aiHelpEpisode = $state<number | null>(null);
 
     function storeAbstractionLocally(episodeNumber: number, abstraction: string) {
         localStorage.setItem(episodeNumber.toString(), abstraction)
     }; 
 
-    function logUserAbstractions() {
-        
+    
+    const episodes = memories.map((m) => m.episodeNumber);
+
+    
+    function defaultDraft(): DraftRow {
+        /** Inits the draft row */
+        return {
+            userAbstraction: "",
+            coachAbstraction: "",
+            aiHelpRequested: false
+        };
+    }
+
+    function canRequestAiHelp(episodeNumber: number): boolean {
+        /* For each draft for the episode, they can only request help once from an AI coach and after they have written a bit */
+        const draft = abstractionByEpisode[episodeNumber] ?? defaultDraft();
+        return !aiHelpUsedOnce && !draft.aiHelpRequested && draft.userAbstraction.trim().length >= 10;
+
     }
 
     async function requestFeedbackCoach(episodeNumber:number) {
