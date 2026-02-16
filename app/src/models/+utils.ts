@@ -13,14 +13,31 @@ export type ChatMessage = {
 };
 
 
+export type AbstractionNode = {
+  "userAbstraction": string, // The user constructs, and self-corrects from retrospection 
+  "coachAbstraction"?: string, // This is where optional AI-generated feedback are stored
+  "branchedRetryAttempted": boolean, 
+  "branchedRetryNumber": 0 | 1 | 2,
+  "branchedRetry"?: Array<Dialogue> 
+}
+
+export type AbstractionTree = {
+  [episodeNumber: number]: AbstractionNode;
+};
+
 export type SenseMaking = {
-    "episodeNumber": number, 
     "reflection": string, 
-    "abstraction": Record<number, string>, 
-    "branchedRetryAttempted": boolean 
-    "branchedRetryNumber": 0 | 1
-    "branchedRetry"?: Array<Dialogue>
-}; 
+    "abstraction": AbstractionTree, 
+}
+
+// export type SenseMaking = {
+//     "episodeNumber": number, 
+//     "reflection": string, 
+//     "abstraction": Record<number, string>, 
+//     "branchedRetryAttempted": boolean 
+//     "branchedRetryNumber": 0 | 1
+//     "branchedRetry"?: Array<Dialogue>
+// }; 
 
 
 export type Memory = {

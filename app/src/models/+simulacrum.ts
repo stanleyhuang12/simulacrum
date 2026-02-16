@@ -135,6 +135,7 @@ export abstract class Simulacrum {
             guardrail_timestamp
         }; 
         */ 
+       
 
         const sensemaker: SenseMaking  = {
             "episodeNumber": divergentIndex, 
@@ -163,14 +164,14 @@ export abstract class Simulacrum {
 
     public retryDivergentBranch(divergentIndex: number, divergentResponse: Dialogue) {
         let searchedDivergentBranches = false 
-        for (const s of Object.values(this.userSenseMaking.abstraction)) {
+        for (const s of this.userSenseMaking.abstraction) {
             if (s.episodeNumber == divergentIndex) {
                 if (s.branchedRetry)  {
                     s.branchedRetry.push(divergentResponse)
                     searchedDivergentBranches = true;  
                 } else {
                     s.branchedRetry = [divergentResponse]
-                    searchedDivergentBranches; 
+                    searchedDivergentBranches = true; 
                 }
             } 
         }
