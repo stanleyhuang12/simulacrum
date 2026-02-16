@@ -4,6 +4,7 @@ import { json, error, text } from '@sveltejs/kit';
 import { updateDeliberationRecord, updateDeliberationSensemaking, validateAndRetrieveDeliberation } from '$db/+server';
 
 import { hydrateDeliberationInstance } from '$models/+deliberations';
+import type { AbstractionNode } from '$models/+utils';
 
 
 export const GET: RequestHandler = async (event) => {
@@ -23,26 +24,18 @@ export const POST: RequestHandler = async ( event ) => {
     const d = hydrateDeliberationInstance(dRecord)
   
     const userReflection = await event.request.text(); 
-    d.userSenseMaking.reflection = userReflection
+    d.logUserReflection(userReflection); 
     
-    if (!dRecord) {
-      return json({
-        data: null,
-        error: { code: 404, message: 'Deliberation not found' },
-        meta: null
-      }, { status: 404 });
-    }
-    
-    await updateDeliberationSensemaking(dRecord, d)
+    await updateDeliberationSensemaking(dRecord, d); 
     
     return json({
       data: d.userSenseMaking,
       error: null,
-      meta: { updatedAt: new Date().toISOString() }
+      meta: { loggedAt: new Date().toISOString() }
     });
 
   } catch (err) {
     console.error("Error calling OpenAI API:", err);
-    return json({ error: "Failed to call OpenAI API" }, { status: 500 });
+    return error(500, "Failed to call OpenAI API."); 
   }
 };

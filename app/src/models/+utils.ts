@@ -1,6 +1,68 @@
 import jStat from 'jstat';
 import type { Json } from 'sequelize/lib/utils';
 
+/*
+        deliberation: {
+            advocateName: 
+            advocateOrg: 
+            unique_id: 
+            senseMaking: {
+                "reflection": ...
+                "abstraction"?: AbstractionNode: {
+                  keyed with episodeNumber: {
+                    userAbstraction: 
+                    coachAbstraction: 
+                    branchRetry:   [
+                            {
+                            "dialogue": string, what the user said in response after retry 
+                            "response": string, what the lawmaker currently said after retry 
+                            },
+                        ]
+                    branchRetryAttempted: 
+                    branchRetryNumber: 
+                  }         
+            },
+            lawmaker: {
+                name:
+                advocateName:
+                state:
+                ideology:
+                degree_of_support:
+                persona:
+                memory: {
+                    dialogue: {
+                        prompt: string
+                        response: string
+                    }, 
+                    model: string, 
+                    epsiodeNumber: number,
+                    time: {
+                        "turnGap": turnGap, 
+                        "responseDuration": responseDuration, 
+                        "responseTotalTime": responseTotalTime,
+                        "metadata": {
+                            "responseAwait": this.responseAwait, 
+                            "responseStart": this.responseStart, 
+                            "responseEnd": this.responseEnd
+                        }
+                                },
+                    }, 
+                    start: time (in seconds), 
+                    end: time (in seconds), 
+                    turnGap: time (in seconds), 
+                    timeToFinish: time (in seconds), 
+                    timeToComplete: time (in seconds), 
+                },
+            },
+            start_time: (in seconds),
+            total_time: (in seconds),
+            conversation_turn: total; 
+            num_agents: 1,
+            guardrail_tripwire: 
+            guardrail_reason: 
+            guardrail_timestamp
+        }; 
+*/
 export type Dialogue = {
     prompt: string; 
     response: string;
@@ -13,14 +75,57 @@ export type ChatMessage = {
 };
 
 
+export type AbstractionNode = {
+  "userAbstraction"
+  : string, // The user constructs, and self-corrects from retrospection 
+  "coachAbstraction"?: string, // This is where optional AI-generated feedback are stored
+  "branchedRetryAttempted": boolean, 
+  "branchedRetryNumber": 0 | 1 | 2 | 3,
+  "branchedRetry"?: Array<Dialogue> 
+}
+
+/*
+Deliberation: 
+  Additional session details 
+  Lawmaker: 
+    Lawmaker Attributes
+
+  SenseMaking: 
+    Reflection: // general session retrospection transcription 
+    Abstraction: *AbstractionTree* 
+      deliberation.abstraction = {
+        1 (episodeNumber): {
+          userAbstraction: 
+          coachAbstraction: 
+          branchedRetryAttempted: 
+          branchedRetryNum: 
+          branchedRetry: [
+            {
+              prompt: string, 
+              response: string 
+            }
+          ]
+        }
+      }
+*/
+
+export type AbstractionTree = {
+  [episodeNumber: number]: AbstractionNode;
+};
+
 export type SenseMaking = {
-    "episodeNumber": number, 
     "reflection": string, 
-    "abstraction": object, 
-    "branchedRetryAttempted": boolean 
-    "branchedRetryNumber": 0 | 1
-    "branchedRetry"?: Array<Dialogue>
-}; 
+    "abstraction": AbstractionTree, 
+}
+
+// export type SenseMaking = {
+//     "episodeNumber": number, 
+//     "reflection": string, 
+//     "abstraction": Record<number, string>, 
+//     "branchedRetryAttempted": boolean 
+//     "branchedRetryNumber": 0 | 1
+//     "branchedRetry"?: Array<Dialogue>
+// }; 
 
 
 export type Memory = {

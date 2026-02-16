@@ -4,6 +4,7 @@ import type { Memory, ChatMessage } from "./+utils"
 import { should_display_coach } from './+utils';
 import type { SenseMaking } from './+utils';
 import type { Dialogue } from './+utils';
+import type { AbstractionNode, AbstractionTree } from './+utils';
 
 export abstract class Simulacrum {
     constructor(
@@ -59,92 +60,51 @@ export abstract class Simulacrum {
         const response = this.trainer.process(LongTermMemory, fetchFn);
         return response
     }
+    public logUserReflection(reflection: string) {
+        /* Log user's retrospection transcript  */
+        this.userSenseMaking.reflection = reflection
+    }
 
-    public logUserSenseMaking(divergentIndex: number, reflection: string, abstraction: object) {
-        /*
-        According to Kolb's theory for experiential learning, after a user tries something new, they will reflect and 
+    public logAbstractConceptualization(
+        divergentIndex: number, 
+        userAbstraction: string, 
+        coachAbstraction?: string): void 
+        {
+        /*  According to Kolb's theory for experiential learning, after a user tries something new, they will reflect and 
         then abstract on what they learn (i.e., notice what they did? and then abstract new theories of implementation)
-        to make improvements. 
-
-        This method will push a new SenseMaking object into userSenseMaker array held in memory. 
-        userSenseMaking should be a comprehensive JSON object that contains the following details: 
-        deliberation: {
-            advocateName: 
-            advocateOrg: 
-            unique_id: 
-            senseMaking: {
-                
-                "episodeNumber": number, # only a few divergent branches will be created 
-                "originalResponse": {
-                    "dialogue": string,  # what the user said in response in past 
-                    "response": string,  # what the lawmaker said in response in past  
-                },
-                "reflection": string,
-                "abstraction": {
-                    "epsiodeNumber": string # not all of them by the way 
-                    "branchedRetryAttempted": boolean [0 for try and 1 for not try, default to 0]
-                    "branchedRetryNumber": 1 [# of times they attempted retry]
-                    "branchedRetry": 
-                        [
-                            {
-                            "dialogue": string, what the user said in response after retry 
-                            "response": string, what the lawmaker currently said after retry 
-                            },
-                        ]
-                }, 
-                
-            },
-            lawmaker: {
-                name:
-                advocateName:
-                state:
-                ideology:
-                degree_of_support:
-                persona:
-                memory: {
-                    dialogue: {
-                        prompt: string
-                        response: string
-                    }, 
-                    model: string, 
-                    epsiodeNumber: number,
-                    time: {
-                        "turnGap": turnGap, 
-                        "responseDuration": responseDuration, 
-                        "responseTotalTime": responseTotalTime,
-                        "metadata": {
-                            "responseAwait": this.responseAwait, 
-                            "responseStart": this.responseStart, 
-                            "responseEnd": this.responseEnd
-                        }
-                                },
-                    }, 
-                    start: time (in seconds), 
-                    end: time (in seconds), 
-                    turnGap: time (in seconds), 
-                    timeToFinish: time (in seconds), 
-                    timeToComplete: time (in seconds), 
-                },
-            },
-            start_time: (in seconds),
-            total_time: (in seconds),
-            conversation_turn: total; 
-            num_agents: 1,
-            guardrail_tripwire: 
-            guardrail_reason: 
-            guardrail_timestamp
-        }; 
-        */ 
-
-        const sensemaker: SenseMaking  = {
-            "episodeNumber": divergentIndex, 
-            "reflection": reflection,
-            "abstraction": abstraction,
-            "branchedRetryAttempted": false, 
-            "branchedRetryNumber": 0, 
-        }; 
+        to make improvements.
+        This initializes the AbstractionNode 
+        */
         
-        this.userSenseMaking = sensemaker
+        const node: AbstractionNode = {
+            userAbstraction: userAbstraction, 
+            branchedRetryAttempted: false, 
+            branchedRetryNumber: 0,
+        }
+
+        if (coachAbstraction) {
+            node["coachAbstraction"] = coachAbstraction
+        }
+        
+        this.userSenseMaking.abstraction[divergentIndex] = node
+
+    }
+
+    public logActiveExperimentation(divergentIndex: number, retryDialogue: Dialogue): void {
+        /* 
+        Log active experimentation if user actively experiments with their conceptualized improvements or theoretical abstractions
+        */
+        const node: AbstractionNode = this.userSenseMaking.abstraction[divergentIndex]
+
+ 
+        if (node.branchedRetryAttempted == false) {
+            node.branchedRetry = [retryDialogue]; 
+            node.branchedRetryAttempted = true; 
+            node.branchedRetryNumber = 1
+        } else if (node.branchedRetryAttempted == true) {
+            node.branchedRetry?.push(retryDialogue) 
+            node.branchedRetryNumber++; 
+        }
     }
 
     public unwindTrialBranch(divergentIndex: number) {
@@ -162,21 +122,27 @@ export abstract class Simulacrum {
     }; 
 
     public retryDivergentBranch(divergentIndex: number, divergentResponse: Dialogue) {
-        let searchedDivergentBranches = false 
-        for (const s of this.userSenseMaking.) {
-            if (s.episodeNumber == divergentIndex) {
-                if (s.branchedRetry)  {
-                    s.branchedRetry.push(divergentResponse)
-                    searchedDivergentBranches = true;  
-                } else {
-                    s.branchedRetry = [divergentResponse]
-                    searchedDivergentBranches; 
-                }
-            } 
-        }
-        
-        if (searchedDivergentBranches == false) {
-            throw new Error('Could not find divergent branch that user wanted to edit!')
+        const node = this.userSenseMaking.abstraction[divergentIndex];
+        if (node) {
+            // If branchedRetry already exists, push; otherwise, create a new array
+            if (node.branchedRetry) {
+                node.branchedRetry.push(divergentResponse);
+            } else {
+                node.branchedRetry = [divergentResponse];
+            }
+            node.branchedRetryAttempted = true; // mark that a retry has been attempted
+            // Optionally increment branchedRetryNumber, up to 2
+            if (node.branchedRetryNumber < 2) {
+                node.branchedRetryNumber += 1;
+            }
+        } else {
+            // If no node exists at that index, you might want to initialize it
+            this.userSenseMaking.abstraction[divergentIndex] = {
+                userAbstraction: "",
+                branchedRetryAttempted: true,
+                branchedRetryNumber: 0,
+                branchedRetry: [divergentResponse],
+            };
         }; 
     }
 }

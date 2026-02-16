@@ -8,17 +8,83 @@
     import type { Memory } from "$models/+deliberations.ts";
     const { data } = $props();
     const memories: Memory[] = data.memory 
-    let abstractionByEpisode = $state<Record<number, string>>({});
+    let abstractionByEpisode = $state<Record<number, DraftRow>>({});
+    let assistedFeedbackByEpisode = $state<Record<number, string>>({});
 
-    function storeAbstraction(episodeNumber: number, abstraction: string) {
+    type DraftRow = {
+        userAbstraction: string, 
+        coachAbstraction: string, 
+        aiHelpRequested: boolean
+    }; 
+
+    let isSubmitting = $state(false);
+    let aiHelpUsedOnce = $state(false);
+    let aiHelpEpisode = $state<number | null>(null);
+
+    function storeAbstractionLocally(episodeNumber: number, abstraction: string) {
         localStorage.setItem(episodeNumber.toString(), abstraction)
     }; 
 
-    function logUserAbstractions() {
-        
+    
+    const episodes = memories.map((m) => m.episodeNumber);
+
+    
+    function defaultDraft(): DraftRow {
+        /** Inits the draft row */
+        return {
+            userAbstraction: "",
+            coachAbstraction: "",
+            aiHelpRequested: false
+        };
+    }
+
+    function canRequestAiHelp(episodeNumber: number): boolean {
+        /* For each draft for the episode, they can only request help once from an AI coach and after they have written a bit */
+        const draft = abstractionByEpisode[episodeNumber] ?? defaultDraft();
+        return !aiHelpUsedOnce && !draft.aiHelpRequested && draft.userAbstraction.trim().length >= 10;
+
+    }
+
+    async function requestFeedbackCoach(episodeNumber:number) {
+        const userFeedback = localStorage.getItem(episodeNumber.toString())
+        //** Need to write better context management for appending information to LLM-process*/
+        const res = await fetch("/api/llm-process", {
+            method: "POST",
+            body: userFeedback 
+        })
+
+        if (!res.ok) { return await res.text(); }
+
+            
+        const response = await res.json();
+        const coachFeedback = response.data;
+
+        await fetch("/api/manage-user-sensemaking", {
+            method: "PUT", 
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(JSON.stringify(
+                {
+                    episodeNumber: episodeNumber, 
+                    coachFeedback: coachFeedback, 
+                }
+            )),
+        }); 
+
+        assistedFeedbackByEpisode[episodeNumber] = coachFeedback; 
     }
 </script>
 
+<style>
+.ai-feedback {
+    background-color: #e6ffe6;
+    border-left: 4px solid green;
+    padding: 8px;
+    margin-top: 6px;
+    font-size: 0.9rem;
+}
+</style>
     
 <div> 
     <section class="header">
@@ -60,12 +126,16 @@
                         value={abstractionByEpisode[memory.episodeNumber] ?? ""}
                         oninput={(t) => {
                             abstractionByEpisode[memory.episodeNumber] = t.currentTarget.value; 
-                            storeAbstraction(memory.episodeNumber, t.currentTarget.value);
+                            storeAbstractionLocally(memory.episodeNumber, t.currentTarget.value);
                         }}
                         placeholder="Your improvement feedback..."
                     >
                 </td>
                 <td> 
+                    <button onclick={() => requestFeedbackCoach(memory.episodeNumber)}>
+                        Get AI support and feedback
+                    </button>
+                        <div class="ai-feedback">{assistedFeedbackByEpisode[memory.episodeNumber]}</div>
                 </td>
             </tr>
             {/each}
