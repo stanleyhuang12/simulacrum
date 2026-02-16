@@ -24,56 +24,18 @@ export const POST: RequestHandler = async ( event ) => {
     const d = hydrateDeliberationInstance(dRecord)
   
     const userReflection = await event.request.text(); 
-    d.userSenseMaking.reflection = userReflection
+    d.logUserReflection(userReflection); 
     
-    if (!dRecord) {
-      return json({
-        data: null,
-        error: { code: 404, message: 'Deliberation not found' },
-        meta: null
-      }, { status: 404 });
-    }
-    
-    await updateDeliberationSensemaking(dRecord, d)
+    await updateDeliberationSensemaking(dRecord, d); 
     
     return json({
       data: d.userSenseMaking,
       error: null,
-      meta: { updatedAt: new Date().toISOString() }
+      meta: { loggedAt: new Date().toISOString() }
     });
 
   } catch (err) {
     console.error("Error calling OpenAI API:", err);
-    return json({ error: "Failed to call OpenAI API" }, { status: 500 });
+    return error(500, "Failed to call OpenAI API."); 
   }
 };
-
-export const PUT: RequestHandler = async( event ) => {
-  /*
-   * If user makes a request for AI-assisted support, we will request feedback, update the database, and return the AI assisted feedback 
-   */
-
-  
-  try {
-    const sessionId = event.cookies.get('session-id-delibs');
-    const dRecord = await validateAndRetrieveDeliberation(sessionId);
-    if (!dRecord) { return error(404, "Deliberation object not found. ")}; 
-    const d = hydrateDeliberationInstance(dRecord); 
-    
-    const res = await event.request.json(); 
-    const episodeNumber: number = res.episodeNumber; 
-    const coachFeedback: string = res.coachFeedback; 
-
-    
-    d.userSenseMaking.abstraction[episodeNumber]["coachAbstraction"] = coachFeedback; 
-    return json({
-      data: coachFeedback 
-    }); 
-    
-  } catch(err){
-    return error(500, "Could not submit an update the database")
-  }
-  
-
-
-}

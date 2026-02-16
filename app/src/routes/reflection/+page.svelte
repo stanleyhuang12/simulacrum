@@ -224,7 +224,7 @@
             body: formData
         }); 
 
-        if (!result.ok) { throw new Error; }; 
+        if (!result.ok) { throw new Error(await result.text()); }; 
 
         const res = await result.json()
         if (res.success) {
@@ -232,6 +232,12 @@
             await saveToIndexedDB(IDB_STORE_TEXT, 'transcription-data', res.transcriptions); 
         }
 
+        const resultSave = await fetch("/api/manage-user-sensemaking/reflection", {
+            method: "POST", 
+            body: res.transcriptions
+        })
+
+        if (!resultSave.ok) { throw new Error(await resultSave.text())}
 
     }
 
@@ -245,7 +251,7 @@
       * What happened during the experience?
       * How did the lawmaker respond? 
         
-      You can record the audio. 
+      Please record and voice your thoughts out loud. It is OK to pause a bit and think through what you will say. Feel free to let your thoughts flow.
     </div>
     
     <section class="main-record-controls">

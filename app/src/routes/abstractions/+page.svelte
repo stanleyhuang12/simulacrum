@@ -11,7 +11,7 @@
     let abstractionByEpisode = $state<Record<number, string>>({});
     let assistedFeedbackByEpisode = $state<Record<number, string>>({});
 
-    function storeAbstraction(episodeNumber: number, abstraction: string) {
+    function storeAbstractionLocally(episodeNumber: number, abstraction: string) {
         localStorage.setItem(episodeNumber.toString(), abstraction)
     }; 
 
@@ -100,7 +100,7 @@
                         value={abstractionByEpisode[memory.episodeNumber] ?? ""}
                         oninput={(t) => {
                             abstractionByEpisode[memory.episodeNumber] = t.currentTarget.value; 
-                            storeAbstraction(memory.episodeNumber, t.currentTarget.value);
+                            storeAbstractionLocally(memory.episodeNumber, t.currentTarget.value);
                         }}
                         placeholder="Your improvement feedback..."
                     >
