@@ -4,6 +4,7 @@ import { json, error, text } from '@sveltejs/kit';
 import { updateDeliberationRecord, updateDeliberationSensemaking, validateAndRetrieveDeliberation } from '$db/+server';
 
 import { hydrateDeliberationInstance } from '$models/+deliberations';
+import type { AbstractionNode } from '$models/+utils';
 
 
 export const GET: RequestHandler = async (event) => {
@@ -63,7 +64,8 @@ export const PUT: RequestHandler = async( event ) => {
     const episodeNumber: number = res.episodeNumber; 
     const coachFeedback: string = res.coachFeedback; 
 
-    d.userSenseMaking.abstraction[episodeNumber] = coachFeedback; 
+    
+    d.userSenseMaking.abstraction[episodeNumber]["coachAbstraction"] = coachFeedback; 
     return json({
       data: coachFeedback 
     }); 
