@@ -20,7 +20,10 @@
 		"src/**/*.ts",
 		"src/**/*.svelte",
 		"./.svelte-kit/ambient.d.ts"
-		, "src/models/+server.js"	]
+		, "src/models/+server.js"	],
+	"exclude": [
+		"src/routes/abs/+page.svelte"
+	]
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
 	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
 	//

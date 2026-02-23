@@ -9,7 +9,7 @@ legislative-simulacrum/template
 legislative-simulacrum/public
 legislative-simulacrum/.env
 
-
+solo.txt
 /template
 /database
 /backend
@@ -17,6 +17,7 @@ legislative-simulacrum/.env
 /node_modules
 /deprecated
 venv
+
 
 /app/build
 
