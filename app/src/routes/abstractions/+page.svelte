@@ -6,29 +6,32 @@
      */
 
     import type { Memory } from "$models/+deliberations.ts";
-    const { data } = $props();
-    const memories: Memory[] = data.memory 
-    let abstractionByEpisode = $state<Record<number, DraftRow>>({});
-    let assistedFeedbackByEpisode = $state<Record<number, string>>({});
-
+    
+    const { data } = $props<{ memory: Memory[] }>();
+    const memories: Memory[] = data.memory
+   
+    /* Basically each episode has a DraftRow */
     type DraftRow = {
         userAbstraction: string, 
-        coachAbstraction: string, 
+        coachAbstraction?: string, 
         aiHelpRequested: boolean
     }; 
+    /* A dictionary that includes a draft row accessible by episode*/
+    /* The assisted feedback by epsiode is basically the coach abstraction? */
+    let abstractionByEpisode = $state<Record<number, DraftRow>>({}); 
+    let assistedFeedbackByEpisode = $state<Record<number, string>>({});
 
     let isSubmitting = $state(false);
     let aiHelpUsedOnce = $state(false);
-    let aiHelpEpisode = $state<number | null>(null);
+
 
     function storeAbstractionLocally(episodeNumber: number, abstraction: string) {
         localStorage.setItem(episodeNumber.toString(), abstraction)
     }; 
 
-    
     const episodes = memories.map((m) => m.episodeNumber);
 
-    
+    /* helper functions */
     function defaultDraft(): DraftRow {
         /** Inits the draft row */
         return {
@@ -123,9 +126,12 @@
                 <td> {memory.dialogue.prompt} </td>
                 <td>  
                     <input 
-                        value={abstractionByEpisode[memory.episodeNumber] ?? ""}
+                        value={abstractionByEpisode[memory.episodeNumber]?.userAbstraction ?? ""}
                         oninput={(t) => {
-                            abstractionByEpisode[memory.episodeNumber] = t.currentTarget.value; 
+                            abstractionByEpisode[memory.episodeNumber] = {
+                                ...abstractionByEpisode[memory.episodeNumber] ?? defaultDraft(),
+                                userAbstraction: t.currentTarget.value
+                            };
                             storeAbstractionLocally(memory.episodeNumber, t.currentTarget.value);
                         }}
                         placeholder="Your improvement feedback..."
