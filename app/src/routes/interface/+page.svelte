@@ -1,10 +1,8 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { SSE } from 'sse.js'
     import { goto } from "$app/navigation";
     import type { PageProps} from "./$types";
     import { redirect } from "@sveltejs/kit";
-    import { Transaction } from "sequelize";
 
     type interactionData = {
         id: string, 
