@@ -79,7 +79,9 @@ export const POST: RequestHandler = async ( event ) => {
         console.groupEnd()
         return json({
             type: 'automated.response', 
-            response: response}, 
+            response: response,
+            episodeNumber: d.conversation_turn, 
+        }, 
             { 
                 status: 200
              }
