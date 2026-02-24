@@ -171,15 +171,22 @@ import { onMount } from "svelte";
         render();
     }
 
-    function stopDrawing() {
+    function stopDrawing(keepCache?: boolean) {
         if (drawId !== null) {
             cancelAnimationFrame(drawId);
             drawId = null;
         }
+        if (canvasEl) {
+            if (keepCache) return; 
+            const ctx = canvasEl.getContext('2d');
+            if (ctx) {
+                ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            }
+    }
     }
 
     async function pauseAudioStream() {
-        stopDrawing();
+        stopDrawing(true);
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.pause();
         }
@@ -196,6 +203,7 @@ import { onMount } from "svelte";
             audioStream = undefined;
         }
         stopDrawing();
+        
         await clearFromIndexedDB(IDB_STORE_AUDIO, 'audio-data');
         await clearFromIndexedDB(IDB_STORE_AUDIO, 'transcription-data');
     }
