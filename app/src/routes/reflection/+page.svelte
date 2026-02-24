@@ -14,10 +14,7 @@ import { onMount } from "svelte";
     let canvasEl: HTMLCanvasElement;
     let audioCtx: AudioContext; 
     let audioAnalyser: AnalyserNode; 
-    let toastMessage = $state('');
-    let toastVisible = $state(false);
-    let clarityState: 'quiet' | 'good' | 'clear' = 'quiet';
-    let toastTimeout: ReturnType<typeof setTimeout> | null = null;
+
     // creates an Audio Context 
     
     let drawId: number | null = null;
@@ -295,13 +292,14 @@ header {
 }
 
 .reflection-debrief {
-    font-size: 1.1rem;
+    font-size: 1.4rem;
     line-height: 1.5;
 }
 
 .main-record-controls,
 .main-record-cache-controls {
     display: flex;
+    justify-content: center; 
     gap: 0.75rem;
     margin-top: 1rem;
 }
@@ -324,6 +322,8 @@ button:hover {
 
 .audio-signal {
     display: flex;
+    margin: 0 auto; 
+    width: 80%; 
     justify-content: center; 
     align-items: center;  
     margin-top: 1.25rem;
@@ -340,20 +340,6 @@ canvas {
     border-radius: var(--radius);
 }
 
-.signal-toast {
-    position: fixed;
-    right: 1rem;
-    bottom: 1rem;
-    max-width: 320px;
-    background: rgba(31, 17, 67, 0.95);
-    color: #fff;
-    border-radius: 10px;
-    padding: 0.65rem 0.85rem;
-    font-size: 0.9rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-    z-index: 20;
-}
-
 @media (prefers-color-scheme: dark) {
     :root {
     --surface: rgba(69, 6, 121, 0.9);
@@ -364,7 +350,6 @@ canvas {
 </style>
 
 <div class="reflection-shell">
-    <div class="signal-toast" role="status" aria-live="polite"></div>
 
 
     <header> You have now chatted with a lawmaker. Let's debrief! </header>
