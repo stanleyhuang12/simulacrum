@@ -4,10 +4,10 @@
     import { goto } from "$app/navigation";
     import type { PageProps} from "./$types";
     import { redirect } from "@sveltejs/kit";
-  import { Transaction } from "sequelize";
+    import { Transaction } from "sequelize";
 
     type interactionData = {
-        interactionType: "user" | "agent",
+        id: string, 
         interaction: string, 
         startTime: Date,
     }; 
@@ -28,6 +28,8 @@
     let dc: RTCDataChannel | null = null; 
     let isActiveSession: boolean = false; 
 
+    let episodeNumber: number; 
+
     let responseAwaitTime: Date; 
     let responseStartTime: Date; 
     let responseEndTime: Date; 
@@ -40,145 +42,6 @@
         getVideoStream();
     });
 
-    /** CAMERA MANAGEMENT **/
-    async function getVideoStream() { 
-        try { 
-            const videoAccept = window.navigator.mediaDevices; 
-            if (!videoAccept || !videoAccept.getUserMedia) { 
-                console.error('Browser does not support video streaming.')
-                throw MediaError;
-            }
-            videoStreams = await window.navigator.mediaDevices.getUserMedia( { video: true }); 
-            videoElem.srcObject = videoStreams
-            camOn = true
-            console.log("Video streams enabled.")
-        } catch (err) { 
-            console.error(err)
-        }
-    }; 
-
-    function openDatabase(): Promise<IDBDatabase | null> {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open("interaction", 1); 
-            request.onupgradeneeded = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;   
-                if (!db.objectStoreNames.contains("interaction")) {
-                    const userInteractionStore = db.createObjectStore("interaction", {keyPath: "id"});
-                }
-            }
-            request.onsuccess = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
-                resolve(db);
-            }
-            request.onerror = (event) => {
-                reject(`Database error: ${(event.target as IDBOpenDBRequest).error}`);
-            };  
-        })
-    }
-
-    async function addInteraction(interactionData: interactionData, conversationIndex: number) {
-        const db = await openDatabase(); 
-
-        return new Promise((resolve, reject) => {
-            if (db) {
-                const tx = db.transaction("interaction", "readwrite"); 
-                const interactionStore = tx.objectStore("interaction"); 
-                
-                interactionStore.add(interactionData, conversationIndex)
-                const request = interactionStore.add(interactionData, conversationIndex);
-                
-                request.onsuccess = () => {
-                    resolve(request.result); 
-                }
-                
-                request.onerror = () => {
-                    reject(`Failed to add interaction: ${request.error}`);
-                };
-                
-                tx.oncomplete = () => db.close();
-            } else {
-                reject("Failed to open database");
-            }});
-    async function readInteraction(conversationIndex: number, profile?: "user" | "agent"): Promise<interactionData> {
-        const db = await openDatabase()
-
-        return new Promise((resolve, reject) => {
-            if (db) {
-                const tx = db.transaction("interaction", "readonly"); 
-                const interactionStore = tx.objectStore("interaction"); 
-
-                const request = interactionStore.get(conversationIndex);
-
-                request.onerror = () => { reject(`Failed to retrieve interaction ${request.error}`)};
-
-                request.onsuccess = () => {
-                    const interaction = request.result as interactionData
-                    if (profile) {
-                        if (interaction.interactionType == profile) { 
-                            resolve(interaction)
-                        } else {
-                            reject(`Failed to read interaction because different profile and interactionType: mismatch between user and agent`)
-                        }
-                    } else {
-                        resolve(interaction)
-                    }
-                }; 
-
-                tx.oncomplete = () => db.close(); 
-            }
-        })
-    }
-    
-
-
-
-
-    function toggleCamera() {
-        if (!videoStreams) return;
-
-        if (camOn) {
-            videoStreams.getVideoTracks().forEach(track => {
-                track.stop();
-                track.enabled = false;
-            });
-            videoElem.srcObject = null; 
-            camOn = false;
-        } else {
-            getVideoStream()
-            
-            // Camera is OFF — re-enable or create a new track
-            // await window.navigator.mediaDevices.getUserMedia( { video: true })
-            // navigator.mediaDevices.getUserMedia({ video: true })
-            // .then((newStream) => {
-            //     const newVideoTrack = newStream.getVideoTracks()[0];
-            //     if (videoStreams?.getVideoTracks().length) {
-            //         videoStreams.removeTrack(videoStreams.getVideoTracks()[0]);
-            //     }
-            //     videoStreams?.addTrack(newVideoTrack);
-            //     camOn = true;
-            //     videoElem.srcObject = videoStreams
-            // }).catch(err => console.error("Failed to enable camera:", err));
-        }
-
-    }; 
-
-    async function getEphemeralKey() {
-        console.group("Retrieving ephemeral key.")
-        
-        const ephemRes = await fetch("/api/ephemeral-key-for-transcription", {
-            method: "POST"
-        })
-        
-        const ephemData = await ephemRes.json()
-        EPHEMERAL_KEY = ephemData.ephemeralKey
-        console.log(`Retrieved ephemeral key ${EPHEMERAL_KEY}`);
-
-        console.groupEnd();
-
-        return EPHEMERAL_KEY
-    }; 
-
-    
     async function establishOAIConnection() {
         if (isActiveSession && peerConnection) {
             console.log("WebRTC session already active.");
@@ -231,7 +94,23 @@
         micOn = true;
     
     }; 
+        async function getEphemeralKey() {
+        console.group("Retrieving ephemeral key.")
+        
+        const ephemRes = await fetch("/api/ephemeral-key-for-transcription", {
+            method: "POST"
+        })
+        
+        const ephemData = await ephemRes.json()
+        EPHEMERAL_KEY = ephemData.ephemeralKey
+        console.log(`Retrieved ephemeral key ${EPHEMERAL_KEY}`);
 
+        console.groupEnd();
+
+        return EPHEMERAL_KEY
+    }; 
+
+    
     function closeOAIConnection() {
         if (!isActiveSession) {
             console.log("No active session to close.");
@@ -260,6 +139,100 @@
         micOn = false // update store
     }; 
 
+
+    /** CAMERA MANAGEMENT **/
+    async function getVideoStream() { 
+        try { 
+            const videoAccept = window.navigator.mediaDevices; 
+            if (!videoAccept || !videoAccept.getUserMedia) { 
+                console.error('Browser does not support video streaming.')
+                throw MediaError;
+            }
+            videoStreams = await window.navigator.mediaDevices.getUserMedia( { video: true }); 
+            videoElem.srcObject = videoStreams
+            camOn = true
+            console.log("Video streams enabled.")
+        } catch (err) { 
+            console.error(err)
+        }
+    }; 
+
+    async function openDatabase(): Promise<IDBDatabase | null> {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open("interaction", 1); 
+            request.onupgradeneeded = (event) => {
+                const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;   
+                if (!db.objectStoreNames.contains("interaction")) {
+                    const userInteractionStore = db.createObjectStore("interaction", {keyPath: "id"});
+                }
+            }
+            request.onsuccess = (event) => {
+                const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
+                resolve(db);
+            }
+            request.onerror = (event) => {
+                reject(`Database error: ${(event.target as IDBOpenDBRequest).error}`);
+            };  
+        })
+    }
+
+    async function addInteraction(interactionData: interactionData) {
+        const db = await openDatabase(); 
+
+        return new Promise((resolve, reject) => {
+            if (db) {
+                const tx = db.transaction("interaction", "readwrite"); 
+                const interactionStore = tx.objectStore("interaction"); 
+                
+                const request = interactionStore.add(interactionData);
+            
+                request.onsuccess = () => { resolve(request.result); }
+                request.onerror = () => { reject(`Failed to add interaction: ${request.error}`);};
+                tx.oncomplete = () => db.close();
+           
+            } else {
+                reject("Failed to open database");
+            }
+        });
+    }
+
+    async function readInteraction(episodeNumber: number, profile?: "user" | "agent"): Promise<interactionData> {
+        const db = await openDatabase()
+        const index = `${episodeNumber}-${profile}`
+
+        return new Promise((resolve, reject) => {
+            if (db) {
+                const tx = db.transaction("interaction", "readonly"); 
+                const interactionStore = tx.objectStore("interaction"); 
+
+                const request = interactionStore.get(index);
+
+                request.onerror = () => { reject(`Failed to retrieve interaction ${request.error}`)};
+
+                request.onsuccess = () => {
+                    resolve(request.result as interactionData); 
+                }; 
+
+                tx.oncomplete = () => db.close(); 
+            }
+        })
+    }
+    
+    function toggleCamera() {
+        if (!videoStreams) return;
+
+        if (camOn) {
+            videoStreams.getVideoTracks().forEach(track => {
+                track.stop();
+                track.enabled = false;
+            });
+            videoElem.srcObject = null; 
+            camOn = false;
+        } else {
+            getVideoStream()
+        }
+
+    }; 
 
     async function receiveEmittedEvents(evt: any) {
 
@@ -290,14 +263,23 @@
                 if (!event.transcript) {
                     break;
                 }
-
                 console.log(text)
                 processText(text)
                 isProcessingAudio = false; 
+                const interactionData: interactionData = {
+                    id: `${episodeNumber}-user`,
+                    interaction: text,
+                    startTime: responseStartTime
+                };
+
+                await addInteraction(interactionData);
+                
+
                 break;
     }}; 
 
     async function processText(text: string) {
+        /* Process texts: feeds to LLMs, but also will */
         const result = await fetch("/api/manage-deliberation-instance", {
             method: "POST",
             headers: {
@@ -312,6 +294,7 @@
         });
 
         const res = await result.json();
+        
 
         switch (res.type) {
             case "guardrail.triggered": 
@@ -320,6 +303,14 @@
 
             case "automated.response": 
                 handleAgentResponse(res.response); 
+                /* Adds the agent interaction data to indexedDB */
+                episodeNumber = res.episodeNumber; 
+                const interactionData: interactionData = { 
+                    id: `${res.episodeNumber}-agent`,
+                    interaction: text, 
+                    startTime: new Date(),
+                }; 
+                addInteraction(interactionData,); 
                 break; 
         }
     }; 
