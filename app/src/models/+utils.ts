@@ -1,6 +1,12 @@
 import jStat from 'jstat';
 import type { Json } from 'sequelize/lib/utils';
 
+export type interactionData = {
+        id: string, 
+        interaction: string, 
+        startTime: Date,
+}; 
+
 /*
         deliberation: {
             advocateName: 

@@ -1,41 +1,13 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import type { interactionData } from "$models/+utils";
 
-    let { data } = $props();
-
-    const retryBranches: Array<number> = JSON.parse(data.retryBranches)
+    /* This module will first retrieve conversation transcripts
+    * from the local IndexedDB, populate the text, and allow users to make local edits and then
+    * automatically syncs with database. The local edits can then have downstream effects in altering model responses. 
+    */
     
-    let greyTimerProgress = 0;
-    let interval: ReturnType<typeof setInterval>;
     
-    let i: number = 0 
-    if (retryBranches.length == 0) {
-        throw new Error("No branches selected")
-    }
+ 
 
-    let rawDialogue = localStorage.getItem(String(retryBranches.at(i))); 
-    let dialogue = rawDialogue ? JSON.parse(rawDialogue) : null; 
-    
-
-    const responseAwaitDate = new Date(data.responseAwait);
-
-    function startGreyTimer(startTime: number) {
-        interval = setInterval(() => {
-            const now = Date.now();
-            greyTimerProgress = (now - startTime) / 1000;
-        }, 100);
-    }
-
-    onMount(() => {
-        startGreyTimer(data.responseAwait);
-
-        return () => {
-            clearInterval(interval);
-        };
-    });
 </script>
-
-<div class="rewind-indicator">
-    Rewound to {responseAwaitDate.toLocaleTimeString()}. You can update this conversation thread. 
-</div>
-

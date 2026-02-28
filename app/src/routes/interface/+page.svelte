@@ -3,12 +3,10 @@
     import { goto } from "$app/navigation";
     import type { PageProps} from "./$types";
     import { redirect } from "@sveltejs/kit";
+    import { addInteraction } from "$models/+local"
+    import type { interactionData } from "$models/+utils";
 
-    type interactionData = {
-        id: string, 
-        interaction: string, 
-        startTime: Date,
-    }; 
+
 
     let { data }: PageProps = $props(); 
     
@@ -155,66 +153,7 @@
         }
     }; 
 
-    async function openDatabase(): Promise<IDBDatabase | null> {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open("interaction", 1); 
-            request.onupgradeneeded = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;   
-                if (!db.objectStoreNames.contains("interaction")) {
-                    const userInteractionStore = db.createObjectStore("interaction", {keyPath: "id"});
-                }
-            }
-            request.onsuccess = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
-                resolve(db);
-            }
-            request.onerror = (event) => {
-                reject(`Database error: ${(event.target as IDBOpenDBRequest).error}`);
-            };  
-        })
-    }
-
-    async function addInteraction(interactionData: interactionData) {
-        const db = await openDatabase(); 
-
-        return new Promise((resolve, reject) => {
-            if (db) {
-                const tx = db.transaction("interaction", "readwrite"); 
-                const interactionStore = tx.objectStore("interaction"); 
-                
-                const request = interactionStore.add(interactionData);
-            
-                request.onsuccess = () => { resolve(request.result); }
-                request.onerror = () => { reject(`Failed to add interaction: ${request.error}`);};
-                tx.oncomplete = () => db.close();
-           
-            } else {
-                reject("Failed to open database");
-            }
-        });
-    }
-
-    async function readInteraction(episodeNumber: number, profile?: "user" | "agent"): Promise<interactionData> {
-        const db = await openDatabase()
-        const index = `${episodeNumber}-${profile}`
-
-        return new Promise((resolve, reject) => {
-            if (db) {
-                const tx = db.transaction("interaction", "readonly"); 
-                const interactionStore = tx.objectStore("interaction"); 
-
-                const request = interactionStore.get(index);
-
-                request.onerror = () => { reject(`Failed to retrieve interaction ${request.error}`)};
-
-                request.onsuccess = () => {
-                    resolve(request.result as interactionData); 
-                }; 
-
-                tx.oncomplete = () => db.close(); 
-            }
-        })
-    }
+ 
     
     function toggleCamera() {
         if (!videoStreams) return;
@@ -308,7 +247,7 @@
                     interaction: text, 
                     startTime: new Date(),
                 }; 
-                addInteraction(interactionData,); 
+                addInteraction(interactionData); 
                 break; 
         }
     }; 
