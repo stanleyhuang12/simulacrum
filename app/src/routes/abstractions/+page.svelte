@@ -5,6 +5,7 @@
      * The user can then meaningfully integrate their own intuition and feedback from agents to generate novel strategies to improve. 
      */
 
+    import { onMount } from "svelte";
     import type { Memory } from "$models/+deliberations.ts";
     
     const { data } = $props<{ memory: Memory[] }>();
