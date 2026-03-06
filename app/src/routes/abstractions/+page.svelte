@@ -63,8 +63,8 @@
         const response = await res.json();
         const coachFeedback = response.data;
 
-        await fetch("/api/manage-user-sensemaking", {
-            method: "PUT", 
+        await fetch("/api/manage-user-sensemaking/abstraction", {
+            method: "POST", 
             headers: {
                 "Content-Type": "application/json"
             },
