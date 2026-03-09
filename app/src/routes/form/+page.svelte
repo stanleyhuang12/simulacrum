@@ -1,11 +1,15 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
-    import { boolean, number } from 'mathjs';
+    import { page } from '$app/state';
+
     import { onMount } from "svelte";
     import { fade } from 'svelte/transition';
     import {  random_lawmaker_persona_generator } from "$models/+utils"
-      
 
+    const demo = page.url.searchParams.get('demo'); 
+    const actionUrl = demo ? `/submit?demo=true` : `/submit`; 
+    console.log(actionUrl); 
+      
     type FormMetadata = {
         formSubmission: boolean;
         userName: string;
@@ -52,11 +56,6 @@
     let sliderValue = $state(2); // starting at "Moderate"
     onMount(async () => {
         console.log("Component is mounted.")
-        const res = await fetch("/form", {
-          method: "GET",
-          credentials: "include" 
-        });
-        console.log("Fetch status", res.status)
     });
 
     function handlePreSpecClick() {
@@ -76,7 +75,6 @@
       form.selectedState = randomPersona.state;
     }
 
-    
 
 </script>
 
@@ -297,7 +295,7 @@ button:disabled {
 </style>
 <!--  -->
 
-<form id="begin-delibs-survey-form" method="POST" action="?/submit" use:enhance>
+<form  data-sveltekit-keepfocus id="begin-delibs-survey-form" method="POST" action=actionUrl use:enhance>
   <div class="form-grid">
 
     <!-- User Section -->
