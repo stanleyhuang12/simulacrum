@@ -6,27 +6,34 @@
  */ 
 
 import type { interactionData } from "./+utils";
-
 export async function openDatabase(): Promise<IDBDatabase | null> {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open("interaction", 1); 
-            request.onupgradeneeded = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;   
-                if (!db.objectStoreNames.contains("interaction")) {
-                    const userInteractionStore = db.createObjectStore("interaction", {keyPath: "id"});
-                }
-            }
-            request.onsuccess = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
-                resolve(db);
-            }
-            request.onerror = (event) => {
-                reject(`Database error: ${(event.target as IDBOpenDBRequest).error}`);
-            };  
-        })
-    }
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("interaction", 1);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
+      if (!db.objectStoreNames.contains("interaction")) {
+        db.createObjectStore("interaction", { keyPath: "key" });
+      }
+    };
+    request.onsuccess = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
 
+      const tx = db.transaction("interaction", "readwrite");
+      const store = tx.objectStore("interaction");
+      const getRequest = store.get("allInteractions");
 
+      getRequest.onsuccess = () => {
+        if (!getRequest.result) {
+          store.put({ key: "allInteractions", interactions: [] });
+        }
+      };
+      resolve(db);
+    };
+    request.onerror = (event) => {
+      reject(`Database error: ${(event.target as IDBOpenDBRequest).error}`);
+    };
+  });
+}
 export async function readInteraction(
   episodeNumber: number,
   profile: "user" | "agent" | "both"
@@ -83,22 +90,33 @@ export async function readInteraction(
   });
 }
 
-export async function addInteraction(interactionData: interactionData) {
-        const db = await openDatabase(); 
+export async function addInteraction(interaction: interactionData) {
+  const db = await openDatabase();
+  if (!db) throw new Error("Failed to open database");
 
-        return new Promise((resolve, reject) => {
-            if (db) {
-                const tx = db.transaction("interaction", "readwrite"); 
-                const interactionStore = tx.objectStore("interaction"); 
-                
-                const request = interactionStore.add(interactionData);
-            
-                request.onsuccess = () => { resolve(request.result); }
-                request.onerror = () => { reject(`Failed to add interaction: ${request.error}`);};
-                tx.oncomplete = () => db.close();
-           
-            } else {
-                reject("Failed to open database");
-            }
-        });
-    }
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("interaction", "readwrite");
+    const store = tx.objectStore("interaction");
+
+    const getRequest = store.get("allInteractions");
+
+    getRequest.onsuccess = () => {
+      let data = getRequest.result;
+
+      if (!data) {
+        // Shouldn't happen if initialized, but just in case; 
+        data = { key: "allInteractions", interactions: [interaction] };
+      } else {
+        data.interactions.push(interaction);
+      }
+
+      const putRequest = store.put(data);
+      putRequest.onsuccess = () => resolve(putRequest.result);
+      putRequest.onerror = () => reject(`Failed to add interaction: ${putRequest.error}`);
+    };
+
+    getRequest.onerror = () => reject(`Failed to read interactions: ${getRequest.error}`);
+
+    tx.oncomplete = () => db.close();
+  });
+}

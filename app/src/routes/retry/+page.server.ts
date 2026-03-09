@@ -22,8 +22,6 @@ export const load: PageServerLoad =  async ( {cookies} ) => {
     console.log("Running load function for branch retry")
     
     const sessCookies = cookies.get('session-id-delibs'); 
-    const userInitiateRetryBranch = cookies.get('session-delibs-branch-retrial');
-
     const dRecord = await validateAndRetrieveDeliberation(sessCookies)    
     if (dRecord == null) {
         console.groupEnd()
@@ -32,18 +30,10 @@ export const load: PageServerLoad =  async ( {cookies} ) => {
 
     const d = hydrateDeliberationInstance(dRecord)
 
-    if (userInitiateRetryBranch) {
-        const retryBranches = JSON.parse(userInitiateRetryBranch);
-        console.log("Branches to retry", retryBranches);
-        for (const branchIndex of retryBranches) {
-            const { dialogue, startTime } = d.unwindTrialBranch(branchIndex)
-            localStorage.setItem(branchIndex, JSON.stringify({dialogue, startTime}))
-        }
-    }
   
     return { 
+        memory : d.lawmaker._memory,
         sessCookies: sessCookies,
-        retryBranches: userInitiateRetryBranch,
     }
     
 }

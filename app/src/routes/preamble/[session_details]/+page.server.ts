@@ -7,6 +7,7 @@ export const load: PageServerLoad = async (event) => {
   let avatarCacheStatus = cookies.get('persistent-avatar-cache');
 
   const uriData = url.searchParams.get('data');
+  
   let form: any = null;
 
   try {
@@ -29,7 +30,6 @@ export const load: PageServerLoad = async (event) => {
       status: 200
     };
   }
-
 
 
   if (!form) {

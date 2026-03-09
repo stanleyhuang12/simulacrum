@@ -16,7 +16,6 @@ import { onMount } from "svelte";
     let audioAnalyser: AnalyserNode; 
 
     // creates an Audio Context 
-    
     let drawId: number | null = null;
     let mediaRecorder: MediaRecorder | undefined;
     let audioChunks: Blob[] = [];

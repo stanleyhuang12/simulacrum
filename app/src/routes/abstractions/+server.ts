@@ -16,7 +16,7 @@ export const load: PageServerLoad =  async ( {cookies} ) => {
 
     const d = hydrateDeliberationInstance(dRecord)
     return {
-        "memory": d._memory
+        "memory": d.lawmaker._memory
     }
 
 }

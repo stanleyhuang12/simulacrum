@@ -2,9 +2,11 @@ import jStat from 'jstat';
 import type { Json } from 'sequelize/lib/utils';
 
 export type interactionData = {
-        id: string, 
-        interaction: string, 
+        role: string, 
+        text: string, 
+        awaitTime: Date, 
         startTime: Date,
+        endTime: Date,
 }; 
 
 /*
