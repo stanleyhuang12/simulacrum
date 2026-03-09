@@ -4,10 +4,13 @@
     import type { PageProps } from './$types';
     import { goto } from '$app/navigation';
     import failed_image from "$db/static_failed_images.png";
+    import { page } from "$app/state";
 
     let { data }: PageProps = $props();
     let revealDeliberationStatus = $state(false);
     let showNotification = $state(false);
+    const isDemo = page.url.searchParams.get('demo') ? true : false; 
+
     let alertMessage = $derived(
             data?.form?.lawmaker_name 
                 ? `${data.form.lawmaker_name} has joined the meeting and is inviting you in. Whenever you are ready, you can click join to enter the call!`
@@ -286,7 +289,7 @@ ul li {
     <button 
       id="start-delibs-meeting" 
       in:fade={{delay:1500}} 
-      onclick={() => goto("/interface")}>
+      onclick={() => isDemo ? goto("/interface?demo=true") : goto("/interface")}>
       Join your meeting
     </button>
   {/if}

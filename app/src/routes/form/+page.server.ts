@@ -44,7 +44,7 @@ export const actions: Actions = {
         if (isDemo) {
             const dataString = encodeURIComponent(payloadStr); 
             console.log('Redirecting the user')
-            redirect(303,  `/preamble/session_id_delibs=${sess_cookies}?data=${dataString}?demo=true`)
+            redirect(303,  `/preamble/session_id_delibs=${sess_cookies}?data=${dataString}&demo=true`)
         }
 
         const res = await event.fetch("/api/create-deliberation-instance", {
