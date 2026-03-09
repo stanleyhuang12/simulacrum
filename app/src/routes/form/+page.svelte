@@ -131,6 +131,7 @@ div.form-grid {
 }
 
 
+
 .lawmaker-selection-buttons {
   display: flex; 
   flex-direction: column; /* stack content vertically */
@@ -296,7 +297,9 @@ button:disabled {
 <!--  -->
 
 <form  data-sveltekit-keepfocus id="begin-delibs-survey-form" method="POST" action=actionUrl use:enhance>
+  {console.log(actionUrl)}
   <div class="form-grid">
+    <input type="hidden" name="demo" value={demo ? "true" : "false"} />
 
     <!-- User Section -->
     <section class="user-section">

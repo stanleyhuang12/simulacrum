@@ -21,7 +21,11 @@ export const actions: Actions = {
         const formData = await event.request.formData();
         
         const payload = Object.fromEntries(formData); // Convert FormData -> object
+        const isDemo = payload.demo === "true"; 
+        delete payload.demo; 
         const payloadStr = JSON.stringify(payload); 
+        
+
         console.log(payload)
         const email = payload.userEmail.toString(); 
         let is_missing = []; 
@@ -35,10 +39,11 @@ export const actions: Actions = {
         if (!validateEmail(email)) {
                 return fail(400, {"is_invalid": "email", ...( is_missing.length && { is_missing })})
         }; 
-        
-        console.log(event.url)
-        if (event.url.searchParams.get('demo') == "true") {
+
+
+        if (isDemo) {
             const dataString = encodeURIComponent(payloadStr); 
+            console.log('Redirecting the user')
             redirect(303,  `/preamble/session_id_delibs=${sess_cookies}?data=${dataString}?demo=true`)
         }
 
