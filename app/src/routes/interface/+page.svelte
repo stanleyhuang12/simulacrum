@@ -6,10 +6,9 @@
     import { addInteraction } from "$models/+local"
     import type { interactionData } from "$models/+utils";
 
-
-
     let { data }: PageProps = $props(); 
-    
+    let localData = $state<Record<string, any>>({});
+
     let audioStreams: MediaStream | undefined;
     let videoStreams: MediaStream | undefined;
     let videoElem: HTMLVideoElement;
@@ -24,15 +23,22 @@
     let dc: RTCDataChannel | null = null; 
     let isActiveSession: boolean = false; 
 
-    let episodeNumber: number; 
-
-    let responseAwaitTime: Date; 
-    let responseStartTime: Date; 
-    let responseEndTime: Date; 
+    let awaitTime: Date; 
+    let startTime: Date; 
+    let endTime: Date; 
 
     onMount(() => { 
         console.log('Establishing WebRTC Peer Connection with OpenAI.')
         establishOAIConnection()
+
+        if (data.demo) {
+            const formData = localStorage.getItem('formData');
+            if (!formData) { goto('/'); return; }
+            localData = JSON.parse(formData);
+
+        }
+
+        console.log($state.snapshot(localData)); 
 
         console.log('Establishing video streams.');
         getVideoStream();
@@ -188,35 +194,37 @@
                 break;
             
             case "conversation.item.input_audio_transcription.started": 
-                responseStartTime = new Date(); 
-                console.log(responseStartTime);
+                startTime = new Date(); 
+                console.log(startTime);
+                break; 
 
             case "conversation.item.input_audio_transcription.completed": 
-                responseEndTime = new Date(); 
-                console.log(responseEndTime);
+                endTime = new Date(); 
+                console.log(endTime);
                 console.log('Completed transcriptions');
 
                 const text = event.transcript 
                 if (!event.transcript) {
                     break;
                 }
-                console.log(text)
+                console.log("User said", text)
                 processText(text)
                 isProcessingAudio = false; 
                 const interactionData: interactionData = {
-                    id: `${episodeNumber}-user`,
-                    interaction: text,
-                    startTime: responseStartTime
+                    role: `user`,
+                    text: text,
+                    awaitTime: awaitTime, 
+                    startTime: startTime, 
+                    endTime: endTime
                 };
 
                 await addInteraction(interactionData);
-                
-
                 break;
     }}; 
 
     async function processText(text: string) {
-        /* Process texts: feeds to LLMs, but also will */
+        /* Process texts: feeds to LLMs, but also will cache locally*/
+
         const result = await fetch("/api/manage-deliberation-instance", {
             method: "POST",
             headers: {
@@ -224,28 +232,28 @@
             }, 
             body: JSON.stringify({
                 text: text, 
-                responseAwaitTime: responseAwaitTime, 
-                responseStartTime: responseStartTime,
-                responseEndTime: responseEndTime, 
+                responseAwaitTime: awaitTime, 
+                responseStartTime: startTime,
+                responseEndTime: endTime, 
             })
         });
 
         const res = await result.json();
         
-
         switch (res.type) {
             case "guardrail.triggered": 
                 console.log("Guardrail is triggered.");
-                redirect(403, 'forbidden')
+                redirect(403, 'forbidden');
 
             case "automated.response": 
                 handleAgentResponse(res.response); 
                 /* Adds the agent interaction data to indexedDB */
-                episodeNumber = res.episodeNumber; 
                 const interactionData: interactionData = { 
-                    id: `${res.episodeNumber}-agent`,
-                    interaction: text, 
+                    role: 'agent',
+                    text: text, 
+                    awaitTime: awaitTime, 
                     startTime: new Date(),
+                    endTime: endTime, 
                 }; 
                 addInteraction(interactionData); 
                 break; 
@@ -270,8 +278,8 @@
         
         audioElem.src = blobURL;
         audioElem.onended = function() {
-            responseAwaitTime = new Date(); 
-            console.log(responseAwaitTime);
+            awaitTime = new Date(); 
+            console.log(awaitTime);
         };
         await audioElem.play();
 
@@ -470,13 +478,13 @@ button.microphone:hover, button.camera:hover {
     <div class="video-grid">
         <div class="lawmaker-profile">
             <img class="lawmaker-avatar" src={data.lawmakerAvatarURL} alt="Lawmaker Avatar" />
-             <div><strong>{data.form.lawmakerName} | {data.form.state}</strong></div>
+             <div><strong>{data.demo ? localData.lawmaker_name : data.form?.lawmakerName} | {data.demo ? localData.state : data.form?.state}</strong></div>
         </div>
         <div class="user-profile">
             <video bind:this={videoElem} autoplay playsinline muted></video>
             <div> 
                 <span class="status-dot" style="background-color: green;"></span>
-                <strong>{data.form.username} | {data.form.organization}</strong>
+                <strong>{data.demo ? localData.username : data.form?.username} | {data.demo ? localData.organization : data.form?.organization}</strong>
             </div>
         </div>
     </div>

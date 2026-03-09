@@ -17,9 +17,17 @@
                 : 'Your lawmaker has joined the meeting. Click join when ready!'
         );  
     
-    
+    let savedFormData = {};
+
     onMount(() => {
         startButtonTimer(); 
+        const saved = localStorage.getItem("formData");
+        if (saved) {
+            savedFormData = JSON.parse(saved);
+        } else if (data?.form) {
+            savedFormData = data.form;
+            localStorage.setItem("formData", JSON.stringify(data.form));
+        }
     });
 
     function startButtonTimer() { 
