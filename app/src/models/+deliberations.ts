@@ -357,6 +357,7 @@ export class Deliberation extends Simulacrum {
 
         return templateText
     };
+
     public compileTime() {
         const turnGap = this._diffMinSec(
             this.responseAwait, 
@@ -383,6 +384,7 @@ export class Deliberation extends Simulacrum {
         }
             
     }
+
     public async panel_discussion(input: string, fetchFn: typeof fetch, time: timeMetadata) {
         const turn = this.conversation_turn;
         this.conversation_turn++;
@@ -409,6 +411,41 @@ export class Deliberation extends Simulacrum {
    HYDRATION
 ========================= */
 
+export async function manageDeliberationInstanceLocally(text: string, responseAwaitTime: Date, responseEndTime: Date, responseStartTime: Date, fetchFn: typeof fetch) {
+    const d = await hydrateDeliberationLocally(); 
+    
+    /* Init virtual lawmaker and log time metadata  */
+    d._init_virtual_lawmaker(); 
+    d.responseAwait = responseAwaitTime; 
+    d.responseStart = responseStartTime; 
+    d.responseEnd = responseEndTime; 
+    
+    const timeData: timeMetadata = d.compileTime()
+
+    if (d.conversation_turn === 3 || d.conversation_turn % 3 === 0) {
+        console.log("Running guardrail functions")
+        let guardrailResponse = await d._guardrail_moderation(text, fetchFn)
+        console.log(`Guardrail response ${JSON.stringify(guardrailResponse)}`)
+        if (guardrailResponse.triggered) {
+            // Return structured object instead of trying to encode status in JSON.stringify
+            return {
+                type: 'guardrail.triggered',
+                reason: guardrailResponse.reason,
+                status: 403,
+                statusText: "Your session has ended abruptly due to guardrails. Please contact the team to retry."
+            };
+    }; 
+
+    const response = await d.panel_discussion(text, fetchFn, timeData)
+
+    return {
+        type: 'automated.response', 
+        response: response, 
+        episodeNumber: d.conversation_turn, 
+        status: 200, 
+    }
+    
+}}; 
 
 export async function hydrateDeliberationLocally() {
     console.log("Hydrating deliberation instance")
@@ -417,8 +454,9 @@ export async function hydrateDeliberationLocally() {
     const updatedTime = localStorage.getItem('updatedTime') || new Date().toISOString(); 
 
     const memory: Array<Memory> = await readInteraction(); 
+    const conversationTurn = memory.length; 
 
-    if (r == null || initTime == null) { return new Error("No record found")}; 
+    if (r == null || initTime == null) { throw new Error("No record found")}; 
     const record = JSON.parse(r); 
     const d = new Deliberation(
         record.username, 
@@ -432,17 +470,10 @@ export async function hydrateDeliberationLocally() {
         new Date(initTime),  // the time is saved locally as an ISO String 
         new Date(updatedTime) 
     ); 
+    d.lawmaker._rehydrate_memory(memory); 
+    d.conversation_turn = conversationTurn; 
 
-    if (record.memory) {
-
-        d.lawmaker._rehydrate_memory(record.memory); 
-    }; 
-    if (record.persona) {
-        d.lawmaker.persona = record.persona
-    }
-    if (record.conversation_turn) {
-        d.conversation_turn = record.conversation_turn
-    }
+    return d 
 }
 
 export function hydrateDeliberationInstance( record: any) { 
@@ -472,5 +503,3 @@ export function hydrateDeliberationInstance( record: any) {
     }
     return d
 }
-
-

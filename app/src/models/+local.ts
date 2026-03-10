@@ -5,7 +5,7 @@
  */
 
 import type { interactionData } from "./+utils";
-import type { Memory } from "./+utils";
+import type { Memory } from "./+deliberations";
 
 export async function openDatabase(): Promise<IDBDatabase | null> {
   return new Promise((resolve, reject) => {
