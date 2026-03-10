@@ -28,6 +28,7 @@ export const POST: RequestHandler = async ( event ) => {
         `)
 
     try { 
+        
         const delibsRecord = await validateAndRetrieveDeliberation(userID)
         if (delibsRecord == null) 
             { return error(404, "No deliberation object found.")}
@@ -41,9 +42,8 @@ export const POST: RequestHandler = async ( event ) => {
                  sameSite: 'lax', 
                  maxAge: 72460*60 
                 }
-            )
-
-            redirect(500, "forbidden")
+            ); 
+            redirect(500, "forbidden"); 
         }
         // this could be made more efficient by just trying to hydrate and returning the error
         const d = hydrateDeliberationInstance(delibsRecord)

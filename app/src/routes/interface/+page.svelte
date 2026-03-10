@@ -235,6 +235,7 @@
                 responseAwaitTime: awaitTime, 
                 responseStartTime: startTime,
                 responseEndTime: endTime, 
+                demo: data.demo,
             })
         });
 
