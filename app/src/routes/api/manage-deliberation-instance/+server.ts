@@ -28,7 +28,6 @@ export const POST: RequestHandler = async ( event ) => {
         `)
 
     try { 
-        
         const delibsRecord = await validateAndRetrieveDeliberation(userID)
         if (delibsRecord == null) 
             { return error(404, "No deliberation object found.")}
