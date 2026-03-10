@@ -5,6 +5,7 @@
     import { redirect } from "@sveltejs/kit";
     import { addInteraction } from "$models/+local"
     import type { interactionData } from "$models/+utils";
+    import type { Memory } from "$models/+deliberations";
 
     let { data }: PageProps = $props(); 
     let localData = $state<Record<string, any>>({});

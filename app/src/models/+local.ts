@@ -7,6 +7,7 @@
 import type { interactionData } from "./+utils";
 import type { Memory } from "./+deliberations";
 
+
 export async function openDatabase(): Promise<IDBDatabase | null> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("interaction", 1);
@@ -36,33 +37,62 @@ export async function openDatabase(): Promise<IDBDatabase | null> {
   });
 }; 
 
-export async function readInteraction(index?:number): Promise<Array<Memory>> {
-  const db = await openDatabase();
-  if (!db) throw new Error("Failed to open local IndexedDB.");
+export function convertToMemory(interaction: interactionData, model: string, episodeNumber: number): Memory {
+    const responseDuration = interaction.endTime.getTime() - interaction.startTime.getTime();
+    const turnGap = interaction.startTime.getTime() - (interaction.awaitTime?.getTime() || interaction.startTime.getTime());
 
-  
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("interaction", "readonly");
-    const store = tx.objectStore("interaction");
+    return {
+        dialogue: {
+            prompt: interaction.role === 'user' ? interaction.text : '',
+            response: interaction.role === 'agent' ? interaction.text : ''
+        },
+        model,
+        episodeNumber,
+        time: {
+            turnGap,
+            responseDuration,
+            responseTotalTime: responseDuration + turnGap,
+            timingDetails: {
+                responseAwait: interaction.awaitTime,
+                responseStart: interaction.startTime,
+                responseEnd: interaction.endTime
+            }
+        }
+    }
+}
 
-    const conversationSeries = store.get('allInteractions'); 
+export async function readInteraction(index?: number): Promise<Array<Memory>> {
+    const db = await openDatabase();
+    if (!db) throw new Error("Failed to open local IndexedDB.");
 
-    conversationSeries.onsuccess = () => {
-      if (index) { 
-        const result = conversationSeries.result[index]; 
-        resolve(result); 
-      } else {
-        const result = conversationSeries.result; 
-        resolve(result); 
-      }
-    }; 
-    conversationSeries.onerror = () => {
-      reject(new Error("Failed to retrieve interactions from database"))
-    }; 
-    tx.oncomplete = () => db.close(); 
-  })
-}; 
-  
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction("interaction", "readonly");
+        const store = tx.objectStore("interaction");
+
+        const getRequest = store.get('allInteractions');
+
+        getRequest.onsuccess = () => {
+            const rawInteractions: interactionData[] = getRequest.result?.interactions || [];
+
+            const memories: Memory[] = rawInteractions.map((i, idx) =>
+                convertToMemory(i, 'oai-realtime-model', idx + 1)
+            );
+
+            if (index !== undefined) {
+                if (index >= 0 && index < memories.length) {
+                    resolve([memories[index]]);
+                } else {
+                    reject(new Error("Index out of bounds"));
+                }
+            } else {
+                resolve(memories);
+            }
+        };
+
+        getRequest.onerror = () => reject(new Error("Failed to retrieve interactions from database"));
+        tx.oncomplete = () => db.close();
+    });
+}
 
 export async function addInteraction(interaction: interactionData) {
   const db = await openDatabase();
