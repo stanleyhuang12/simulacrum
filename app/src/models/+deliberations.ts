@@ -1,6 +1,7 @@
 import { Simulacrum } from './+simulacrum';
 import type { ChatMessage, Dialogue } from './+utils';
 import { random_beta_sampler, ADVOCACY_GUARDRAILS } from './+utils';
+import { readInteraction } from './+local';
 /**
  * TYPES 
  **/
@@ -407,6 +408,42 @@ export class Deliberation extends Simulacrum {
 /* =========================
    HYDRATION
 ========================= */
+
+
+export async function hydrateDeliberationLocally() {
+    console.log("Hydrating deliberation instance")
+    const r = localStorage.getItem('formData'); 
+    const initTime = localStorage.getItem('initTime'); 
+    const updatedTime = localStorage.getItem('updatedTime') || new Date().toISOString(); 
+
+    const memory: Array<Memory> = await readInteraction(); 
+
+    if (r == null || initTime == null) { return new Error("No record found")}; 
+    const record = JSON.parse(r); 
+    const d = new Deliberation(
+        record.username, 
+        record.organization, 
+        "deliberations", 
+        record.policy_topic, 
+        record.state,
+        1,  
+        record.ideology,
+        record.lawmaker_name,
+        new Date(initTime),  // the time is saved locally as an ISO String 
+        new Date(updatedTime) 
+    ); 
+
+    if (record.memory) {
+
+        d.lawmaker._rehydrate_memory(record.memory); 
+    }; 
+    if (record.persona) {
+        d.lawmaker.persona = record.persona
+    }
+    if (record.conversation_turn) {
+        d.conversation_turn = record.conversation_turn
+    }
+}
 
 export function hydrateDeliberationInstance( record: any) { 
     console.log("Hydrating deliberation instance")

@@ -5,6 +5,8 @@
  */
 
 import type { interactionData } from "./+utils";
+import type { Memory } from "./+utils";
+
 export async function openDatabase(): Promise<IDBDatabase | null> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("interaction", 1);
@@ -34,7 +36,7 @@ export async function openDatabase(): Promise<IDBDatabase | null> {
   });
 }; 
 
-export async function readInteraction(index?:number): Promise<interactionData | { user?: interactionData; agent?: interactionData }> {
+export async function readInteraction(index?:number): Promise<Array<Memory>> {
   const db = await openDatabase();
   if (!db) throw new Error("Failed to open local IndexedDB.");
 

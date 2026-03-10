@@ -27,15 +27,18 @@
     let startTime: Date; 
     let endTime: Date; 
 
+    let updatedTime: Date; 
+
     onMount(() => { 
         console.log('Establishing WebRTC Peer Connection with OpenAI.')
         establishOAIConnection()
+        const init = new Date().toISOString();
+        localStorage.setItem('initTime', init); 
 
         if (data.demo) {
             const formData = localStorage.getItem('formData');
             if (!formData) { goto('/'); return; }
             localData = JSON.parse(formData);
-
         }
 
         console.log($state.snapshot(localData)); 
@@ -158,8 +161,6 @@
             console.error(err)
         }
     }; 
-
- 
     
     function toggleCamera() {
         if (!videoStreams) return;
@@ -178,86 +179,98 @@
     }; 
 
     async function receiveEmittedEvents(evt: any) {
+        try {
+            const event = JSON.parse(evt.data); 
 
-        const event = JSON.parse(evt.data); 
+            if (event.type === "error") {
+                throw new Error('Error parsing server-emitted event.')
+            };
 
-        if (event.type === "error") {
-            throw new Error('Error parsing server-emitted event.')
-        };
-
-        console.log(event);
-        
-        switch (event.type) {
-            case "session.created": 
-                console.log('Session established.');
-                isProcessingAudio = true; 
-                break;
+            console.log(event);
             
-            case "conversation.item.input_audio_transcription.started": 
-                startTime = new Date(); 
-                console.log(startTime);
-                break; 
-
-            case "conversation.item.input_audio_transcription.completed": 
-                endTime = new Date(); 
-                console.log(endTime);
-                console.log('Completed transcriptions');
-
-                const text = event.transcript 
-                if (!event.transcript) {
+            switch (event.type) {
+                case "session.created": 
+                    console.log('Session established.');
+                    isProcessingAudio = true; 
                     break;
-                }
-                console.log("User said", text)
-                processText(text)
-                isProcessingAudio = false; 
-                const interactionData: interactionData = {
-                    role: `user`,
-                    text: text,
-                    awaitTime: awaitTime, 
-                    startTime: startTime, 
-                    endTime: endTime
-                };
+                
+                case "conversation.item.input_audio_transcription.started": 
+                    startTime = new Date(); 
+                    console.log(startTime);
+                    break; 
 
-                await addInteraction(interactionData);
-                break;
-    }}; 
+                case "conversation.item.input_audio_transcription.completed": 
+                    endTime = new Date(); 
+                    console.log(endTime);
+                    console.log('Completed transcriptions');
+
+                    const text = event.transcript 
+                    if (!event.transcript) {
+                        break;
+                    }
+                    console.log("User said", text); 
+                    const interactionData: interactionData = {
+                        role: `user`,
+                        text: text,
+                        awaitTime: awaitTime, 
+                        startTime: startTime, 
+                        endTime: endTime
+                    };
+
+                    if (data.demo) {
+                        await addInteraction(interactionData);
+                        localStorage.setItem('updatedTime', new Date().toISOString()); 
+                        isProcessingAudio = false; 
+                    }
+                    processText(text); 
+                    isProcessingAudio = false; 
+                    break;
+            }} catch(err) {
+                    console.error(`Error transcribing and logging user audio input`, err)
+            }
+    }; 
+  
 
     async function processText(text: string) {
         /* Process texts: feeds to LLMs, but also will cache locally*/
-
-        const result = await fetch("/api/manage-deliberation-instance", {
-            method: "POST",
-            headers: {
-                "Content-Type": "text/plain",
-            }, 
-            body: JSON.stringify({
-                text: text, 
-                responseAwaitTime: awaitTime, 
-                responseStartTime: startTime,
-                responseEndTime: endTime, 
-                demo: data.demo,
-            })
-        });
-
-        const res = await result.json();
-        
-        switch (res.type) {
-            case "guardrail.triggered": 
-                console.log("Guardrail is triggered.");
-                redirect(403, 'forbidden');
-
-            case "automated.response": 
-                handleAgentResponse(res.response); 
-                /* Adds the agent interaction data to indexedDB */
-                const interactionData: interactionData = { 
-                    role: 'agent',
+        try {
+            const result = await fetch("/api/manage-deliberation-instance", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "text/plain",
+                }, 
+                body: JSON.stringify({
                     text: text, 
-                    awaitTime: awaitTime, 
-                    startTime: new Date(),
-                    endTime: endTime, 
-                }; 
-                addInteraction(interactionData); 
-                break; 
+                    responseAwaitTime: awaitTime, 
+                    responseStartTime: startTime,
+                    responseEndTime: endTime, 
+                    demo: data.demo,
+                })
+            });
+    
+            const res = await result.json();
+            
+            switch (res.type) {
+                case "guardrail.triggered": 
+                    console.log("Guardrail is triggered.");
+                    redirect(403, 'forbidden');
+
+                case "automated.response": 
+                    handleAgentResponse(res.response); 
+                    /* Adds the agent interaction data to indexedDB */
+                    const interactionData: interactionData = { 
+                        role: 'agent',
+                        text: text, 
+                        awaitTime: awaitTime, 
+                        startTime: new Date(),
+                        endTime: endTime, 
+                    }; 
+                    addInteraction(interactionData); 
+                    console.log(interactionData);  
+                    break; 
+            }
+        } catch(err) {
+            console.error(`Error with processing user text:`, err)
         }
     }; 
  

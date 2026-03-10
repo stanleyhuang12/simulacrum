@@ -17,6 +17,7 @@ export const POST: RequestHandler = async ( event ) => {
     const responseAwaitTime = res.responseAwaitTime; 
     const responseStartTime = res.responseStartTime; 
     const responseEndTime = res.responseEndTime; 
+    const isDemo = res.demo; 
 
     console.group(`Running manage_deliberation_instance endpoint.`)
     console.log(`
@@ -28,7 +29,6 @@ export const POST: RequestHandler = async ( event ) => {
         `)
 
     try { 
-        
         const delibsRecord = await validateAndRetrieveDeliberation(userID)
         if (delibsRecord == null) 
             { return error(404, "No deliberation object found.")}
