@@ -107,43 +107,43 @@ export abstract class Simulacrum {
         }
     }
 
-    public unwindTrialBranch(divergentIndex: number) {
-        /*
-        Given a branch, we can unwind the Simulacrum experience towards a previous time by 
+    // public unwindTrialBranch(divergentIndex: number) {
+    //     /*
+    //     Given a branch, we can unwind the Simulacrum experience towards a previous time by 
 
-        (1) displaying the previous timer / schedule to give the illusion of unwinding
-        (2) replay the initial question or conversation thread that we let the audio play 
-        */
+    //     (1) displaying the previous timer / schedule to give the illusion of unwinding
+    //     (2) replay the initial question or conversation thread that we let the audio play 
+    //     */
 
-        const dialogue = this.lawmaker._memory[divergentIndex].dialogue
-        const startTime = this.lawmaker._memory[divergentIndex].time.timingDetails.responseAwait
+    //     const dialogue = this.lawmaker._memory[divergentIndex].dialogue
+    //     const startTime = this.lawmaker._memory[divergentIndex].time.timingDetails.responseAwait
 
-        return { dialogue, startTime }; 
-    }; 
+    //     return { dialogue, startTime }; 
+    // }; 
 
-    public retryDivergentBranch(divergentIndex: number, divergentResponse: Dialogue) {
-        const node = this.userSenseMaking.abstraction[divergentIndex];
-        if (node) {
-            // If branchedRetry already exists, push; otherwise, create a new array
-            if (node.branchedRetry) {
-                node.branchedRetry.push(divergentResponse);
-            } else {
-                node.branchedRetry = [divergentResponse];
-            }
-            node.branchedRetryAttempted = true; // mark that a retry has been attempted
-            // Optionally increment branchedRetryNumber, up to 2
-            if (node.branchedRetryNumber < 2) {
-                node.branchedRetryNumber += 1;
-            }
-        } else {
-            // If no node exists at that index, you might want to initialize it
-            this.userSenseMaking.abstraction[divergentIndex] = {
-                userAbstraction: "",
-                branchedRetryAttempted: true,
-                branchedRetryNumber: 0,
-                branchedRetry: [divergentResponse],
-            };
-        }; 
-    }
+    // public retryDivergentBranch(divergentIndex: number, divergentResponse: Dialogue) {
+    //     const node = this.userSenseMaking.abstraction[divergentIndex];
+    //     if (node) {
+    //         // If branchedRetry already exists, push; otherwise, create a new array
+    //         if (node.branchedRetry) {
+    //             node.branchedRetry.push(divergentResponse);
+    //         } else {
+    //             node.branchedRetry = [divergentResponse];
+    //         }
+    //         node.branchedRetryAttempted = true; // mark that a retry has been attempted
+    //         // Optionally increment branchedRetryNumber, up to 2
+    //         if (node.branchedRetryNumber < 2) {
+    //             node.branchedRetryNumber += 1;
+    //         }
+    //     } else {
+    //         // If no node exists at that index, you might want to initialize it
+    //         this.userSenseMaking.abstraction[divergentIndex] = {
+    //             userAbstraction: "",
+    //             branchedRetryAttempted: true,
+    //             branchedRetryNumber: 0,
+    //             branchedRetry: [divergentResponse],
+    //         };
+    //     }; 
+    // }
 }
 

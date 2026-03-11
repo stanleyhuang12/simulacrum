@@ -257,16 +257,13 @@
                     redirect(403, 'forbidden');
 
                 case "automated.response": 
-                    handleAgentResponse(res.response); 
+                    await handleAgentResponse(res.response); 
                     /* Adds the agent interaction data to indexedDB */
                     const interactionData: interactionData = { 
                         role: 'agent',
-                        text: text, 
-                        awaitTime: awaitTime, 
-                        startTime: new Date(),
-                        endTime: endTime, 
+                        text: res.response, 
                     }; 
-                    addInteraction(interactionData); 
+                    await addInteraction(interactionData); 
                     console.log(interactionData);  
                     break; 
             }
@@ -292,11 +289,13 @@
         const audioElem = new Audio();
         
         audioElem.src = blobURL;
-        audioElem.onended = function() {
-            awaitTime = new Date(); 
-            console.log(awaitTime);
-        };
-        await audioElem.play();
+        await new Promise<void>((resolve) => {
+            audioElem.onended = function() {
+                awaitTime = new Date();
+                resolve();  // ✅ now await handleAgentResponse waits for audio to finish
+            };
+            audioElem.play();
+    });
 
     }; 
 

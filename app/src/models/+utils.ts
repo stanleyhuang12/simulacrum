@@ -4,9 +4,9 @@ import type { Json } from 'sequelize/lib/utils';
 export type interactionData = {
         role: string, 
         text: string, 
-        awaitTime: Date, 
-        startTime: Date,
-        endTime: Date,
+        awaitTime?: Date, 
+        startTime?: Date,
+        endTime?: Date,
 }; 
 
 /*
