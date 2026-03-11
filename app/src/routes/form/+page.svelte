@@ -10,7 +10,7 @@
     const actionUrl = demo ? `/submit?demo=true` : `/submit`; 
 
     import type { PageData, ActionData } from './$types';
-  import { forEach } from 'mathjs';
+
 	  let { data, form }: {data: PageData, form: ActionData} = $props();
 
     let selectedLawmakerProperties: Record<string, string> = $state({
@@ -33,6 +33,7 @@
       "Very liberal"
     ];
 
+    let isSubmitting = $state(false)
     // The slider value (numeric)
     let sliderValue = $state(2); // starting at "Moderate"
     onMount(async () => {
@@ -281,10 +282,62 @@ button:disabled {
   line-height: 1;
   flex-shrink: 0;
 }
+
+.submit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(10, 0, 40, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  background: rgba(69, 6, 121, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius);
+  padding: 2.5rem 3rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.15);
+  border-top-color: rgb(22, 11, 215);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 </style>
 
-<form  data-sveltekit-keepfocus id="begin-delibs-survey-form" method="POST" action=actionUrl use:enhance>
-
+<form  data-sveltekit-keepfocus id="begin-delibs-survey-form" method="POST" action=actionUrl use:enhance={
+      () => {
+      isSubmitting = true;
+      return async ({ update }) => {
+        await update();
+        isSubmitting = false;  // note for stanley: the use:enhance is a callback fn
+      };}}>
+  {#if isSubmitting}
+  <div class="submit-overlay" transition:fade>
+      <div class="spinner-card">
+        <div class="spinner"></div>
+        <p>Entering deliberations...</p>
+      </div>
+    </div>
+  {/if}
   <div class="form-grid">
     <input type="hidden" name="demo" value={demo ? "true" : "false"} />
 
@@ -439,5 +492,7 @@ button:disabled {
   
   </div>
 
-  <button type="submit" formaction="?/submit">Enter simulated Deliberations with your virtual lawmaker!</button>
+  <button type="submit" formaction="?/submit" disabled={isSubmitting}>
+    {isSubmitting ? 'Loading...' : 'Enter simulated Deliberations with your virtual lawmaker!'}
+  </button>
 </form>
