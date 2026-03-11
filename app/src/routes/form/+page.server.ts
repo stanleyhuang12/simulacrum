@@ -24,7 +24,7 @@ export const actions: Actions = {
         const payloadStr = JSON.stringify(payload); 
         
         console.log(payload)
-        const email = payload.userEmail.toString(); 
+        const email = payload.email.toString(); 
         let is_missing = []; 
 
         for (const [k, v] of Object.entries(payload)) {
@@ -33,9 +33,9 @@ export const actions: Actions = {
             }
         }; 
         console.log("is_missing", is_missing)
-        if (is_missing.length > 1) {
+        if (is_missing.length > 0) {
             if (!validateEmail(email)) {
-                return fail(400, {"is_invalid": "email", ...( is_missing.length && { is_missing })})}
+                return fail(400, {"is_invalid": ["email"], ...( is_missing.length && { is_missing })})}
             else {
                 return fail(400, {"is_missing": is_missing})
             }

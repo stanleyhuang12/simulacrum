@@ -83,7 +83,7 @@ div.form-grid {
   height: min(95%, 70vh);
   margin: 2rem auto;
   padding: 1.5rem;
-  background: var(--surface);
+  background: var(--su rface);
   border-radius: var(--radius);
   backdrop-filter: blur(8px) saturate(120%);
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -106,7 +106,7 @@ div.form-grid {
   margin-right: 1rem;
 }
 
-.error {
+.label-question .error {
   border: 2px solid red;
 }
 
@@ -205,6 +205,12 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.field-error {
+  color: #e53e3e;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+}
 
 .label-question textarea {
   width: 70%;
@@ -265,7 +271,7 @@ button:disabled {
         <h3>User Data</h3>
         <label class="label-question">
           What is your name?
-          <input type="text" name="username" placeholder="John Doe" class="error={form?.is_missing?.includes("username")}"/>
+          <input type="text" name="username" placeholder="John Doe" class:error={form?.is_missing?.includes("username")}/>
         </label>
         {#if form?.is_missing?.includes('username')}
             <span class="field-error" transition:fade>Please enter a name. </span>
@@ -273,15 +279,24 @@ button:disabled {
 
         <label class="label-question">
           What is your email?
-          <input type="email" name="userEmail" placeholder="johndoe@gmail.com" />
+          <input type="email" name="email" placeholder="johndoe@gmail.com" class:error={form?.is_missing?.includes("email") || form?.is_invalid?.includes('email')}/>
         </label>
-        {#if form?.is_invalid?.includes('userEmail')}
+        {#if form?.is_missing?.includes('email')}
+            <span class="field-error" transition:fade>Please enter an email address.</span>
+        {/if}
+        {#if form?.is_invalid?.includes('email')}
             <span class="field-error" transition:fade>Please enter a valid email address.</span>
+
         {/if}
 
         <label class="label-question">
           What organization are you part of?
-          <input type="text" name="organization" placeholder="Strategic Training Initiative for the Prevention of Eating Disorders" />
+          <input 
+            type="text"
+            name="organization" 
+            placeholder="Strategic Training Initiative for the Prevention of Eating Disorders" 
+            class:error={form?.is_missing?.includes("organization")}
+          />
         </label>
         {#if form?.is_missing?.includes('organization')}
             <span class="field-error" transition:fade>Please enter an affiliated organization or N/A if not applicable.</span>
@@ -289,13 +304,13 @@ button:disabled {
 
         <label class="label-question">
           Policy topic:
-          <textarea name="policy_topic" placeholder="Out of Kids' Hands campaign..."></textarea>
+          <textarea name="policy_topic" placeholder="Out of Kids' Hands campaign..." class:error={form?.is_missing?.includes("policy_topic")}></textarea>
         </label>
         {#if form?.is_missing?.includes('policy_topic')}
             <span class="field-error" transition:fade>Please enter a brief description of the policy advocacy topic.</span>
         {/if}
       </div>
-      
+
     </section>
 
     <!-- Lawmaker Section -->
