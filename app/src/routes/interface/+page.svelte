@@ -25,15 +25,15 @@
     let dc: RTCDataChannel | null = null; 
     let isActiveSession: boolean = false; 
 
-    let awaitTime: Date; 
+    let awaitTime: Date;
     let startTime: Date; 
     let endTime: Date; 
 
     let updatedTime: Date; 
 
     onMount(() => { 
-        // clearInteractions(); 
-        // console.log("Clear IndexedDB interactions.")
+        clearInteractions(); 
+        console.log("Clear IndexedDB interactions.")
         console.log('Establishing WebRTC Peer Connection with OpenAI.')
         establishOAIConnection()
         const init = new Date().toISOString();
@@ -48,6 +48,8 @@
         console.log($state.snapshot(localData)); 
         console.log('Establishing video streams.');
         getVideoStream();
+
+        awaitTime = new Date();
     });
 
     async function establishOAIConnection() {
@@ -197,6 +199,11 @@
                     isProcessingAudio = true; 
                     break;
                 
+                case "input_audio_buffer.speech_started":
+                    startTime = new Date(); 
+                    console.log(startTime);
+                    break; 
+
                 case "conversation.item.input_audio_transcription.started": 
                     startTime = new Date(); 
                     console.log(startTime);
