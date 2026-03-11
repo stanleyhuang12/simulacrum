@@ -12,12 +12,14 @@ function validateEmail(email:  string): boolean {
     return re.test(email.toLowerCase());
 }
 
+const lawmakerAttributes = ["lawmaker_name", "ideology", "state", "ethnicity", "gender"]
+
 export const actions: Actions = {
-    
     submit: async (event) => {
         const sess_cookies = await event.cookies.get("session-id-delibs")
         const formData = await event.request.formData();
         
+    
         const payload = Object.fromEntries(formData); // Convert FormData -> object
         const isDemo = payload.demo === "true"; 
         delete payload.demo; 
@@ -29,10 +31,15 @@ export const actions: Actions = {
 
         for (const [k, v] of Object.entries(payload)) {
             if (v.toString().length < 1) {
-                is_missing.push(k)
+                is_missing.push(k); 
             }
         }; 
-        console.log("is_missing", is_missing)
+        for (let attribute of lawmakerAttributes) {
+            if (!(attribute in payload)) {
+                is_missing.push(attribute); 
+            }
+        }; 
+
         if (is_missing.length > 0) {
             if (!validateEmail(email)) {
                 return fail(400, {"is_invalid": ["email"], ...( is_missing.length && { is_missing })})}

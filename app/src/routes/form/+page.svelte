@@ -10,10 +10,10 @@
     const actionUrl = demo ? `/submit?demo=true` : `/submit`; 
 
     import type { PageData, ActionData } from './$types';
+  import { forEach } from 'mathjs';
 	  let { data, form }: {data: PageData, form: ActionData} = $props();
 
     let selectedLawmakerProperties: Record<string, string> = $state({
-        policy_topic: "",
         lawmaker_name: "",
         ideology: "",
         state: "",
@@ -253,12 +253,38 @@ button:disabled {
   }
 
 }
+.lawmaker-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(229, 62, 62, 0.12);
+  border: 1.5px solid #e53e3e;
+  border-radius: var(--radius);
+  color: #e53e3e;
+}
 
+.lawmaker-error-banner strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.lawmaker-error-banner p {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.error-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
 </style>
 
 <form  data-sveltekit-keepfocus id="begin-delibs-survey-form" method="POST" action=actionUrl use:enhance>
-  {console.log(actionUrl)}
-  {console.log(form)}
+
   <div class="form-grid">
     <input type="hidden" name="demo" value={demo ? "true" : "false"} />
 
@@ -397,14 +423,20 @@ button:disabled {
 
       <p><strong>Political orientation:</strong>{selectedLawmakerProperties.ideology}</p>
       <input type="hidden" name="ideology"  value={selectedLawmakerProperties.ideology}/>
-
-
-
     </div>
-
-  {/if}
-
+   {/if}
+          {#if Object.keys(selectedLawmakerProperties).some(val => form?.is_missing?.includes(val))}
+          <span class="field-error" transition:fade> Make sure to properly initialize your virtual lawmaker. </span>
+          <div class="lawmaker-error-banner" transition:fade>
+          <span class="error-icon">⚠</span>
+          <div>
+            <strong>Lawmaker profile incomplete</strong>
+            <p>Make sure all lawmaker fields are filled in before submitting.</p>
+          </div>
+        </div>
+      {/if}
   </section>
+  
   </div>
 
   <button type="submit" formaction="?/submit">Enter simulated Deliberations with your virtual lawmaker!</button>
