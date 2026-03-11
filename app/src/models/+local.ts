@@ -1,123 +1,125 @@
-
-
 /*This module contains scripts to manage local caching and reading of interaction data. */
 
 import type { interactionData } from "./+utils";
-import type { Memory } from "./+deliberations";
+import type { Memory, timeMetadata } from "./+deliberations";
 
-export async function openDatabase(): Promise<IDBDatabase | null> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("interaction", 1);
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
-      if (!db.objectStoreNames.contains("interaction")) {
-        db.createObjectStore("interaction", { keyPath: "key" });
-           }
-    };
-    request.onsuccess = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
 
-      const tx = db.transaction("interaction", "readwrite");
-      const store = tx.objectStore("interaction");
-      const getRequest = store.get("allInteractions");
+export async function openDatabase(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open("interaction", 1);
 
-      getRequest.onsuccess = () => {
-        if (!getRequest.result) {
-          store.put({ key: "allInteractions", interactions: [] });
-        }
-      };
-      resolve(db);
-    };
-    request.onerror = (event) => {
-      reject(`Database error: ${(event.target as IDBOpenDBRequest).error}`);
-    };
-  });
-}; 
-
-export function convertToMemory(interaction: interactionData, model: string, episodeNumber: number): Memory {
-    const responseDuration = interaction.endTime.getTime() - interaction.startTime.getTime();
-    const turnGap = interaction.startTime.getTime() - (interaction.awaitTime?.getTime() || interaction.startTime.getTime());
-
-    return {
-        dialogue: {
-            prompt: interaction.role === 'user' ? interaction.text : '',
-            response: interaction.role === 'agent' ? interaction.text : ''
-        },
-        model,
-        episodeNumber,
-        time: {
-            turnGap,
-            responseDuration,
-            responseTotalTime: responseDuration + turnGap,
-            timingDetails: {
-                responseAwait: interaction.awaitTime,
-                responseStart: interaction.startTime,
-                responseEnd: interaction.endTime
+        request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            if (!db.objectStoreNames.contains("interaction")) {
+                db.createObjectStore("interaction", { keyPath: "key" });
             }
-        }
-    }
+        };
+
+        request.onsuccess = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+
+            // Ensure the allInteractions record exists
+            const tx = db.transaction("interaction", "readwrite");
+            const store = tx.objectStore("interaction");
+            const getRequest = store.get("allInteractions");
+
+            getRequest.onsuccess = () => {
+                if (!getRequest.result) {
+                    store.put({ key: "allInteractions", interactions: [] });
+                }
+            };
+
+            tx.oncomplete = () => resolve(db);
+            tx.onerror = () => reject(tx.error);
+        };
+
+        request.onerror = (event) => {
+            reject(`Database error: ${(event.target as IDBOpenDBRequest).error}`);
+        };
+    });
 }
 
-export async function readInteraction(index?: number): Promise<Array<Memory>> {
+
+function reviveDates(memory: any): Memory {
+    if (memory.time) {
+        if (memory.time.responseAwait) memory.time.responseAwait = new Date(memory.time.responseAwait);
+        if (memory.time.responseStart)  memory.time.responseStart  = new Date(memory.time.responseStart);
+        if (memory.time.responseEnd)    memory.time.responseEnd    = new Date(memory.time.responseEnd);
+    }
+    return memory as Memory;
+}
+
+export async function readInteraction(index?: number): Promise<Memory[]> {
     const db = await openDatabase();
-    if (!db) throw new Error("Failed to open local IndexedDB.");
 
     return new Promise((resolve, reject) => {
         const tx = db.transaction("interaction", "readonly");
         const store = tx.objectStore("interaction");
-
-        const getRequest = store.get('allInteractions');
+        const getRequest = store.get("allInteractions");
 
         getRequest.onsuccess = () => {
-            const rawInteractions: interactionData[] = getRequest.result?.interactions || [];
-
-            const memories: Memory[] = rawInteractions.map((i, idx) =>
-                convertToMemory(i, '---', idx + 1)
-            );
+            const raw: any[] = getRequest.result?.interactions || [];
+            const memories: Memory[] = raw.map(reviveDates);
 
             if (index !== undefined) {
                 if (index >= 0 && index < memories.length) {
                     resolve([memories[index]]);
                 } else {
-                    reject(new Error("Index out of bounds"));
+                    reject(new Error(`Index ${index} out of bounds (length: ${memories.length})`));
                 }
             } else {
                 resolve(memories);
             }
         };
 
-        getRequest.onerror = () => reject(new Error("Failed to retrieve interactions from database"));
+        getRequest.onerror = () => reject(new Error("Failed to retrieve interactions"));
         tx.oncomplete = () => db.close();
     });
 }
 
-export async function addInteraction(interaction: interactionData) {
-  const db = await openDatabase();
-  if (!db) throw new Error("Failed to open database");
+// ─────────────────────────────────────────────
+// ADD
+// Accepts a Memory directly — both user and agent interactions
+// interactionData is kept as the param type for call-site compatibility
+// but we store it as-is since it already matches Memory shape
+// ─────────────────────────────────────────────
 
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("interaction", "readwrite");
-    const store = tx.objectStore("interaction");
+export async function addInteraction(interaction: interactionData | Memory): Promise<void> {
+    const db = await openDatabase();
 
-    const getRequest = store.get("allInteractions");
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction("interaction", "readwrite");
+        const store = tx.objectStore("interaction");
+        const getRequest = store.get("allInteractions");
 
-    getRequest.onsuccess = () => {
-      let data = getRequest.result;
+        getRequest.onsuccess = () => {
+            const existing = getRequest.result ?? { key: "allInteractions", interactions: [] };
+            existing.interactions.push(interaction);
 
-      if (!data) {
-        // Shouldn't happen if initialized, but just in case; 
-        data = { key: "allInteractions", interactions: [interaction] };
-      } else {
-        data.interactions.push(interaction);
-      }
+            const putRequest = store.put(existing);
+            putRequest.onsuccess = () => resolve();
+            putRequest.onerror = () => reject(`Failed to add interaction: ${putRequest.error}`);
+        };
 
-      const putRequest = store.put(data);
-      putRequest.onsuccess = () => resolve(putRequest.result);
-      putRequest.onerror = () => reject(`Failed to add interaction: ${putRequest.error}`);
-    };
+        getRequest.onerror = () => reject(`Failed to read interactions: ${getRequest.error}`);
+        tx.oncomplete = () => db.close();
+    });
+}
 
-    getRequest.onerror = () => reject(`Failed to read interactions: ${getRequest.error}`);
+// ─────────────────────────────────────────────
+// CLEAR (useful for testing / session reset)
+// ─────────────────────────────────────────────
 
-    tx.oncomplete = () => db.close();
-  });
+export async function clearInteractions(): Promise<void> {
+    const db = await openDatabase();
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction("interaction", "readwrite");
+        const store = tx.objectStore("interaction");
+        const putRequest = store.put({ key: "allInteractions", interactions: [] });
+
+        putRequest.onsuccess = () => resolve();
+        putRequest.onerror = () => reject(`Failed to clear interactions: ${putRequest.error}`);
+        tx.oncomplete = () => db.close();
+    });
 }

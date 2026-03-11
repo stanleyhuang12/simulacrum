@@ -5,7 +5,6 @@
     import { fade } from 'svelte/transition';
     import {  random_lawmaker_persona_generator } from "$models/+utils"
 
-
     const demo = page.url.searchParams.get('demo'); 
     const actionUrl = demo ? `/submit?demo=true` : `/submit`; 
 
