@@ -281,6 +281,8 @@
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
         console.log("Agent's response:", agentResponse)
+        audioStreams?.getAudioTracks().forEach(track => track.enabled = false);
+
         const audioReadableStream = await fetch("/api/text-to-speech", {
             method: "POST", 
             headers: {
@@ -297,8 +299,10 @@
         audioElem.src = blobURL;
         await new Promise<void>((resolve) => {
             audioElem.onended = function() {
+                audioStreams?.getAudioTracks().forEach(track => track.enabled = true);
+
                 awaitTime = new Date();
-                resolve();  // ✅ now await handleAgentResponse waits for audio to finish
+                resolve();  
             };
             audioElem.play();
     });
