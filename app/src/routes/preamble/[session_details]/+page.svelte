@@ -6,7 +6,6 @@
     import { page } from "$app/state";
     import type { PageProps } from './$types';
 
-
     let { data }: PageProps = $props();
     let revealDeliberationStatus = $state(false);
     let showNotification = $state(false);
@@ -22,12 +21,12 @@
 
     onMount(() => {
         startButtonTimer(); 
-        const saved = localStorage.getItem("formData");
+        const saved = sessionStorage.getItem("formData");
         if (saved) {
             savedFormData = JSON.parse(saved);
         } else if (data?.form) {
             savedFormData = data.form;
-            localStorage.setItem("formData", JSON.stringify(data.form));
+            sessionStorage.setItem("formData", JSON.stringify(data.form));
         }
     });
 

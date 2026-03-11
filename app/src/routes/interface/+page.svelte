@@ -34,10 +34,10 @@
         console.log('Establishing WebRTC Peer Connection with OpenAI.')
         establishOAIConnection()
         const init = new Date().toISOString();
-        localStorage.setItem('initTime', init); 
+        sessionStorage.setItem('initTime', init); 
 
         if (data.demo) {
-            const formData = localStorage.getItem('formData');
+            const formData = sessionStorage.getItem('formData');
             if (!formData) { goto('/'); return; }
             localData = JSON.parse(formData);
         }
@@ -220,7 +220,7 @@
 
                     if (data.demo) {
                         await addInteraction(interactionData);
-                        localStorage.setItem('updatedTime', new Date().toISOString()); 
+                        sessionStorage.setItem('updatedTime', new Date().toISOString()); 
                         isProcessingAudio = false; 
                     }
                     processText(text); 
