@@ -1,48 +1,29 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
     import { page } from '$app/state';
-
     import { onMount } from "svelte";
     import { fade } from 'svelte/transition';
     import {  random_lawmaker_persona_generator } from "$models/+utils"
 
+
     const demo = page.url.searchParams.get('demo'); 
     const actionUrl = demo ? `/submit?demo=true` : `/submit`; 
-    console.log(actionUrl); 
-      
-    type FormMetadata = {
-        formSubmission: boolean;
-        userName: string;
-        userEmail: string;
-        userOrg: string;
-        selectedPolicyTopic: string;
-        selectedLawmaker: string;
-        selectedIdeology: string;
-        selectedState: string;
-        selectedEthnicity: string; 
-        // selectedRace: string; 
-        selectedGender: string; 
-    };
 
-    // export let formData: FormData 
-    let form: FormMetadata = $state({
-        formSubmission: false,
-        userName: "",
-        userEmail: "",
-        userOrg: "",
-        selectedPolicyTopic: "",
-        selectedLawmaker: "",
-        selectedIdeology: "",
-        selectedState: "",
-        selectedEthnicity: "",
-        // selectedRace: "", 
-        selectedGender: "",
+    import type { PageData, ActionData } from './$types';
+
+	  let { data, form }: {data: PageData, form: ActionData} = $props();
+
+    let selectedLawmakerProperties: Record<string, string> = $state({
+        lawmaker_name: "",
+        ideology: "",
+        state: "",
+        ethnicity: "",
+        gender: "",
     });
 
     let lawmakerSelectionMade = $state(false); 
     let showRandomForm = $state(false); 
     let showPreSpecForm = $state(false); 
-
 
     const labels = [
       "Very conservative",
@@ -52,6 +33,7 @@
       "Very liberal"
     ];
 
+    let isSubmitting = $state(false)
     // The slider value (numeric)
     let sliderValue = $state(2); // starting at "Moderate"
     onMount(async () => {
@@ -66,23 +48,18 @@
     function handleRandomClick() {
       lawmakerSelectionMade = true;
       showRandomForm = true;
-      // Example: generate random lawmaker persona
       const randomPersona = random_lawmaker_persona_generator();
-      form.selectedLawmaker = randomPersona.lawmaker_name;
-      form.selectedGender = randomPersona.gender;
-      form.selectedEthnicity = randomPersona.ethnicity;
-      form.selectedIdeology = randomPersona.ideology;
-      form.selectedState = randomPersona.state;
+      selectedLawmakerProperties.lawmaker_name = randomPersona.lawmaker_name;
+      selectedLawmakerProperties.gender = randomPersona.gender;
+      selectedLawmakerProperties.ethnicity = randomPersona.ethnicity;
+      selectedLawmakerProperties.ideology = randomPersona.ideology;
+      selectedLawmakerProperties.state = randomPersona.state;
     }
-
 
 </script>
 
 
-
 <style>
-
-
 div.form-grid { 
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -103,11 +80,11 @@ div.form-grid {
 
 #begin-delibs-survey-form {
   font-size: 1.35rem; 
-  width: min(95%, 1100px); /* always fits within viewport */
+  width: min(95%, 1100px);
   height: min(95%, 70vh);
   margin: 2rem auto;
   padding: 1.5rem;
-  background: var(--surface);
+  background: var(--su rface);
   border-radius: var(--radius);
   backdrop-filter: blur(8px) saturate(120%);
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -130,11 +107,13 @@ div.form-grid {
   margin-right: 1rem;
 }
 
-
+.label-question .error {
+  border: 2px solid red;
+}
 
 .lawmaker-selection-buttons {
   display: flex; 
-  flex-direction: column; /* stack content vertically */
+  flex-direction: column; 
   align-items: center; 
   justify-content: center; 
   height: 100%;
@@ -168,24 +147,6 @@ div.form-grid {
 }
 
 /* Radio group */
-.radio-group {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.75rem;
-  margin: 1.5rem 0;
-}
-
-.radio-group label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.radio-group input[type="radio"] {
-  accent-color: var(--primary);
-  width: 1.2rem;
-  height: 1.2rem;
-}
 
 /*** SELECT BOXES ****/
 .label-question select { 
@@ -245,10 +206,16 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.field-error {
+  color: #e53e3e;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+}
 
 .label-question textarea {
   width: 70%;
-  min-height: 200px; /* or whatever you need */
+  min-height: 200px; 
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -260,8 +227,6 @@ button:disabled {
   overflow: auto;
   transition: all 0.2s ease;
   font-size: large; 
-  /* font-family: inherit; */
-  /* font-size: 1rem; */
 }
 
 /* ----------------------------
@@ -288,16 +253,91 @@ button:disabled {
     font-size: large; 
   }
 
-  /* .radio-group label {
-    color: var(--text);
-  } */
+}
+.lawmaker-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(229, 62, 62, 0.12);
+  border: 1.5px solid #e53e3e;
+  border-radius: var(--radius);
+  color: #e53e3e;
+}
+
+.lawmaker-error-banner strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.lawmaker-error-banner p {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.error-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.submit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(10, 0, 40, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  background: rgba(69, 6, 121, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius);
+  padding: 2.5rem 3rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.15);
+  border-top-color: rgb(22, 11, 215);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 </style>
-<!--  -->
 
-<form  data-sveltekit-keepfocus id="begin-delibs-survey-form" method="POST" action=actionUrl use:enhance>
-  {console.log(actionUrl)}
+<form  data-sveltekit-keepfocus id="begin-delibs-survey-form" method="POST" action=actionUrl use:enhance={
+      () => {
+      isSubmitting = true;
+      return async ({ update }) => {
+        await update();
+        isSubmitting = false;  // note for stanley: the use:enhance is a callback fn
+      };}}>
+  {#if isSubmitting}
+  <div class="submit-overlay" transition:fade>
+      <div class="spinner-card">
+        <div class="spinner"></div>
+        <p>Entering deliberations...</p>
+      </div>
+    </div>
+  {/if}
   <div class="form-grid">
     <input type="hidden" name="demo" value={demo ? "true" : "false"} />
 
@@ -310,24 +350,46 @@ button:disabled {
         <h3>User Data</h3>
         <label class="label-question">
           What is your name?
-          <input type="text" name="username" bind:value={form.userName} placeholder="John Doe" />
+          <input type="text" name="username" placeholder="John Doe" class:error={form?.is_missing?.includes("username")}/>
         </label>
+        {#if form?.is_missing?.includes('username')}
+            <span class="field-error" transition:fade>Please enter a name. </span>
+        {/if}
 
         <label class="label-question">
           What is your email?
-          <input type="email" name="userEmail" bind:value={form.userEmail} placeholder="johndoe@gmail.com" />
+          <input type="email" name="email" placeholder="johndoe@gmail.com" class:error={form?.is_missing?.includes("email") || form?.is_invalid?.includes('email')}/>
         </label>
+        {#if form?.is_missing?.includes('email')}
+            <span class="field-error" transition:fade>Please enter an email address.</span>
+        {/if}
+        {#if form?.is_invalid?.includes('email')}
+            <span class="field-error" transition:fade>Please enter a valid email address.</span>
+
+        {/if}
 
         <label class="label-question">
           What organization are you part of?
-          <input type="text" name="organization" bind:value={form.userOrg} placeholder="Strategic Training Initiative for the Prevention of Eating Disorders" />
+          <input 
+            type="text"
+            name="organization" 
+            placeholder="Strategic Training Initiative for the Prevention of Eating Disorders" 
+            class:error={form?.is_missing?.includes("organization")}
+          />
         </label>
+        {#if form?.is_missing?.includes('organization')}
+            <span class="field-error" transition:fade>Please enter an affiliated organization or N/A if not applicable.</span>
+        {/if}
 
         <label class="label-question">
           Policy topic:
-          <textarea name="policy_topic" bind:value={form.selectedPolicyTopic} placeholder="Out of Kids' Hands campaign..."></textarea>
+          <textarea name="policy_topic" placeholder="Out of Kids' Hands campaign..." class:error={form?.is_missing?.includes("policy_topic")}></textarea>
         </label>
+        {#if form?.is_missing?.includes('policy_topic')}
+            <span class="field-error" transition:fade>Please enter a brief description of the policy advocacy topic.</span>
+        {/if}
       </div>
+
     </section>
 
     <!-- Lawmaker Section -->
@@ -345,12 +407,12 @@ button:disabled {
 
           <label class="label-question">
             Name
-            <input type="text" name="lawmaker_name" bind:value={form.selectedLawmaker} placeholder="Representative John Doe" />
+            <input type="text" name="lawmaker_name" placeholder="Representative John Doe" />
           </label>
 
           <label class="label-question">
             Gender
-            <select name="gender" bind:value={form.selectedGender}>
+            <select name="gender">
               <option value="">-- Select gender --</option>
               <option value="female">Female</option>
               <option value="male">Male</option>
@@ -362,7 +424,7 @@ button:disabled {
 
           <label class="label-question">
             Ethnicity
-            <select name="ethnicity" bind:value={form.selectedEthnicity}>
+            <select name="ethnicity">
               <option value="">-- Select ethnicity --</option>
               <option value="hispanic-latino">Hispanic / Latino</option>
               <option value="non-hispanic-white">White Non-Hispanic</option>
@@ -374,24 +436,9 @@ button:disabled {
               <option value="prefer-not-to-say">Prefer not to say</option>
             </select>
           </label>
-
-          <!-- <label class="label-question">
-            Race
-            <select name="race" bind:value={form.selectedRace}>
-              <option value="">-- Select race --</option>
-              <option value="white">White</option>
-              <option value="black">Black</option>
-              <option value="asian">Asian</option>
-              <option value="native-american">Native American</option>
-              <option value="pacific-islander">Pacific Islander</option>
-              <option value="other">Other</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
-            </select> -->
-          <!-- </label> -->
-
           <label class="label-question">
             State
-            <input type="text" name="state" bind:value={form.selectedState} placeholder="e.g., California" />
+            <input type="text" name="state" placeholder="e.g., California" />
           </label>
         
           <label class="label-question">
@@ -405,11 +452,6 @@ button:disabled {
                 step="1"
                 bind:value={sliderValue}
               />
-              <!-- <div class="slider-labels">
-                {#each labels as label, i}
-                  <span>{label}</span>
-                {/each}
-              </div> -->
             </div>
 
             <p>Selected: <strong>{labels[sliderValue]}</strong></p>
@@ -420,32 +462,37 @@ button:disabled {
   {#if showRandomForm}
     <div class="lawmaker-data" transition:fade>
       <h3>Random Lawmaker Generated</h3>
-      <p><strong>Name:</strong> {form.selectedLawmaker}</p>
-      <input type="hidden" name="lawmaker_name" bind:value={form.selectedLawmaker} />
+      <p><strong>Name:</strong>{selectedLawmakerProperties.lawmaker_name}</p>
+      <input type="hidden" name="lawmaker_name" value={selectedLawmakerProperties.lawmaker_name}>
 
-      <p><strong>Gender:</strong> {form.selectedGender}</p>
-      <input type="hidden" name="gender" bind:value={form.selectedGender} />
+      <p><strong>Gender:</strong>{selectedLawmakerProperties.gender}</p>
+      <input type="hidden" name="gender"  value={selectedLawmakerProperties.gender} />
 
-      <p><strong>Ethnicity:</strong> {form.selectedEthnicity}</p>
-      <input type="hidden" name="ethnicity" bind:value={form.selectedEthnicity} />
+      <p><strong>Ethnicity:</strong>{selectedLawmakerProperties.ethnicity}</p>
+      <input type="hidden" name="ethnicity"  value={selectedLawmakerProperties.ethnicity} />
 
-      <!-- <p><strong>Race:</strong> {form.selectedRace}</p>
-      <input type="hidden" name="race" bind:value={form.selectedRace} /> -->
+      <p><strong>State:</strong>{selectedLawmakerProperties.state}</p>
+      <input type="hidden" name="state"  value={selectedLawmakerProperties.state}/>
 
-      <p><strong>State:</strong> {form.selectedState}</p>
-      <input type="hidden" name="state" bind:value={form.selectedState} />
-
-      <p><strong>Political orientation:</strong> {form.selectedIdeology}</p>
-      <input type="hidden" name="ideology" bind:value={form.selectedIdeology} />
-
-
-
+      <p><strong>Political orientation:</strong>{selectedLawmakerProperties.ideology}</p>
+      <input type="hidden" name="ideology"  value={selectedLawmakerProperties.ideology}/>
     </div>
-
-  {/if}
-
+   {/if}
+          {#if Object.keys(selectedLawmakerProperties).some(val => form?.is_missing?.includes(val))}
+          <span class="field-error" transition:fade> Make sure to properly initialize your virtual lawmaker. </span>
+          <div class="lawmaker-error-banner" transition:fade>
+          <span class="error-icon">⚠</span>
+          <div>
+            <strong>Lawmaker profile incomplete</strong>
+            <p>Make sure all lawmaker fields are filled in before submitting.</p>
+          </div>
+        </div>
+      {/if}
   </section>
+  
   </div>
 
-  <button type="submit" formaction="?/submit">Enter simulated Deliberations with your virtual lawmaker!</button>
+  <button type="submit" formaction="?/submit" disabled={isSubmitting}>
+    {isSubmitting ? 'Loading...' : 'Enter simulated Deliberations with your virtual lawmaker!'}
+  </button>
 </form>

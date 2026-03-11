@@ -1,12 +1,9 @@
 
 
-/** This module contains scripts to manage local caching and reading of interaction data. 
- *  
- */
+/*This module contains scripts to manage local caching and reading of interaction data. */
 
 import type { interactionData } from "./+utils";
 import type { Memory } from "./+deliberations";
-
 
 export async function openDatabase(): Promise<IDBDatabase | null> {
   return new Promise((resolve, reject) => {
@@ -75,7 +72,7 @@ export async function readInteraction(index?: number): Promise<Array<Memory>> {
             const rawInteractions: interactionData[] = getRequest.result?.interactions || [];
 
             const memories: Memory[] = rawInteractions.map((i, idx) =>
-                convertToMemory(i, 'oai-realtime-model', idx + 1)
+                convertToMemory(i, '---', idx + 1)
             );
 
             if (index !== undefined) {

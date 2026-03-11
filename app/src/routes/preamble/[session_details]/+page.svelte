@@ -1,10 +1,11 @@
 <script lang='ts'>
     import { onMount } from "svelte"; 
     import { fade } from "svelte/transition";
-    import type { PageProps } from './$types';
     import { goto } from '$app/navigation';
     import failed_image from "$db/static_failed_images.png";
     import { page } from "$app/state";
+    import type { PageProps } from './$types';
+
 
     let { data }: PageProps = $props();
     let revealDeliberationStatus = $state(false);
@@ -17,7 +18,7 @@
                 : 'Your lawmaker has joined the meeting. Click join when ready!'
         );  
     
-    let savedFormData = {};
+    let savedFormData = {}; 
 
     onMount(() => {
         startButtonTimer(); 
@@ -48,6 +49,7 @@
         showNotification = false;
     }
 </script>
+
 <style>
 :root { 
   --surface: rgba(69, 6, 121, 0.9);
@@ -62,15 +64,6 @@
     --surface: rgba(69, 6, 121, 0.9);
   }
 }
-
-/* body {
-  background: radial-gradient(
-    circle at top,
-    rgba(125, 0, 208, 0.15),
-    transparent 70%
-  );
-} */
-
 /* === MAIN PANEL === */
 #preamble {
   position: relative;
