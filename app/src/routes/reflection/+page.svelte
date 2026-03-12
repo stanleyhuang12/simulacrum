@@ -2,8 +2,11 @@
     import Notification from "$models/Notification.svelte";
     import { onMount } from "svelte";
     import type { PageData, PageProps } from "../$types";
+  import { hydrateDeliberationLocally } from "$models/+deliberations";
 
     let { data } = $props(); 
+
+    let isDemo = data.isDemo; 
 
     let audioAccept: MediaDevices; 
     let audioStream: MediaStream | undefined; 
@@ -98,21 +101,32 @@
             
             audioAccept = window.navigator.mediaDevices; 
             if (!audioAccept || !audioAccept.getUserMedia) {
-                throw MediaError; 
+                throw new Error("Media Error: Media Devices not supported."); 
             }
             audioStream = await window.navigator.mediaDevices.getUserMedia( { audio: true } ); 
-            
+            console.log(audioStream?.getTracks());
             const source = audioCtx.createMediaStreamSource(audioStream);  // creates a Stream Source Node 
             source.connect(audioAnalyser);  // Connect the stream source node to the analyzer node 
             
             // Start recording audio
-            mediaRecorder = new MediaRecorder(audioStream);
+            mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm;codecs=opus' });
             mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
                     audioChunks.push(event.data);
+                    console.log("Pushing audio data into audioChunks array.")
+                } else {
+                    console.error("Audio chunks has a size of 0 bytes, can not append...")
                 }
             };
-            mediaRecorder.start();
+
+            mediaRecorder.onerror = (event) => {
+                    console.error("MediaRecorder error:", event); 
+            };
+
+            mediaRecorder.onstop = () => {
+
+            }
+            mediaRecorder.start(250); // note this 250 ms
             
             draw(); 
             console.log("Collecting audioStreams and recording it via MediaRecorder");
@@ -193,7 +207,9 @@
 
     async function resetAudioStorage() {
         audioChunks = [];
+
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            console.log("Stopping media recorder")
             mediaRecorder.stop();
             mediaRecorder = undefined;
         }
@@ -205,14 +221,17 @@
         
         await clearFromIndexedDB(IDB_STORE_AUDIO, IDB_KEY);
         await clearFromIndexedDB(IDB_STORE_TEXT, IDB_KEY); // transcription version**
-    }
+        alertMessage = "Cleared audio data.";
+        showNotification = true; 
+
+    }   
 
     async function saveRecordingLocally() {
         return new Promise<string>((resolve, reject) => {
             mediaRecorder!.onstop = async () => {
                 try {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    // const audioBuffer = await audioBlob.arrayBuffer();                        await saveToIndexedDB(IDB_STORE_AUDIO, 'audio-data', audioBlob);
+                    // const audioBuffer = await audioBlob.arrayBuffer();
                     if (!audioBlob) throw new Error('No audio data found');
                     const res = await saveToIndexedDB(IDB_STORE_AUDIO, IDB_KEY, audioBlob); 
                 
@@ -227,20 +246,48 @@
                 stopDrawing();
             });
     }
+    async function convertBlobToAudioFile(blob: Blob) {
+        return await new File([blob], "recording.webm", {type: blob.type})
+    }
+
+    async function saveReflectionsLocally(reflection?:string) {
+        if (reflection) {
+            const deliberation = await hydrateDeliberationLocally(); 
+            deliberation.logUserReflection(reflection); 
+        } else {
+            const reflection = await retrieveFromIndexedDB(IDB_STORE_TEXT, IDB_KEY) as string; 
+            const deliberation = await hydrateDeliberationLocally(); 
+            deliberation.logUserReflection(reflection); 
+        }
+
+    }
 
     async function submitAudioData() {
         /* Feeds the data by submitting audio blobs to localStorage so that we can have users play it again if needed  */
         await saveRecordingLocally(); 
+        
+        if (audioStream) {
+            audioStream.getTracks().forEach(track => track.stop());
+            audioStream = undefined;
+        }
         
         const audioBlob = await retrieveFromIndexedDB(IDB_STORE_AUDIO, IDB_KEY)
         
         if (!audioBlob) throw new Error('No audio found');
 
         const formData = new FormData(); 
-        formData.append("file", audioBlob); 
+        const audioFile = await convertBlobToAudioFile(audioBlob)
+        formData.append("file", audioFile); 
         formData.append("model", "gpt-4o-transcribe")
         formData.append("language", "en")
+        console.log(formData); 
+        console.log("Submitting FormData:", {
+            fileSize: audioFile.size,
+            fileType: audioFile.type
+        });
+
         /* Then, we make sure to retrieve the audio back */
+
         const result = await fetch("/api/speech-to-text", {
             method: "POST", 
             body: formData
@@ -259,13 +306,15 @@
             showNotification = true; 
             await saveToIndexedDB(IDB_STORE_TEXT, IDB_KEY, res.transcriptions); 
         }
-
-        const resultSave = await fetch("/api/manage-user-sensemaking/reflection", {
-            method: "POST", 
-            body: res.transcriptions
-        })
-
-        if (!resultSave.ok) { throw new Error(await resultSave.text())}
+        if (isDemo) {
+            saveReflectionsLocally(); 
+        } else {
+            const resultSave = await fetch("/api/manage-user-sensemaking/reflection", {
+                method: "POST", 
+                body: res.transcriptions
+            })
+            if (!resultSave.ok) { throw new Error(await resultSave.text())}
+        }
     }
 
     onMount(() => {
@@ -343,7 +392,7 @@ button:hover {
     border: 1px solid var(--border);
     overflow: hidden;
     background: #1f1143;
-    }
+}
 
 canvas {
     display: block;

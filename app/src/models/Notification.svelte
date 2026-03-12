@@ -33,7 +33,7 @@
 .notification-content {
   display: flex;
   gap: 1rem;
-  align-items: start;
+  align-items: center;
 }
 
 .notification-icon {
@@ -42,6 +42,7 @@
 
 .notification-text {
   flex: 1;
+  font-size: 1.25rem; 
 }
 
 .notification-close {
@@ -64,7 +65,7 @@
 
 <div class="notification" in:fade out:fade>
     <div class="notification-content">
-    <div class="notification-icon">🎯</div>
+    <div class="notification-icon">🔔</div>
     <div class="notification-text">{alertMessage}</div>
     <button class="notification-close" onclick={dismissNotification}>×</button>
     </div>
