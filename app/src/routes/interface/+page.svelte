@@ -2,7 +2,6 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import type { PageProps} from "./$types";
-    import { redirect } from "@sveltejs/kit";
     import { addInteraction, clearInteractions } from "$models/+local"
     import type { interactionData } from "$models/+utils";
     import type { Memory } from "$models/+deliberations";

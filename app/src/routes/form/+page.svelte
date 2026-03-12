@@ -445,7 +445,7 @@ button:disabled {
             <div class="slider-wrapper">
               <input
                 type="range"
-                name="selectedIdeology"
+                name="ideology"
                 min="0"
                 max={labels.length - 1}
                 step="1"
