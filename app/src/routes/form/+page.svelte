@@ -445,13 +445,17 @@ button:disabled {
             <div class="slider-wrapper">
               <input
                 type="range"
-                name="ideology"
                 min="0"
                 max={labels.length - 1}
                 step="1"
                 bind:value={sliderValue}
               />
             </div>
+              <input
+                type="hidden"
+                name="ideology"
+                value={labels[sliderValue]}
+              />
 
             <p>Selected: <strong>{labels[sliderValue]}</strong></p>
           </label>
