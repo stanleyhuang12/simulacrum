@@ -158,12 +158,6 @@
             return;
         }
 
-        if (isProcessingAudio) {
-            console.log("Audio still processing — retrying close in 2 s.");
-            setTimeout(closeOAIConnection, 2000);
-            return;
-        }
-
         console.log("Closing WebRTC connection...");
 
         if (dc) {
