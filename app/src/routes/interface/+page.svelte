@@ -379,7 +379,7 @@
             console.error("Error stopping video tracks:", err);
         }
 
-        goto(`/feedback/session-delibs-id=${data.sess_cookies}`);
+        goto(`/reflection?demo=true`);
     }
 </script>
 
