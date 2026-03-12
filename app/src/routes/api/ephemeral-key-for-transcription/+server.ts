@@ -27,6 +27,8 @@ export const POST: RequestHandler = async() => {
                             },
                             "turn_detection": {
                                 "type": "server_vad",
+                                "threshold": 0.5, 
+                                "prefix_padding_ms": 300,
                                 "silence_duration_ms": 4000, // 500ms = 0.5 seconds  ; wait 4.5 seconds before emit .completed
                             }
                         }

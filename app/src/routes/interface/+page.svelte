@@ -3,9 +3,10 @@
     import { goto } from "$app/navigation";
     import type { PageProps} from "./$types";
     import { redirect } from "@sveltejs/kit";
-    import { addInteraction } from "$models/+local"
+    import { addInteraction, clearInteractions } from "$models/+local"
     import type { interactionData } from "$models/+utils";
     import type { Memory } from "$models/+deliberations";
+    import { manageDeliberationInstanceLocally } from "$models/+deliberations";
 
     let { data }: PageProps = $props(); 
     let localData = $state<Record<string, any>>({});
@@ -24,13 +25,15 @@
     let dc: RTCDataChannel | null = null; 
     let isActiveSession: boolean = false; 
 
-    let awaitTime: Date; 
+    let awaitTime: Date;
     let startTime: Date; 
     let endTime: Date; 
 
     let updatedTime: Date; 
 
     onMount(() => { 
+        clearInteractions(); 
+        console.log("Clear IndexedDB interactions.")
         console.log('Establishing WebRTC Peer Connection with OpenAI.')
         establishOAIConnection()
         const init = new Date().toISOString();
@@ -43,9 +46,10 @@
         }
 
         console.log($state.snapshot(localData)); 
-
         console.log('Establishing video streams.');
         getVideoStream();
+
+        awaitTime = new Date();
     });
 
     async function establishOAIConnection() {
@@ -195,6 +199,11 @@
                     isProcessingAudio = true; 
                     break;
                 
+                case "input_audio_buffer.speech_started":
+                    startTime = new Date(); 
+                    console.log(startTime);
+                    break; 
+
                 case "conversation.item.input_audio_transcription.started": 
                     startTime = new Date(); 
                     console.log(startTime);
@@ -233,48 +242,47 @@
   
 
     async function processText(text: string) {
-        /* Process texts: feeds to LLMs, but also will cache locally*/
         try {
-            const result = await fetch("/api/manage-deliberation-instance", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "text/plain",
-                }, 
-                body: JSON.stringify({
-                    text: text, 
-                    responseAwaitTime: awaitTime, 
-                    responseStartTime: startTime,
-                    responseEndTime: endTime, 
-                    demo: data.demo,
-                })
-            });
-    
-            const res = await result.json();
-            
-            switch (res.type) {
-                case "guardrail.triggered": 
-                    console.log("Guardrail is triggered.");
-                    redirect(403, 'forbidden');
+            const res = await manageDeliberationInstanceLocally(
+                text,
+                awaitTime,
+                endTime,
+                startTime,
+                fetch
+            );
 
-                case "automated.response": 
-                    await handleAgentResponse(res.response); 
-                    /* Adds the agent interaction data to indexedDB */
-                    const interactionData: interactionData = { 
-                        role: 'agent',
-                        text: res.response, 
-                    }; 
-                    await addInteraction(interactionData); 
-                    console.log(interactionData);  
-                    break; 
+            if (!res) {
+                console.error("No response from deliberation instance");
+                return;
+            }
+
+            switch (res.type) {
+                case "guardrail.triggered":
+                    console.log("Guardrail triggered:", res.reason);
+                    goto('/forbidden');  
+                    break;
+
+                case "automated.response":
+                    await handleAgentResponse(res.response);
+
+                    if (res.memory) {
+                        await addInteraction(res.memory);
+                    } else {
+                        console.warn("Automated response object does not have memory returned")
+                    }
+                    sessionStorage.setItem('updatedTime', new Date().toISOString());
+                    break;
             }
         } catch(err) {
-            console.error(`Error with processing user text:`, err)
+            console.error("Error processing text locally:", err);
         }
-    }; 
+    }
  
     async function handleAgentResponse(agentResponse: any) {
         //Takes agent response, converts it to audio. 
         console.log("Agent's response:", agentResponse)
+        audioStreams?.getAudioTracks().forEach(track => track.enabled = false);
+
         const audioReadableStream = await fetch("/api/text-to-speech", {
             method: "POST", 
             headers: {
@@ -291,8 +299,10 @@
         audioElem.src = blobURL;
         await new Promise<void>((resolve) => {
             audioElem.onended = function() {
+                audioStreams?.getAudioTracks().forEach(track => track.enabled = true);
+
                 awaitTime = new Date();
-                resolve();  // ✅ now await handleAgentResponse waits for audio to finish
+                resolve();  
             };
             audioElem.play();
     });

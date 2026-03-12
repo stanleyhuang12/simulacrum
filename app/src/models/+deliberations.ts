@@ -437,12 +437,14 @@ export async function manageDeliberationInstanceLocally(input: string, responseA
 
     const response = await d.panel_discussion(input, fetchFn, responseAwaitTime, responseStartTime, responseEndTime)
 
+    const savedMemory = d.lawmaker._memory[d.lawmaker._memory.length - 1];
+
     return {
-        type: 'automated.response', 
-        response: response, 
-        episodeNumber: d.conversation_turn, 
-        status: 200, 
-    }
+        type: 'automated.response' as const,
+        response,
+        episodeNumber: d.conversation_turn,
+        memory: savedMemory
+    };
 
 }; 
 

@@ -1,31 +1,32 @@
-/*This module contains scripts to manage local caching and reading of interaction data. */
-
 import type { interactionData } from "./+utils";
-import type { Memory, timeMetadata } from "./+deliberations";
+import type { Memory } from "./+deliberations";
 
+const DB_NAME = "deliberations_db";  // renamed to avoid any cached conflict
+const DB_VERSION = 1;
+const STORE_NAME = "interactions";
+const RECORD_KEY = "allInteractions";
 
 export async function openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open("interaction", 1);
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
         request.onupgradeneeded = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            if (!db.objectStoreNames.contains("interaction")) {
-                db.createObjectStore("interaction", { keyPath: "key" });
+            if (db.objectStoreNames.contains(STORE_NAME)) {
+                db.deleteObjectStore(STORE_NAME);
             }
+            db.createObjectStore(STORE_NAME); // out-of-line keys
         };
 
         request.onsuccess = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
+            const tx = db.transaction(STORE_NAME, "readwrite");
+            const store = tx.objectStore(STORE_NAME);
 
-            // Ensure the allInteractions record exists
-            const tx = db.transaction("interaction", "readwrite");
-            const store = tx.objectStore("interaction");
-            const getRequest = store.get("allInteractions");
-
-            getRequest.onsuccess = () => {
-                if (!getRequest.result) {
-                    store.put({ key: "allInteractions", interactions: [] });
+            const check = store.get(RECORD_KEY);
+            check.onsuccess = () => {
+                if (!check.result) {
+                    store.put({ interactions: [] }, RECORD_KEY);
                 }
             };
 
@@ -39,12 +40,11 @@ export async function openDatabase(): Promise<IDBDatabase> {
     });
 }
 
-
 function reviveDates(memory: any): Memory {
-    if (memory.time) {
+    if (memory?.time) {
         if (memory.time.responseAwait) memory.time.responseAwait = new Date(memory.time.responseAwait);
-        if (memory.time.responseStart)  memory.time.responseStart  = new Date(memory.time.responseStart);
-        if (memory.time.responseEnd)    memory.time.responseEnd    = new Date(memory.time.responseEnd);
+        if (memory.time.responseStart) memory.time.responseStart = new Date(memory.time.responseStart);
+        if (memory.time.responseEnd)   memory.time.responseEnd   = new Date(memory.time.responseEnd);
     }
     return memory as Memory;
 }
@@ -53,13 +53,13 @@ export async function readInteraction(index?: number): Promise<Memory[]> {
     const db = await openDatabase();
 
     return new Promise((resolve, reject) => {
-        const tx = db.transaction("interaction", "readonly");
-        const store = tx.objectStore("interaction");
-        const getRequest = store.get("allInteractions");
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get(RECORD_KEY);
 
-        getRequest.onsuccess = () => {
-            const raw: any[] = getRequest.result?.interactions || [];
-            const memories: Memory[] = raw.map(reviveDates);
+        request.onsuccess = () => {
+            const raw: any[] = request.result?.interactions ?? [];
+            const memories = raw.map(reviveDates);
 
             if (index !== undefined) {
                 if (index >= 0 && index < memories.length) {
@@ -72,54 +72,44 @@ export async function readInteraction(index?: number): Promise<Memory[]> {
             }
         };
 
-        getRequest.onerror = () => reject(new Error("Failed to retrieve interactions"));
+        request.onerror = () => reject(new Error("Failed to read interactions"));
         tx.oncomplete = () => db.close();
     });
 }
-
-// ─────────────────────────────────────────────
-// ADD
-// Accepts a Memory directly — both user and agent interactions
-// interactionData is kept as the param type for call-site compatibility
-// but we store it as-is since it already matches Memory shape
-// ─────────────────────────────────────────────
 
 export async function addInteraction(interaction: interactionData | Memory): Promise<void> {
     const db = await openDatabase();
 
     return new Promise((resolve, reject) => {
-        const tx = db.transaction("interaction", "readwrite");
-        const store = tx.objectStore("interaction");
-        const getRequest = store.get("allInteractions");
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get(RECORD_KEY);
 
-        getRequest.onsuccess = () => {
-            const existing = getRequest.result ?? { key: "allInteractions", interactions: [] };
+        request.onsuccess = () => {
+            const existing = request.result ?? { interactions: [] };
             existing.interactions.push(interaction);
 
-            const putRequest = store.put(existing);
-            putRequest.onsuccess = () => resolve();
-            putRequest.onerror = () => reject(`Failed to add interaction: ${putRequest.error}`);
+            const put = store.put(existing, RECORD_KEY);
+            put.onerror = () => reject(`Failed to add interaction: ${put.error}`);
         };
 
-        getRequest.onerror = () => reject(`Failed to read interactions: ${getRequest.error}`);
-        tx.oncomplete = () => db.close();
+        request.onerror = () => reject(`Failed to read before adding: ${request.error}`);
+        tx.oncomplete = () => { db.close(); resolve(); }
+        tx.onerror = () => reject(`Transaction error: ${tx.error}`);
     });
 }
-
-// ─────────────────────────────────────────────
-// CLEAR (useful for testing / session reset)
-// ─────────────────────────────────────────────
 
 export async function clearInteractions(): Promise<void> {
     const db = await openDatabase();
 
     return new Promise((resolve, reject) => {
-        const tx = db.transaction("interaction", "readwrite");
-        const store = tx.objectStore("interaction");
-        const putRequest = store.put({ key: "allInteractions", interactions: [] });
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
 
-        putRequest.onsuccess = () => resolve();
-        putRequest.onerror = () => reject(`Failed to clear interactions: ${putRequest.error}`);
-        tx.oncomplete = () => db.close();
+        const put = store.put({ interactions: [] }, RECORD_KEY);
+        put.onerror = () => reject(`Failed to clear: ${put.error}`);
+
+        tx.oncomplete = () => { db.close(); resolve(); }
+        tx.onerror = () => reject(`Transaction error: ${tx.error}`);
     });
 }
