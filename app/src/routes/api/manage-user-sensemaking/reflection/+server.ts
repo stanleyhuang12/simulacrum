@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ( event ) => {
     });
 
   } catch (err) {
-    console.error("Error calling OpenAI API:", err);
-    return error(500, "Failed to call OpenAI API."); 
+    console.error("Manage user sensemaking endpoint failed:", err);
+    return error(500, `Manage user sensemaking endpoint failed. ${err}`); 
   }
 };

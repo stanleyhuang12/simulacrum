@@ -47,8 +47,6 @@ export const POST: RequestHandler = async ( event ) => {
         // this could be made more efficient by just trying to hydrate and returning the error
         const d = hydrateDeliberationInstance(delibsRecord)
         
-
-
         if (d.conversation_turn === 3 || d.conversation_turn % 3 === 0) {
             console.log("Running guardrail functions")
             let guardrailResponse = await d._guardrail_moderation(input, event.fetch)

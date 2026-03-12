@@ -20,7 +20,7 @@
 		"src/**/*.ts",
 		"src/**/*.svelte",
 		"./.svelte-kit/ambient.d.ts"
-		, "src/models/+server.js"	],
+		, "src/models/+server.js", "src/models/Notification.svlete"	],
 	"exclude": [
 		"src/routes/abs/+page.svelte"
 	]

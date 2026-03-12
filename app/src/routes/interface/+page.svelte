@@ -1,87 +1,100 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
-    import type { PageProps} from "./$types";
-    import { redirect } from "@sveltejs/kit";
-    import { addInteraction, clearInteractions } from "$models/+local"
+    import type { PageProps } from "./$types";
+    import { addInteraction, clearInteractions } from "$models/+local";
     import type { interactionData } from "$models/+utils";
-    import type { Memory } from "$models/+deliberations";
     import { manageDeliberationInstanceLocally } from "$models/+deliberations";
+    import Notification from "$models/Notification.svelte";
 
-    let { data }: PageProps = $props(); 
+    let { data }: PageProps = $props();
     let localData = $state<Record<string, any>>({});
 
-    let audioStreams: MediaStream | undefined;
+    const mutedNotification = "You are currently muted. Unmute yourself to speak.";
+    // Only show the muted notification when mic is actually off
+    let showNotification = $state(true);
+
+    let audioStream: MediaStream | undefined;
     let videoStreams: MediaStream | undefined;
     let videoElem: HTMLVideoElement;
-    let micOn = $state(false)
-    let camOn = $state(false)
-    let isProcessingAudio = false 
-  
-    let audioElement: HTMLAudioElement;
+    let micOn = $state(false);   // mic starts OFF — user must explicitly enable
+    let camOn = $state(false);
+    let isProcessingAudio = false;
 
-    let EPHEMERAL_KEY: string | null;
-    let peerConnection: RTCPeerConnection | null;
-    let dc: RTCDataChannel | null = null; 
-    let isActiveSession: boolean = false; 
+    let audioElement: HTMLAudioElement;
+    let agentSpeaking = $state(false); // track when agent audio is playing
+
+    let EPHEMERAL_KEY: string | null = null;
+    let peerConnection: RTCPeerConnection | null = null;
+    let dc: RTCDataChannel | null = null;
+    // Separate flag for whether the WebRTC peer connection itself is alive
+    let isConnected = $state(false);
 
     let awaitTime: Date;
-    let startTime: Date; 
-    let endTime: Date; 
+    let startTime: Date;
+    let endTime: Date;
 
-    let updatedTime: Date; 
+    onMount(() => {
+        clearInteractions();
+        console.log("Cleared IndexedDB interactions.");
+        console.log("Establishing WebRTC Peer Connection with OpenAI.");
+        establishOAIConnection();
 
-    onMount(() => { 
-        clearInteractions(); 
-        console.log("Clear IndexedDB interactions.")
-        console.log('Establishing WebRTC Peer Connection with OpenAI.')
-        establishOAIConnection()
-        const init = new Date().toISOString();
-        sessionStorage.setItem('initTime', init); 
+        sessionStorage.setItem("initTime", new Date().toISOString());
 
         if (data.demo) {
-            const formData = sessionStorage.getItem('formData');
-            if (!formData) { goto('/'); return; }
+            const formData = sessionStorage.getItem("formData");
+            if (!formData) { goto("/"); return; }
             localData = JSON.parse(formData);
         }
 
-        console.log($state.snapshot(localData)); 
-        console.log('Establishing video streams.');
+        console.log($state.snapshot(localData));
+        console.log("Establishing video stream.");
         getVideoStream();
 
         awaitTime = new Date();
     });
 
+    // ---------------------------------------------------------------------------
+    // WebRTC / OpenAI connection
+    // ---------------------------------------------------------------------------
+
     async function establishOAIConnection() {
-        if (isActiveSession && peerConnection) {
+        if (isConnected && peerConnection) {
             console.log("WebRTC session already active.");
             return;
         }
 
         const pc = new RTCPeerConnection();
-        console.log("Requesting ephemeral key")
 
         if (!EPHEMERAL_KEY) {
-            await getEphemeralKey(); 
+            await getEphemeralKey();
         }
 
-        audioStreams = await window.navigator.mediaDevices.getUserMedia( { audio: {
-            echoCancellation: true,
-            autoGainControl: true,
-        }});
+        // Acquire audio — start with all tracks DISABLED so user is muted by default
+        audioStream = await window.navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+            },
+        });
+        audioStream.getAudioTracks().forEach(track => (track.enabled = false));
+        micOn = false;
+        showNotification = true; // mic is off, show the muted notice
 
         audioElement = document.createElement("audio");
         audioElement.autoplay = true;
-
         pc.ontrack = (e) => (audioElement.srcObject = e.streams[0]);
 
         dc = pc.createDataChannel("oai-events");
-        dc.addEventListener("message", (evt) => receiveEmittedEvents(evt))
+        dc.addEventListener("message", (evt) => receiveEmittedEvents(evt));
 
-        pc.addTrack(audioStreams.getTracks()[0])
+        pc.addTrack(audioStream.getTracks()[0]);
+
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        
+
         const sdpResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
             method: "POST",
             body: offer.sdp,
@@ -91,83 +104,106 @@
             },
         });
 
+        if (!sdpResponse.ok) {
+            console.error("SDP negotiation failed:", sdpResponse.status, await sdpResponse.text());
+            return;
+        }
+
         const answer: RTCSessionDescriptionInit = {
             type: "answer",
             sdp: await sdpResponse.text(),
-        }; 
+        };
         await pc.setRemoteDescription(answer);
 
-        console.log("Established remote connection");
-
         peerConnection = pc;
-        isActiveSession = true;
-        micOn = true;
-    
-    }; 
-        async function getEphemeralKey() {
-        console.group("Retrieving ephemeral key.")
-        
-        const ephemRes = await fetch("/api/ephemeral-key-for-transcription", {
-            method: "POST"
-        })
-        
-        const ephemData = await ephemRes.json()
-        EPHEMERAL_KEY = ephemData.ephemeralKey
-        console.log(`Retrieved ephemeral key ${EPHEMERAL_KEY}`);
+        isConnected = true;
+        console.log("WebRTC remote connection established.");
+    }
 
-        console.groupEnd();
+    async function getEphemeralKey() {
+        console.log("Retrieving ephemeral key...");
+        const res = await fetch("/api/ephemeral-key-for-transcription", { method: "POST" });
+        const data = await res.json();
+        EPHEMERAL_KEY = data.ephemeralKey;
+        console.log("Ephemeral key retrieved.");
+        return EPHEMERAL_KEY;
+    }
 
-        return EPHEMERAL_KEY
-    }; 
+    // ---------------------------------------------------------------------------
+    // Mic toggle
+    // ---------------------------------------------------------------------------
 
-    
-    function closeOAIConnection() {
-        if (!isActiveSession) {
-            console.log("No active session to close.");
+    function toggleMic() {
+        if (!audioStream) return;
+        if (agentSpeaking) {
+            console.log("Agent is speaking — ignoring mic toggle.");
             return;
-        };
+        }
 
-        if (isProcessingAudio){
-            console.log("Audio is still processing, finishing up before closing WebRTC connection.") 
-            setTimeout(closeOAIConnection, 2000); 
-        };
+        const newState = !micOn;
+        audioStream.getAudioTracks().forEach(track => (track.enabled = newState));
+        micOn = newState;
+        // Keep the muted notification in sync with mic state
+        showNotification = !newState;
+        console.log(micOn ? "Microphone enabled." : "Microphone disabled.");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Tear down the WebRTC connection entirely (called on Leave Call)
+    // ---------------------------------------------------------------------------
+
+    function closeOAIConnection() {
+        if (!isConnected) {
+            console.log("No active WebRTC session to close.");
+            return;
+        }
 
         console.log("Closing WebRTC connection...");
-        
+
         if (dc) {
             dc.close();
             dc = null;
-        };
+        }
 
         if (peerConnection) {
-            peerConnection.getSenders().forEach((sender) => sender.track?.stop());
+            peerConnection.getSenders().forEach(sender => sender.track?.stop());
             peerConnection.close();
             peerConnection = null;
         }
 
-        isActiveSession = false;
-        micOn = false // update store
-    }; 
+        // Stop the local audio tracks so the browser releases the mic
+        audioStream?.getTracks().forEach(track => track.stop());
+        audioStream = undefined;
 
+        isConnected = false;
+        micOn = false;
+        showNotification = false;
+    }
 
-    /** CAMERA MANAGEMENT **/
-    async function getVideoStream() { 
-        try { 
-            const videoAccept = window.navigator.mediaDevices; 
-            if (!videoAccept || !videoAccept.getUserMedia) { 
-                console.error('Browser does not support video streaming.')
-                throw MediaError;
+    // ---------------------------------------------------------------------------
+    // Camera
+    // ---------------------------------------------------------------------------
+
+    async function getVideoStream() {
+        try {
+            if (!window.navigator.mediaDevices?.getUserMedia) {
+                console.error("Browser does not support video streaming.");
+                return;
             }
-            videoStreams = await window.navigator.mediaDevices.getUserMedia( { video: true }); 
-            videoElem.srcObject = videoStreams
-            camOn = true
-            console.log("Video streams enabled.")
-        } catch (err) { 
-            console.error(err)
+            videoStreams = await window.navigator.mediaDevices.getUserMedia({ video: true });
+            videoElem.srcObject = videoStreams;
+            camOn = true;
+            console.log("Video stream enabled.");
+        } catch (err) {
+            console.error("Failed to get video stream:", err);
         }
-    }; 
-    
+    }
+
     function toggleCamera() {
+        if (!videoStreams && !camOn) {
+            getVideoStream();
+            return;
+        }
         if (!videoStreams) return;
 
         if (camOn) {
@@ -175,71 +211,71 @@
                 track.stop();
                 track.enabled = false;
             });
-            videoElem.srcObject = null; 
+            videoElem.srcObject = null;
+            videoStreams = undefined;
             camOn = false;
         } else {
-            getVideoStream()
+            getVideoStream();
         }
+    }
 
-    }; 
+    // ---------------------------------------------------------------------------
+    // Incoming OpenAI data-channel events
+    // ---------------------------------------------------------------------------
 
-    async function receiveEmittedEvents(evt: any) {
+    async function receiveEmittedEvents(evt: MessageEvent) {
         try {
-            const event = JSON.parse(evt.data); 
+            const event = JSON.parse(evt.data);
 
             if (event.type === "error") {
-                throw new Error('Error parsing server-emitted event.')
-            };
+                console.error("OpenAI session error:", event);
+                return;
+            }
 
-            console.log(event);
-            
+            console.log("OAI event:", event.type, event);
+
             switch (event.type) {
-                case "session.created": 
-                    console.log('Session established.');
-                    isProcessingAudio = true; 
+                case "session.created":
+                    console.log("OAI session established.");
+                    isProcessingAudio = true;
                     break;
-                
+
                 case "input_audio_buffer.speech_started":
-                    startTime = new Date(); 
-                    console.log(startTime);
-                    break; 
+                    startTime = new Date();
+                    break;
 
-                case "conversation.item.input_audio_transcription.started": 
-                    startTime = new Date(); 
-                    console.log(startTime);
-                    break; 
+                case "conversation.item.input_audio_transcription.started": //this signal may have been deprecated but including here just in case
+                    startTime = new Date();
+                    break;
 
-                case "conversation.item.input_audio_transcription.completed": 
-                    endTime = new Date(); 
-                    console.log(endTime);
-                    console.log('Completed transcriptions');
+                case "conversation.item.input_audio_transcription.completed": {
+                    endTime = new Date();
+                    const text: string = event.transcript;
 
-                    const text = event.transcript 
-                    if (!event.transcript) {
+                    if (!text) {
+                        isProcessingAudio = false;
                         break;
                     }
-                    console.log("User said", text); 
-                    const interactionData: interactionData = {
-                        role: `user`,
-                        text: text,
-                        awaitTime: awaitTime, 
-                        startTime: startTime, 
-                        endTime: endTime
-                    };
+
+                    console.log("User said:", text);
 
                     if (data.demo) {
-                        await addInteraction(interactionData);
-                        sessionStorage.setItem('updatedTime', new Date().toISOString()); 
-                        isProcessingAudio = false; 
+                        sessionStorage.setItem("updatedTime", new Date().toISOString());
                     }
-                    processText(text); 
-                    isProcessingAudio = false; 
+
+                    isProcessingAudio = false;
+                    await processText(text);
                     break;
-            }} catch(err) {
-                    console.error(`Error transcribing and logging user audio input`, err)
+                }
             }
-    }; 
-  
+        } catch (err) {
+            console.error("Error handling OAI data-channel event:", err);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Deliberation / agent response
+    // ---------------------------------------------------------------------------
 
     async function processText(text: string) {
         try {
@@ -252,14 +288,14 @@
             );
 
             if (!res) {
-                console.error("No response from deliberation instance");
+                console.error("No response from deliberation instance.");
                 return;
             }
 
             switch (res.type) {
                 case "guardrail.triggered":
                     console.log("Guardrail triggered:", res.reason);
-                    goto('/forbidden');  
+                    goto("/forbidden");
                     break;
 
                 case "automated.response":
@@ -268,275 +304,274 @@
                     if (res.memory) {
                         await addInteraction(res.memory);
                     } else {
-                        console.warn("Automated response object does not have memory returned")
+                        console.warn("Automated response has no memory payload.");
                     }
-                    sessionStorage.setItem('updatedTime', new Date().toISOString());
+                    sessionStorage.setItem("updatedTime", new Date().toISOString());
                     break;
+
+                default:
+                    console.warn("Unhandled deliberation response type:", res.type);
             }
-        } catch(err) {
-            console.error("Error processing text locally:", err);
+        } catch (err) {
+            console.error("Error processing text:", err);
         }
     }
- 
-    async function handleAgentResponse(agentResponse: any) {
-        //Takes agent response, converts it to audio. 
-        console.log("Agent's response:", agentResponse)
-        audioStreams?.getAudioTracks().forEach(track => track.enabled = false);
 
-        const audioReadableStream = await fetch("/api/text-to-speech", {
-            method: "POST", 
-            headers: {
-                "Content-Type": "text/plain"
-            },
-            body: agentResponse
-        })
+    async function handleAgentResponse(agentResponse: string) {
+        console.log("Agent response:", agentResponse);
 
-        const agentAudio = await audioReadableStream.arrayBuffer()
-        const audioResponseBlob = new Blob([agentAudio], { type: "audio/wav" });
-        const blobURL = URL.createObjectURL(audioResponseBlob);
-        const audioElem = new Audio();
-        
-        audioElem.src = blobURL;
-        await new Promise<void>((resolve) => {
-            audioElem.onended = function() {
-                audioStreams?.getAudioTracks().forEach(track => track.enabled = true);
+        // Mute the user mic while the agent speaks to prevent feedback / echo
+        audioStream?.getAudioTracks().forEach(track => (track.enabled = false));
+        agentSpeaking = true;
 
-                awaitTime = new Date();
-                resolve();  
-            };
-            audioElem.play();
-    });
+        try {
+            const ttsRes = await fetch("/api/text-to-speech", {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: agentResponse,
+            });
 
-    }; 
+            if (!ttsRes.ok) {
+                console.error("TTS request failed:", ttsRes.status);
+                return;
+            }
+
+            const audioBuffer = await ttsRes.arrayBuffer();
+            const blob = new Blob([audioBuffer], { type: "audio/wav" });
+            const blobURL = URL.createObjectURL(blob);
+            const audioElem = new Audio(blobURL);
+
+            await new Promise<void>((resolve, reject) => {
+                audioElem.onended = () => resolve();
+                audioElem.onerror = (e) => reject(e);
+                audioElem.play().catch(reject);
+            });
+
+            URL.revokeObjectURL(blobURL); // clean up the object URL
+        } finally {
+            // Always restore mic state after agent finishes (or on error)
+            agentSpeaking = false;
+            // Only re-enable the mic track if the user had it switched on
+            if (micOn && audioStream) {
+                audioStream.getAudioTracks().forEach(track => (track.enabled = true));
+            }
+            awaitTime = new Date();
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // End simulation
+    // ---------------------------------------------------------------------------
 
     function completeSimulation() {
-        console.log("Closing WebRTC peer connection")
-        closeOAIConnection()
+        console.log("Ending simulation.");
+        closeOAIConnection();
+
         try {
-            if (videoStreams) {
-                videoStreams.getTracks().forEach(track => track.stop());
-            }
-            if (audioStreams) {
-                audioStreams.getTracks().forEach(track => track.stop());
-            }
-        
-        goto(`/feedback/session-delibs-id=${data.sess_cookies}`)
-        } catch(err) {
-            console.error(err)
+            videoStreams?.getTracks().forEach(track => track.stop());
+        } catch (err) {
+            console.error("Error stopping video tracks:", err);
         }
-    }; 
+
+        goto(`/reflection?demo=true`);
+    }
 </script>
 
-
 <style>
-
 .simulation-container {
-    display: grid; 
-    display: flex; 
-    flex-direction: column; 
+    display: flex;
+    flex-direction: column;
     background: rgba(69, 6, 121, 0.8);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     border-radius: 3em;
-    max-width: auto; 
-    margin: 0 auto; 
-    align-items: center; 
+    margin: 0 auto;
+    align-items: center;
 }
 
 .video-grid {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-  padding: 30px;
-  align-items: center;
-  background: rgba(69, 6, 121, 0.9);
-  border-radius: 3em;
-  box-sizing: border-box;
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    padding: 30px;
+    align-items: center;
+    background: rgba(69, 6, 121, 0.9);
+    border-radius: 3em;
+    box-sizing: border-box;
 }
 
 .video-grid video,
 .video-grid img {
-  aspect-ratio: 16 / 12;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 8px;
-  
+    aspect-ratio: 16 / 12;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
 }
-
 
 .controls {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
     justify-content: center;
-    margin-top: 16px; 
-    padding-top: 12px;
-    border-top: 1px solid rgba(255,255,255,0.2);
-} 
-
+    margin-top: 16px;
+    padding: 12px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
 
 video {
-  width: 70%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: 12px;
-  background-color: #000;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+    width: 70%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 12px;
+    background-color: #000;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
 .video-grid strong {
     color: rgba(255, 255, 255, 0.7);
-    font-size: 1.5rem; 
-    font-weight: bold; 
+    font-size: 1.5rem;
+    font-weight: bold;
     letter-spacing: 0.03em;
-    background: rgba(0,0,0,0.15);
+    background: rgba(0, 0, 0, 0.15);
     padding: 2px 6px;
     border-radius: 4px;
 }
 
-
 .video-grid strong:hover {
-    color: rgba(255, 255, 255, 1.0);
+    color: rgba(255, 255, 255, 1);
     transition: color 0.3s;
 }
 
-
-
-/* ---------- Microphone Buttons ---------- */
-
-/* Controls */
-.controls {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  border-radius: 30px;
-  color: #fff;
-  font-weight: 600;
-  border: none;
-  padding: 12px 20px;
-  margin: 20px auto;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-
-
-button.microphone, button.camera, #leave-call {
-  border-radius: 50px;
-  color: white; 
-  padding: 12px 20px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-}
-
-button.microphone:hover, button.camera:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(34, 139, 34, 0.4);
-  background-color: rgb(5, 44, 5);
-  box-shadow: 0 0 0 3px rgb(0, 79, 0);
-}
-
 .status-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-left: 8px;
-  animation: blink 2s infinite;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 8px;
+    animation: blink 2s infinite;
 }
 
 @keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0; }
-  100% { opacity: 1; }
-}
-/* .complete-simulation {
-    color: white; 
-    background: black; 
-    border-radius: 20px; 
-    border: none;
-    padding: 10px 10px; 
-} */
-
-#enable-microphone, #enable-camera {
-  background-color: forestgreen;
+    0%   { opacity: 1; }
+    50%  { opacity: 0; }
+    100% { opacity: 1; }
 }
 
-/* #enable-microphone:hover,
-#enable-microphone:focus-visible, 
-#enable-camera:hover, 
-#enable-camera:focus-visible{
-  background-color: #228b22;
-  box-shadow: 0 0 0 3px rgba(34, 139, 34, 0.4);
-} */
-/* #disable-microphone, #disable-camera {
-  background-color: crimson;
-} */
-/* #disable-microphone:hover,
-#disable-microphone:focus-visible, 
-#disable-microphone:hover, 
-#disable-microphone:focus-visible {
-  background-color: darkred;
-  box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.4);
-} */
+button.microphone,
+button.camera,
 #leave-call {
-  background: crimson;
+    border-radius: 50px;
+    color: white;
+    padding: 12px 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+button.microphone:hover,
+button.camera:hover {
+    transform: translateY(-2px);
+    background-color: rgb(5, 44, 5);
+    box-shadow: 0 0 0 3px rgb(0, 79, 0);
+}
+
+#enable-microphone,
+#enable-camera {
+    background-color: forestgreen;
+}
+
+#disable-microphone,
+#disable-camera {
+    background-color: #555;
+}
+
+#leave-call {
+    background: crimson;
 }
 
 #leave-call:hover {
-  background: darkred;
-  box-shadow: 0 0 0 3px rgba(220,20,60,0.4);
+    background: darkred;
+    box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.4);
+}
+
+/* Dim mic button while agent is speaking */
+button.microphone:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 </style>
 
-
-
 <div class="simulation-container">
-     <!-- Lawmaker and User video Grid -->
+    {#if showNotification}
+        <Notification
+            alertMessage={mutedNotification}
+            onClose={() => (showNotification = false)}
+        />
+    {/if}
+
     <div class="video-grid">
         <div class="lawmaker-profile">
             <img class="lawmaker-avatar" src={data.lawmakerAvatarURL} alt="Lawmaker Avatar" />
-             <div><strong>{data.demo ? localData.lawmaker_name : data.form?.lawmakerName} | {data.demo ? localData.state : data.form?.state}</strong></div>
+            <div>
+                <strong>
+                    {data.demo ? localData.lawmaker_name : data.form?.lawmakerName} |
+                    {data.demo ? localData.state : data.form?.state}
+                </strong>
+            </div>
         </div>
         <div class="user-profile">
             <video bind:this={videoElem} autoplay playsinline muted></video>
-            <div> 
+            <div>
                 <span class="status-dot" style="background-color: green;"></span>
-                <strong>{data.demo ? localData.username : data.form?.username} | {data.demo ? localData.organization : data.form?.organization}</strong>
+                <strong>
+                    {data.demo ? localData.username : data.form?.username} |
+                    {data.demo ? localData.organization : data.form?.organization}
+                </strong>
             </div>
         </div>
     </div>
-    
-        <div class="controls">
-        <!--Microphone toggle -->
-        {#if $state.snapshot(micOn) === false } 
-            <button class="microphone" id='enable-microphone' onclick={establishOAIConnection} aria-label="enable-microphone">🎙️ Turn on mic</button>
+
+    <div class="controls">
+        <!-- Microphone toggle — disabled while agent is speaking -->
+        {#if !micOn}
+            <button
+                class="microphone"
+                id="enable-microphone"
+                onclick={toggleMic}
+                disabled={agentSpeaking}
+                aria-label="Enable microphone"
+            >
+                🎙️ Turn on mic
+            </button>
         {:else}
-            <button class="microphone" id='disable-microphone' onclick={closeOAIConnection} aria-label="disable-microphone">🔇 Turn off mic</button>
+            <button
+                class="microphone"
+                id="disable-microphone"
+                onclick={toggleMic}
+                disabled={agentSpeaking}
+                aria-label="Disable microphone"
+            >
+                🔇 Turn off mic
+            </button>
         {/if}
 
-        {#if $state.snapshot(camOn) === false}
-            <button class="camera" id='enable-camera' onclick={toggleCamera}>📸 Turn on camera </button>
+        {#if !camOn}
+            <button class="camera" id="enable-camera" onclick={toggleCamera}>
+                📸 Turn on camera
+            </button>
         {:else}
-            <button class="camera" id='disable-camera' onclick={toggleCamera}>📷 Turn off camera</button>
+            <button class="camera" id="disable-camera" onclick={toggleCamera}>
+                📷 Turn off camera
+            </button>
         {/if}
 
-        <button id="leave-call" onclick={completeSimulation} aria-label="leave-call">
+        <button id="leave-call" onclick={completeSimulation} aria-label="Leave call">
             🚪 Leave Call
         </button>
-
     </div>
-
-
 </div>
-
-
-
-
-       

@@ -2,6 +2,7 @@
     import { onMount } from "svelte"; 
     import { fade } from "svelte/transition";
     import { goto } from '$app/navigation';
+    import Notification from "$models/Notification.svelte";
     import failed_image from "$db/static_failed_images.png";
     import { page } from "$app/state";
     import type { PageProps } from './$types';
@@ -32,8 +33,7 @@
 
     function startButtonTimer() { 
         setTimeout(() => {
-            showNotification = true;  // ✅ Show custom notification instead of alert
-
+            showNotification = true;  
             revealDeliberationsButton();
         }, 12500)
     }
@@ -188,7 +188,7 @@ ul li {
   text-align: center;
 }
 
-/* === NOTIFICATION === */
+/* === NOTIFICATION ===
 .notification {
   position: fixed;
   top: 2rem;
@@ -229,21 +229,16 @@ ul li {
 
 .notification-close:hover {
   opacity: 1;
-}
+} */
 
 </style>
 
 
 <div id="preamble">
   <!-- Lawmaker avatar picture sections -->
+
   {#if showNotification}
-    <div class="notification" in:fade out:fade>
-      <div class="notification-content">
-        <div class="notification-icon">🎯</div>
-        <div class="notification-text">{alertMessage}</div>
-        <button class="notification-close" onclick={dismissNotification}>×</button>
-      </div>
-    </div>
+    <Notification alertMessage={alertMessage} onClose={() => showNotification = false }></Notification>
   {/if}
 
   <div id="text-content">
