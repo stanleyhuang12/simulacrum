@@ -3,6 +3,7 @@
     import { onMount } from "svelte";
     import type { PageData, PageProps } from "../$types";
   import { hydrateDeliberationLocally } from "$models/+deliberations";
+  import { redirect } from "@sveltejs/kit";
 
     let { data } = $props(); 
 
@@ -276,7 +277,7 @@
         if (!audioBlob) throw new Error('No audio found');
 
         const formData = new FormData(); 
-        const audioFile = await convertBlobToAudioFile(audioBlob)
+        const audioFile = await convertBlobToAudioFile(audioBlob as Blob)
         formData.append("file", audioFile); 
         formData.append("model", "gpt-4o-transcribe")
         formData.append("language", "en")
@@ -315,6 +316,8 @@
             })
             if (!resultSave.ok) { throw new Error(await resultSave.text())}
         }
+
+        redirect(303, "/retry?demo=true"); 
     }
 
     onMount(() => {
