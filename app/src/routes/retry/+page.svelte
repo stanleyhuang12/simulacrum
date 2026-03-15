@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { readInteraction } from "$models/+local";
+    import { readInteraction, addRetry } from "$models/+local";
     import type { Memory } from "$models/+deliberations.js";
 
     /* This module will first retrieve conversation transcripts
@@ -9,7 +9,7 @@
     */
     type retryLogs = {
         prompt: string, 
-        response?: string, 
+        response: string, 
         originalResponse: string, 
         edited: boolean,
     }
@@ -24,13 +24,14 @@
         editingIndex = i;
     }
 
-    function stopEditing() {
+    function stopEditing(i) {
         // checks to see if there are substantive revisions made and modifies the tag 
         const editedStatus = retryLogs[i].response !== retryLogs[i].originalResponse; 
         retryLogs[i].edited = editedStatus; 
         editingIndex = null;
     }
 
+    
     
     onMount(
         async () => {
@@ -73,7 +74,7 @@
             {:else}
                 <div class="lawmaker-message-wrapper">
                     <b>Lawmaker:</b>
-                    <p class="lawmaker-message"> {turn.dialogue.prompt} </p>
+                    <p class="lawmaker-message"> {turn.prompt} </p>
                 </div>
                 <div class="user-message-wrapper">
                     <b>Your Response: </b>
@@ -82,16 +83,16 @@
                     >{turn.response}</button>
                 </div>
             {/if}
-
         {/each}
     </div>
+    <section class="retry-submission"> 
+        <button onclick={() => {
+            addRetry(retryLogs); 
+            goto('/feedback')
+            }}
+        >Submit your improvements.</button>
+    </section>
+  
 </section>
-
-<!-- <section class="current-chat-interface-message"> 
-    <textarea id="chat-bar" bind:value=></textarea>
-    <audio id="audio-bar"> </audio>
-    <button onclick= aria-label="Submit message">Submit your message</button>
-    <button onclick={() => currentStep="feedback"} aria-label="Complete conversation">Finish conversation</button>
-</section> -->
 
 

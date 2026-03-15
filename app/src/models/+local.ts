@@ -121,3 +121,32 @@ export async function addInteraction(interaction: interactionData) {
     tx.oncomplete = () => db.close();
   });
 }
+
+export async function addRetry(retryLogs: any) {
+  const db = await openDatabase();
+  if (!db) throw new Error("Failed to open database");
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("interaction", "readwrite");
+    const store = tx.objectStore("interaction");
+
+    const getRequest = store.get("retryLogs");
+
+    getRequest.onsuccess = () => {
+      let data = getRequest.result;
+      
+      if (data) {
+        console.warn("Retry logs already exist in the local database")
+      }
+      data = { key: "retryLogs", interactions: Array.isArray(retryLogs) ? retryLogs : [retryLogs] };
+      
+      const putRequest = store.put(data);
+      putRequest.onsuccess = () => resolve(putRequest.result);
+      putRequest.onerror = () => reject(`Failed to add interaction: ${putRequest.error}`);
+    };
+
+    getRequest.onerror = () => reject(`Failed to read interactions: ${getRequest.error}`);
+
+    tx.oncomplete = () => db.close();
+  });
+}
