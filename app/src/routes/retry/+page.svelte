@@ -12,6 +12,17 @@
 
     let interactionLogs: Memory[] = $state([]);
 
+    let editingIndex: number | null = $state(null);
+
+    function startEditing(i) {
+        editingIndex = i;
+    }
+
+    function stopEditing() {
+        editingIndex = null;
+    }
+
+    
     onMount(
         async () => {
         interactionLogs = await readInteraction();
@@ -21,18 +32,31 @@
 
 <section class="historical-chat-interface"> 
     <div class="chat-history" id="chat-history-acc">
-        {#each interactionLogs as turn}
-            <div class="lawmaker-message-wrapper">
-                Lawmaker: 
-                <p class="lawmaker-message"> {turn.dialogue.prompt} </p>
-            </div>
-            <div class="user-message-wrapper">
-                Your Response: 
-                <textarea 
-                    class="user-message" 
+        {#each interactionLogs as turn, i}
+            {#if editingIndex === i}
+                <div class="lawmaker-message-wrapper">
+                    <b>Lawmaker:</b>
+                    <p class="lawmaker-message"> {turn.dialogue.prompt} </p>
+                </div>
+                <div class="user-message-wrapper">
+                    <b>Your Response: </b>
+                    <textarea class="user-message"
                     bind:value={turn.dialogue.response}
-                ></textarea>
-            </div>
+                    ></textarea>
+                </div>
+            {:else}
+                <div class="lawmaker-message-wrapper">
+                    <b>Lawmaker:</b>
+                    <p class="lawmaker-message"> {turn.dialogue.prompt} </p>
+                </div>
+                <div class="user-message-wrapper">
+                    <b>Your Response: </b>
+                    <button class="user-message" 
+                    onclick={() => startEditing(i)}
+                    >{turn.dialogue.response}</button>
+                </div>
+            {/if}
+
         {/each}
     </div>
 </section>
