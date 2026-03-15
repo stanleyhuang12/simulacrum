@@ -5,35 +5,18 @@ import { redirect } from "@sveltejs/kit";
 import { hydrateDeliberationInstance } from "$models/+deliberations";
 
 
-export const load: PageServerLoad =  async ( {cookies} ) => {
-    /*
-    Retrieves a subset of the conversation threads that user wants to retry. 
-    This load function uses local storage to store 
-        (1) the conversation ID or branch ID to diverge as key
-        (2) the value as a string representation of an object { dialogue, startTime }
-            dialogue: { prompt: # prompt, response: # response }; note that we are creating a divergent branch by "overwriting" the response
-            startTime: Date; the initial time when the user previously responded to the virtual lawmaker. Simulate unwinding time. 
-    
-    This load function returns 
-        (1) the session cookies or UUID to match user and 
-        (2) a parseable string representation of the different conversation threads to create divergent branches
-    */ 
-    console.group()
+export const load: PageServerLoad =  async ( event ) => {
     console.log("Running load function for branch retry")
+    const sessCookies = event.cookies.get('session-id-delibs'); 
     
-    const sessCookies = cookies.get('session-id-delibs'); 
-    const dRecord = await validateAndRetrieveDeliberation(sessCookies)    
-    if (dRecord == null) {
-        console.groupEnd()
-        redirect(308, "/")
-    }
-
-    const d = hydrateDeliberationInstance(dRecord)
-
-  
+    // const dRecord = await validateAndRetrieveDeliberation(sessCookies)    
+    // if (dRecord == null) {
+    //     console.groupEnd()
+    //     redirect(308, "/")
+    // }
+    // const d = hydrateDeliberationInstance(dRecord)
     return { 
-        memory : d.lawmaker._memory,
         sessCookies: sessCookies,
+        isDemo: event.url.searchParams.get('demo') === "true", 
     }
-    
 }
