@@ -22,17 +22,16 @@ export const load: PageServerLoad =  async ( {cookies} ) => {
     console.log("Running load function for branch retry")
     
     const sessCookies = cookies.get('session-id-delibs'); 
-    const dRecord = await validateAndRetrieveDeliberation(sessCookies)    
-    if (dRecord == null) {
-        console.groupEnd()
-        redirect(308, "/")
-    }
+    // const dRecord = await validateAndRetrieveDeliberation(sessCookies)    
+    // if (dRecord == null) {
+    //     console.groupEnd()
+    //     redirect(308, "/")
+    // }
 
-    const d = hydrateDeliberationInstance(dRecord)
+    // const d = hydrateDeliberationInstance(dRecord)
 
   
     return { 
-        memory : d.lawmaker._memory,
         sessCookies: sessCookies,
     }
     
