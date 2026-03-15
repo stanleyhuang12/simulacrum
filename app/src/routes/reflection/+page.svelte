@@ -1,13 +1,12 @@
 <script lang="ts">
-import { onMount } from "svelte";
+    import Notification from "$models/Notification.svelte";
+    import { onMount } from "svelte";
+    import type { PageData, PageProps } from "../$types";
+  import { hydrateDeliberationLocally } from "$models/+deliberations";
 
-    /*Audio implementation details: 
-        The AudioStream is a stream of audio content. 
-        The Audio Context is an audio processing interface.
-            We create an Analyser node.  
-            The context has a method to create Media Stream Source, which creates a node
-            An Audio context or analyzer node has a method to connect which links the data source of one to another node's destination
-    */
+    let { data } = $props(); 
+
+    let isDemo = data.isDemo; 
 
     let audioAccept: MediaDevices; 
     let audioStream: MediaStream | undefined; 
@@ -20,9 +19,13 @@ import { onMount } from "svelte";
     let mediaRecorder: MediaRecorder | undefined;
     let audioChunks: Blob[] = [];
 
+    const IDB_KEY = data.userID; 
     const IDB_NAME = 'reflection-audio-db';
     const IDB_STORE_AUDIO = 'recordings';
     const IDB_STORE_TEXT = 'transcriptions'; 
+
+    let showNotification = $state(false); 
+    let alertMessage = $state(""); 
 
     function openDB(): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
@@ -51,7 +54,7 @@ import { onMount } from "svelte";
         }); 
     }
 
-    async function saveToIndexedDB(storeName: string, idbKey: string, data: Blob | string): Promise<void> {
+    async function saveToIndexedDB(storeName: string, idbKey: string, data: Blob | string): Promise<string> {
         const db = await openDB();
         return new Promise((resolve, reject) => {
             const tx = db.transaction(storeName, 'readwrite');
@@ -59,7 +62,7 @@ import { onMount } from "svelte";
             store.put(data, idbKey);
             tx.oncomplete = () => {
                 db.close();
-                resolve();
+                resolve("Saved audio.");
             };
             tx.onerror = () => {
                 db.close();
@@ -98,21 +101,32 @@ import { onMount } from "svelte";
             
             audioAccept = window.navigator.mediaDevices; 
             if (!audioAccept || !audioAccept.getUserMedia) {
-                throw MediaError; 
+                throw new Error("Media Error: Media Devices not supported."); 
             }
             audioStream = await window.navigator.mediaDevices.getUserMedia( { audio: true } ); 
-            
+            console.log(audioStream?.getTracks());
             const source = audioCtx.createMediaStreamSource(audioStream);  // creates a Stream Source Node 
             source.connect(audioAnalyser);  // Connect the stream source node to the analyzer node 
             
             // Start recording audio
-            mediaRecorder = new MediaRecorder(audioStream);
+            mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm;codecs=opus' });
             mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
                     audioChunks.push(event.data);
+                    console.log("Pushing audio data into audioChunks array.")
+                } else {
+                    console.error("Audio chunks has a size of 0 bytes, can not append...")
                 }
             };
-            mediaRecorder.start();
+
+            mediaRecorder.onerror = (event) => {
+                    console.error("MediaRecorder error:", event); 
+            };
+
+            mediaRecorder.onstop = () => {
+
+            }
+            mediaRecorder.start(250); // note this 250 ms
             
             draw(); 
             console.log("Collecting audioStreams and recording it via MediaRecorder");
@@ -193,7 +207,9 @@ import { onMount } from "svelte";
 
     async function resetAudioStorage() {
         audioChunks = [];
+
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            console.log("Stopping media recorder")
             mediaRecorder.stop();
             mediaRecorder = undefined;
         }
@@ -203,64 +219,102 @@ import { onMount } from "svelte";
         }
         stopDrawing();
         
-        await clearFromIndexedDB(IDB_STORE_AUDIO, 'audio-data');
-        await clearFromIndexedDB(IDB_STORE_AUDIO, 'transcription-data');
-    }
+        await clearFromIndexedDB(IDB_STORE_AUDIO, IDB_KEY);
+        await clearFromIndexedDB(IDB_STORE_TEXT, IDB_KEY); // transcription version**
+        alertMessage = "Cleared audio data.";
+        showNotification = true; 
+
+    }   
 
     async function saveRecordingLocally() {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            return new Promise<void>((resolve, reject) => {
-                mediaRecorder!.onstop = async () => {
-                    try {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        // const audioBuffer = await audioBlob.arrayBuffer();                        await saveToIndexedDB(IDB_STORE_AUDIO, 'audio-data', audioBlob);
-                        if (!audioBlob) throw new Error('No audio found');
-
-                        console.log('Audio buffer saved to IndexedDB');
-                        resolve();
-                    } catch (err) {
-                        console.error(err);
-                        reject(err);
-                    }
-                };
+        return new Promise<string>((resolve, reject) => {
+            mediaRecorder!.onstop = async () => {
+                try {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    // const audioBuffer = await audioBlob.arrayBuffer();
+                    if (!audioBlob) throw new Error('No audio data found');
+                    const res = await saveToIndexedDB(IDB_STORE_AUDIO, IDB_KEY, audioBlob); 
+                
+                    console.log('Audio buffer saved to IndexedDB');
+                    resolve(res);
+                } catch (err) {
+                    console.error(err);
+                    reject(err);
+                }
+            };
                 mediaRecorder!.stop();
                 stopDrawing();
             });
+    }
+    async function convertBlobToAudioFile(blob: Blob) {
+        return await new File([blob], "recording.webm", {type: blob.type})
+    }
+
+    async function saveReflectionsLocally(reflection?:string) {
+        if (reflection) {
+            const deliberation = await hydrateDeliberationLocally(); 
+            deliberation.logUserReflection(reflection); 
+        } else {
+            const reflection = await retrieveFromIndexedDB(IDB_STORE_TEXT, IDB_KEY) as string; 
+            const deliberation = await hydrateDeliberationLocally(); 
+            deliberation.logUserReflection(reflection); 
         }
+
     }
 
     async function submitAudioData() {
         /* Feeds the data by submitting audio blobs to localStorage so that we can have users play it again if needed  */
         await saveRecordingLocally(); 
         
-        const audioBlob = await retrieveFromIndexedDB(IDB_STORE_AUDIO, 'audio-data')
+        if (audioStream) {
+            audioStream.getTracks().forEach(track => track.stop());
+            audioStream = undefined;
+        }
+        
+        const audioBlob = await retrieveFromIndexedDB(IDB_STORE_AUDIO, IDB_KEY)
         
         if (!audioBlob) throw new Error('No audio found');
 
         const formData = new FormData(); 
-        formData.append("file", audioBlob); 
+        const audioFile = await convertBlobToAudioFile(audioBlob)
+        formData.append("file", audioFile); 
         formData.append("model", "gpt-4o-transcribe")
         formData.append("language", "en")
+        console.log(formData); 
+        console.log("Submitting FormData:", {
+            fileSize: audioFile.size,
+            fileType: audioFile.type
+        });
+
         /* Then, we make sure to retrieve the audio back */
+
         const result = await fetch("/api/speech-to-text", {
             method: "POST", 
             body: formData
         }); 
 
-        if (!result.ok) { throw new Error(await result.text()); }; 
+        if (!result.ok) { 
+            alertMessage = await result.text(); 
+            showNotification = true; 
+            throw new Error(await result.text()); 
+        }; 
 
         const res = await result.json()
         if (res.success) {
             console.log(res.transcriptions); 
-            await saveToIndexedDB(IDB_STORE_TEXT, 'transcription-data', res.transcriptions); 
+            alertMessage = "Reflections submitted!"; 
+            showNotification = true; 
+            await saveToIndexedDB(IDB_STORE_TEXT, IDB_KEY, res.transcriptions); 
         }
-
-        const resultSave = await fetch("/api/manage-user-sensemaking/reflection", {
-            method: "POST", 
-            body: res.transcriptions
-        })
-
-        if (!resultSave.ok) { throw new Error(await resultSave.text())}
+        if (isDemo) {
+            saveReflectionsLocally(); 
+        } else {
+            const resultSave = await fetch("/api/manage-user-sensemaking/reflection", {
+                method: "POST", 
+                body: res.transcriptions
+            })
+            if (!resultSave.ok) { throw new Error(await resultSave.text())}
+        }
     }
 
     onMount(() => {
@@ -338,7 +392,7 @@ button:hover {
     border: 1px solid var(--border);
     overflow: hidden;
     background: #1f1143;
-    }
+}
 
 canvas {
     display: block;
@@ -358,6 +412,9 @@ canvas {
 
 <div class="reflection-shell">
 
+    {#if showNotification}
+        <Notification alertMessage={alertMessage} onClose={()=> showNotification=false }></Notification>
+    {/if}
 
     <header> You have now chatted with a lawmaker. Let's debrief! </header>
     <div class="reflection-debrief">

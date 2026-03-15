@@ -10,21 +10,18 @@ type VirtualLawmakerInstructionsTemplateType = Record<
   string
 >;
 
-type closeConversationTemplate = string
-    
-type InitChatTemplate = Record< 0|1|2, string>
 
 export type timeMetadata = {
-    "turnGap": number, 
-    "responseDuration": number, 
-    "responseTotalTime": number, 
-    "timingDetails": timingDetails, 
+    "responseAwait": Date, 
+    "responseStart": Date, 
+    "responseEnd": Date, 
+    "timingDetails"?: timingDetails, 
 }; 
 
 export type timingDetails = {
-    "responseAwait": Date, 
-    "responseStart": Date, 
-    "responseEnd": Date,
+    "turnGap": number, 
+    "responseDuration": number, 
+    "responseTotalTime": number,
 }; 
 
 export type Memory = {
@@ -35,7 +32,7 @@ export type Memory = {
     "divergent"?: Dialogue[],
 }
 
-const closeConversation: closeConversationTemplate = `
+const closeConversation: string = `
     You are a lawmaker. The conversation is slowly winding down. Address their comments or questions if they have any. Thank them for their time.
 `
 
@@ -65,7 +62,7 @@ const virtualLawmakerInstructionsTemplate: VirtualLawmakerInstructionsTemplateTy
                               Just respond without prepending your name.`           
 }
 
-const initChatTemplate: InitChatTemplate = {
+const initChatTemplate: Record< 0|1|2, string> = {
     0: `Hi {username}, thanks for joining a call with me today. It is great to meet you.`,
     1: `Before we start, tell me a little bit more about yourself and what got you into advocacy?`,
     2: `OK I see. Thank you so much for letting me know. So, tell me a little more about this campaign you are working on: {issue}. What is the main idea of this bill you are advocating for?`
@@ -174,8 +171,9 @@ export class Lawmaker {
     public async process(
         input: string,
         fetchFn: typeof fetch,
-        time: timeMetadata, 
+        time: timeMetadata,
         model: string = "gpt-4.1", 
+
         winddown: boolean = false,
     ) { 
 
@@ -243,9 +241,6 @@ export class Deliberation extends Simulacrum {
     public elapsed_time!: number; 
     public createdAt: Date;
     public updatedAt: Date;
-    public responseAwait!: Date; 
-    public responseStart!: Date; 
-    public responseEnd!: Date; 
 
     constructor(
         username: string, 
@@ -358,36 +353,44 @@ export class Deliberation extends Simulacrum {
         return templateText
     };
 
-    public compileTime() {
+    public compileTime(responseAwait: Date, responseStart: Date, responseEnd: Date): timeMetadata {
         const turnGap = this._diffMinSec(
-            this.responseAwait, 
-            this.responseStart
+            responseAwait, 
+            responseStart
         ); 
         const responseTotalTime = this._diffMinSec(
-            this.responseAwait,
-            this.responseEnd
+            responseAwait,
+            responseEnd
         )
         const responseDuration = this._diffMinSec(
-            this.responseStart, 
-            this.responseEnd
+            responseStart, 
+            responseEnd
         )
         
         return {
-            "turnGap": turnGap, 
-            "responseDuration": responseDuration, 
-            "responseTotalTime": responseTotalTime,
+            "responseAwait": responseAwait, 
+            "responseStart": responseStart,
+            "responseEnd": responseEnd, 
             "timingDetails": {
-                "responseAwait": this.responseAwait, 
-                "responseStart": this.responseStart, 
-                "responseEnd": this.responseEnd
+                "turnGap": turnGap, 
+                "responseDuration": responseDuration, 
+                "responseTotalTime": responseTotalTime
             }
         }
             
     }
 
-    public async panel_discussion(input: string, fetchFn: typeof fetch, time: timeMetadata) {
+    public async panel_discussion(
+        input: string, 
+        fetchFn: typeof fetch, 
+        responseAwait: Date, 
+        responseStart: Date, 
+        responseEnd: Date,
+    ) {
         const turn = this.conversation_turn;
         this.conversation_turn++;
+
+        const time = this.compileTime(responseAwait, responseStart, responseEnd)
 
         if (turn <= 2) {
             const text = this.initial_template(turn as 0 | 1 | 2);
@@ -397,7 +400,7 @@ export class Deliberation extends Simulacrum {
             }
             this.lawmaker.log_episodal_memory(currentDialogue, "automated_response", time)
             return text 
-        }
+        }  
 
         if (this.elapsed_time > 1200 || this.conversation_turn >= 11) {
             console.warn(`Conversation reached ${this.elapsed_time/60} minutes and ${this.conversation_turn} number of turns`)
@@ -411,20 +414,15 @@ export class Deliberation extends Simulacrum {
    HYDRATION
 ========================= */
 
-export async function manageDeliberationInstanceLocally(text: string, responseAwaitTime: Date, responseEndTime: Date, responseStartTime: Date, fetchFn: typeof fetch) {
+export async function manageDeliberationInstanceLocally(input: string, responseAwaitTime: Date, responseEndTime: Date, responseStartTime: Date, fetchFn: typeof fetch) {
     const d = await hydrateDeliberationLocally(); 
     
     /* Init virtual lawmaker and log time metadata  */
     d._init_virtual_lawmaker(); 
-    d.responseAwait = responseAwaitTime; 
-    d.responseStart = responseStartTime; 
-    d.responseEnd = responseEndTime; 
-    
-    const timeData: timeMetadata = d.compileTime()
 
     if (d.conversation_turn === 3 || d.conversation_turn % 3 === 0) {
         console.log("Running guardrail functions")
-        let guardrailResponse = await d._guardrail_moderation(text, fetchFn)
+        let guardrailResponse = await d._guardrail_moderation(input, fetchFn)
         console.log(`Guardrail response ${JSON.stringify(guardrailResponse)}`)
         if (guardrailResponse.triggered) {
             // Return structured object instead of trying to encode status in JSON.stringify
@@ -434,25 +432,28 @@ export async function manageDeliberationInstanceLocally(text: string, responseAw
                 status: 403,
                 statusText: "Your session has ended abruptly due to guardrails. Please contact the team to retry."
             };
+        }
     }; 
 
-    const response = await d.panel_discussion(text, fetchFn, timeData)
+    const response = await d.panel_discussion(input, fetchFn, responseAwaitTime, responseStartTime, responseEndTime)
+
+    const savedMemory = d.lawmaker._memory[d.lawmaker._memory.length - 1];
 
     return {
-        type: 'automated.response', 
-        response: response, 
-        episodeNumber: d.conversation_turn, 
-        status: 200, 
-    }
+        type: 'automated.response' as const,
+        response,
+        episodeNumber: d.conversation_turn,
+        memory: savedMemory
+    };
 
-}}; 
+}; 
 
 
 export async function hydrateDeliberationLocally() {
     console.log("Hydrating deliberation instance")
-    const r = localStorage.getItem('formData'); 
-    const initTime = localStorage.getItem('initTime'); 
-    const updatedTime = localStorage.getItem('updatedTime') || new Date().toISOString(); 
+    const r = sessionStorage.getItem('formData'); 
+    const initTime = sessionStorage.getItem('initTime'); 
+    const updatedTime = sessionStorage.getItem('updatedTime') || new Date().toISOString(); 
 
     const memory: Array<Memory> = await readInteraction(); 
     const conversationTurn = memory.length; 

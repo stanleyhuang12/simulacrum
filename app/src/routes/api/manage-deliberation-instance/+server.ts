@@ -47,10 +47,6 @@ export const POST: RequestHandler = async ( event ) => {
         // this could be made more efficient by just trying to hydrate and returning the error
         const d = hydrateDeliberationInstance(delibsRecord)
         
-        d.responseAwait = responseAwaitTime; 
-        d.responseStart = responseStartTime; 
-        d.responseEnd = responseEndTime; 
-
         if (d.conversation_turn === 3 || d.conversation_turn % 3 === 0) {
             console.log("Running guardrail functions")
             let guardrailResponse = await d._guardrail_moderation(input, event.fetch)
@@ -63,10 +59,7 @@ export const POST: RequestHandler = async ( event ) => {
             }
         }; 
         
-        const timeData: timeMetadata = d.compileTime()
-    
-        
-        const response = await d.panel_discussion(input, event.fetch, timeData); 
+        const response = await d.panel_discussion(input, event.fetch, responseAwaitTime, responseStartTime, responseEndTime); 
         console.log(`Model response: ${response}`)
         let savedMemory = d.lawmaker._retrieve_deserialized_memory()
 

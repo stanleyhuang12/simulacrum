@@ -5,7 +5,6 @@
     import { fade } from 'svelte/transition';
     import {  random_lawmaker_persona_generator } from "$models/+utils"
 
-
     const demo = page.url.searchParams.get('demo'); 
     const actionUrl = demo ? `/submit?demo=true` : `/submit`; 
 
@@ -446,13 +445,17 @@ button:disabled {
             <div class="slider-wrapper">
               <input
                 type="range"
-                name="selectedIdeology"
                 min="0"
                 max={labels.length - 1}
                 step="1"
                 bind:value={sliderValue}
               />
             </div>
+              <input
+                type="hidden"
+                name="ideology"
+                value={labels[sliderValue]}
+              />
 
             <p>Selected: <strong>{labels[sliderValue]}</strong></p>
           </label>
