@@ -217,8 +217,8 @@
     </div>
     <section class="retry-submission"> 
         <button class="retry-submission-button"
-        onclick={() => {
-            addRetry(retryLogs); 
+        onclick={async () => {
+            await addRetry(retryLogs); 
             goto('/feedback')
             }}
         >Submit your improvements.</button>
