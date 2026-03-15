@@ -7,11 +7,17 @@
     * from the local IndexedDB, populate the text, and allow users to make local edits and then
     * automatically syncs with database. The local edits can then have downstream effects in altering model responses. 
     */
-
+    type retryLogs = {
+        prompt: string, 
+        response?: string, 
+        originalResponse: string, 
+        edited: boolean,
+    }
+    
     let { data: PageProps } = $props(); 
 
-    let interactionLogs: Memory[] = $state([]);
-
+    let interactionLogs: Memory[]; 
+    let retryLogs: retryLogs[] = $state([]); 
     let editingIndex: number | null = $state(null);
 
     function startEditing(i) {
@@ -19,6 +25,9 @@
     }
 
     function stopEditing() {
+        // checks to see if there are substantive revisions made and modifies the tag 
+        const editedStatus = retryLogs[i].response !== retryLogs[i].originalResponse; 
+        retryLogs[i].edited = editedStatus; 
         editingIndex = null;
     }
 
@@ -26,22 +35,39 @@
     onMount(
         async () => {
         interactionLogs = await readInteraction();
+        retryLogs = interactionLogs.map((interaction) => (
+                {
+                    prompt: interaction.dialogue.prompt, 
+                    response: interaction.dialogue.response,
+                    originalResponse: interaction.dialogue.response, 
+                    edited: false, 
+                }
+        )); 
     }
     );
-</script>
+
+</script> 
+<style>
+
+.user-message-wrapper:hover button {
+    cursor:pointer
+}
+
+</style>
 
 <section class="historical-chat-interface"> 
     <div class="chat-history" id="chat-history-acc">
-        {#each interactionLogs as turn, i}
+        {#each retryLogs as turn, i}
             {#if editingIndex === i}
                 <div class="lawmaker-message-wrapper">
                     <b>Lawmaker:</b>
-                    <p class="lawmaker-message"> {turn.dialogue.prompt} </p>
+                    <p class="lawmaker-message"> {turn.prompt} </p>
                 </div>
                 <div class="user-message-wrapper">
                     <b>Your Response: </b>
                     <textarea class="user-message"
-                    bind:value={turn.dialogue.response}
+                    bind:value={turn.response}
+                    onblur={() => stopEditing(i)}
                     ></textarea>
                 </div>
             {:else}
@@ -53,7 +79,7 @@
                     <b>Your Response: </b>
                     <button class="user-message" 
                     onclick={() => startEditing(i)}
-                    >{turn.dialogue.response}</button>
+                    >{turn.response}</button>
                 </div>
             {/if}
 
