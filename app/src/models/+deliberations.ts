@@ -1,7 +1,7 @@
 import { Simulacrum } from './+simulacrum';
 import type { ChatMessage, Dialogue } from './+utils';
 import { random_beta_sampler, ADVOCACY_GUARDRAILS } from './+utils';
-import { readInteraction } from './+local';
+import { loadDeliberation, clearDeliberation, saveDeliberation } from './+local';
 /**
  * TYPES 
  **/
@@ -16,8 +16,7 @@ export type timeMetadata = {
     "responseStart": Date, 
     "responseEnd": Date, 
     "timingDetails"?: timingDetails, 
-}; 
-
+};
 export type timingDetails = {
     "turnGap": number, 
     "responseDuration": number, 
@@ -241,6 +240,7 @@ export class Deliberation extends Simulacrum {
     public elapsed_time!: number; 
     public createdAt: Date;
     public updatedAt: Date;
+    declare public lawmaker; 
 
     constructor(
         username: string, 
@@ -262,9 +262,32 @@ export class Deliberation extends Simulacrum {
         // this.responseStart = responseStart;
     
         this._init_virtual_lawmaker(); 
-        this._diffMinSec(this.createdAt, this.updatedAt)
-    }
+        this.elapsed_time = this._diffMinSec(this.createdAt, this.updatedAt)
 
+    }
+    public toJSON(): Record<string, any> {
+        return {
+        username:        this._username,
+        group:           this._group,
+        simulacrum_type: this._simulacrum_type,
+        policy_topic:    this.policy_topic,
+        state:           this.state,
+        num_agents:      this.num_agents,
+        ideology:        this.ideology,
+        lawmaker_name:   this.lawmaker_name,
+        createdAt:       this.createdAt.toISOString(),
+        updatedAt:       new Date().toISOString(), 
+        elapsed_time:    this.elapsed_time,
+        guardrail_triggered:    this.guardrail_triggered ?? false,
+        guardrail_reason:       this.guardrail_reason ?? null,
+        // Lawmaker internals
+        lawmaker: {
+            persona:           this.lawmaker.persona,
+            degree_of_support: this.lawmaker.degree_of_support,
+            memory:            this.lawmaker._memory,
+        },
+        };
+    }
     public get conversation_turn () {
         return this.lawmaker._memory.length 
     }
@@ -273,16 +296,38 @@ export class Deliberation extends Simulacrum {
         this.lawmaker = new Lawmaker(this._username, this.lawmaker_name, this.state, this.ideology, this.policy_topic)
     }
 
-    public _diffMinSec(createdAt: Date, updatedAt: Date) {
-        const diffMs = updatedAt.getTime() - createdAt.getTime();
+    public _diffMinSec(start: Date, end: Date) {
+        const diffMs = end.getTime() - start.getTime();
         const totalSeconds = Math.floor(diffMs / 1000);
-        if (totalSeconds > 540) {
-            console.warn("Greater than 15 minutes")
+        return totalSeconds 
+    } 
+    public static fromJSON(raw: Record<string, any>): Deliberation {
+        const d = new Deliberation(
+        raw.username,
+        raw.group,
+        raw.simulacrum_type ?? "deliberations",
+        raw.policy_topic,
+        raw.state,
+        raw.num_agents ?? 1,
+        raw.ideology,
+        raw.lawmaker_name,
+        new Date(raw.createdAt),
+        new Date(raw.updatedAt),
+        );
+    
+        d.elapsed_time           = raw.elapsed_time  ?? 0;
+        d.guardrail_triggered    = raw.guardrail_triggered ?? false;
+        d.guardrail_reason       = raw.guardrail_reason    ?? null;
+    
+        // Restore lawmaker persona + memory
+        if (raw.lawmaker) {
+            d.lawmaker.persona           = raw.lawmaker.persona;
+            d.lawmaker.degree_of_support = raw.lawmaker.degree_of_support;
+            d.lawmaker._memory           = (raw.lawmaker.memory ?? []).map(reviveMemory);
         }
-        this.elapsed_time = totalSeconds
-        return this.elapsed_time;
-    }
 
+        return d;
+    }
     public async _guardrail_moderation(text: string, fetchFn: typeof fetch, last_n: number=3) {
         /** Passes in the last n exchanges to do guardrail moderations **/
         let userTranscript: string = ""; 
@@ -290,7 +335,7 @@ export class Deliberation extends Simulacrum {
         this.lawmaker._memory.slice(-last_n).forEach(item => {
             userTranscript += item.dialogue.prompt.trim() + ""
         });
-        userTranscript.trim(); 
+        userTranscript = userTranscript.trim(); 
 
         if (userTranscript === "") {
             return {    triggered: false    }
@@ -307,7 +352,6 @@ export class Deliberation extends Simulacrum {
         }
 
         let prompt: ChatMessage[] = [guardrail_persona, task]
-
        
         try {
             const agentResponse = await fetchFn("/api/llm-process", {
@@ -417,91 +461,81 @@ export class Deliberation extends Simulacrum {
 /* =========================
    HYDRATION
 ========================= */
+export async function loadOrCreateDeliberation(): Promise<Deliberation> {
+    const stored = await loadDeliberation(); 
+    if (stored) {
+        return Deliberation.fromJSON(stored);
+    } else {
+         const raw = sessionStorage.getItem("formData");
+  if (!raw) throw new Error("No formData found in sessionStorage.");
+ 
+  const form = JSON.parse(raw);
+    return new Deliberation(
+        form.username,
+        form.organization,
+        "deliberations",
+        form.policy_topic,
+        form.state,
+        1,
+        form.ideology,
+        form.lawmaker_name,
+        new Date(),
+        new Date(),
+    );
+}}; 
 
+
+/* One public API entry point that loads Deliberation object from the local IndexedDB and supports LLM interaction. */
 export async function manageDeliberationInstanceLocally(input: string, responseAwaitTime: Date, responseEndTime: Date, responseStartTime: Date, fetchFn: typeof fetch) {
-    const d = await hydrateDeliberationLocally(); 
-    
+    const d = await loadOrCreateDeliberation(); 
+    const turn = d.conversation_turn; 
     /* Init virtual lawmaker and log time metadata  */
-    d._init_virtual_lawmaker(); 
+    if (turn === 3 || (turn > 0 && turn % 3 === 0)) {
+        const result = await d._guardrail_moderation(input, fetchFn);
+        if (result.triggered) {
+        await saveDeliberation(d.toJSON()); // persist guardrail state
+        return {
+            type: "guardrail.triggered" as const,
+            reason: result.reason,
+            status: 403,
+            statusText: "Your session has ended due to guardrails. Please contact the STRIPED team if you think this was a mistake.",
+        };
+    }
+  }
+  const response = await d.panel_discussion(
+    input, fetchFn, responseAwaitTime, responseStartTime, responseEndTime,
+  );
+ 
+  // 4. Update elapsed time and save entire object
+  d.elapsed_time = Math.floor((new Date().getTime() - d.createdAt.getTime()) / 1000);
+  await saveDeliberation(d.toJSON());
+ 
+  return {
+    type:          "automated.response" as const,
+    response,
+    episodeNumber: d.conversation_turn,
+  };
+}
 
-    if (d.conversation_turn === 3 || d.conversation_turn % 3 === 0) {
-        console.log("Running guardrail functions")
-        let guardrailResponse = await d._guardrail_moderation(input, fetchFn)
-        console.log(`Guardrail response ${JSON.stringify(guardrailResponse)}`)
-        if (guardrailResponse.triggered) {
-            // Return structured object instead of trying to encode status in JSON.stringify
-            return {
-                type: 'guardrail.triggered',
-                reason: guardrailResponse.reason,
-                status: 403,
-                statusText: "Your session has ended abruptly due to guardrails. Please contact the team to retry."
-            };
-        }
-    }; 
-
-    const response = await d.panel_discussion(input, fetchFn, responseAwaitTime, responseStartTime, responseEndTime)
-
-    const savedMemory = d.lawmaker._memory[d.lawmaker._memory.length - 1];
-
-    return {
-        type: 'automated.response' as const,
-        response,
-        episodeNumber: d.conversation_turn,
-        memory: savedMemory
-    };
-
+export function hydrateDeliberationInstance(record: Record<string, any>): Deliberation {
+  return Deliberation.fromJSON(record);
 }; 
 
-
-export async function hydrateDeliberationLocally() {
-    console.log("Hydrating deliberation instance")
-    const r = sessionStorage.getItem('formData'); 
-    const initTime = sessionStorage.getItem('initTime'); 
-    const updatedTime = sessionStorage.getItem('updatedTime') || new Date().toISOString(); 
-
-    const memory: Array<Memory> = await readInteraction(); 
-    const conversationTurn = memory.length; 
-
-    if (r == null || initTime == null) { throw new Error("No record found")}; 
-    const record = JSON.parse(r); 
-    const d = new Deliberation(
-        record.username, 
-        record.organization, 
-        "deliberations", 
-        record.policy_topic, 
-        record.state,
-        1,  
-        record.ideology,
-        record.lawmaker_name,
-        new Date(initTime),  // the time is saved locally as an ISO String 
-        new Date(updatedTime) 
-    ); 
-    d.lawmaker._rehydrate_memory(memory); 
-
-    return d 
+export async function resetDeliberation(): Promise<void> {
+  await clearDeliberation();
+  sessionStorage.removeItem("updatedTime");
 }
 
-export function hydrateDeliberationInstance( record: any) { 
-    console.log("Hydrating deliberation instance")
-    const d = new Deliberation(
-        record.username, 
-        record.organization, 
-        "deliberations", 
-        record.policy_topic, 
-        record.state,
-        1,  
-        record.ideology,
-        record.lawmaker_name,
-        record.createdAt, 
-        record.updatedAt
-    )
-    if (record.memory) {
-        d.lawmaker._rehydrate_memory(record.memory);
-    }
-
-    if (record.persona) {
-        d.lawmaker.persona = record.persona
-    }
-    
-    return d
+function reviveMemory(m: any): Memory {
+  const t = m.time ?? {};
+  return {
+    ...m,
+    time: {
+      ...t,
+      responseAwait: t.responseAwait ? new Date(t.responseAwait) : new Date(),
+      responseStart: t.responseStart ? new Date(t.responseStart) : new Date(),
+      responseEnd:   t.responseEnd   ? new Date(t.responseEnd)   : new Date(),
+    },
+  };
 }
+ 
