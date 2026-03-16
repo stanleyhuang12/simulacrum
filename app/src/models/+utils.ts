@@ -83,49 +83,24 @@ export type ChatMessage = {
 };
 
 
-export type AbstractionNode = {
-  "userAbstraction"
-  : string, // The user constructs, and self-corrects from retrospection 
-  "coachAbstraction"?: string, // This is where optional AI-generated feedback are stored
-  "branchedRetryAttempted": boolean, 
-  "branchedRetryNumber": 0 | 1 | 2 | 3,
-  "branchedRetry"?: Array<Dialogue> 
+// export type AbstractionNode = {
+//   "userAbstraction"
+//   : string, // The user constructs, and self-corrects from retrospection 
+//   "coachAbstraction"?: string, // This is where optional AI-generated feedback are stored
+//   "branchedRetryAttempted": boolean, 
+//   "branchedRetryNumber": 0 | 1 | 2 | 3,
+//   "branchedRetry"?: Array<Dialogue> 
+// }
+
+
+// export type AbstractionTree = {
+//   [episodeNumber: number]: AbstractionNode;
+// };
+
+export type Sensemaking = {
+    "reflection"?: string, 
+    "abstraction"?: string, 
 }
-
-/*
-Deliberation: 
-  Additional session details 
-  Lawmaker: 
-    Lawmaker Attributes
-
-  SenseMaking: 
-    Reflection: // general session retrospection transcription 
-    Abstraction: *AbstractionTree* 
-      deliberation.abstraction = {
-        1 (episodeNumber): {
-          userAbstraction: 
-          coachAbstraction: 
-          branchedRetryAttempted: 
-          branchedRetryNum: 
-          branchedRetry: [
-            {
-              prompt: string, 
-              response: string 
-            }
-          ]
-        }
-      }
-*/
-
-export type AbstractionTree = {
-  [episodeNumber: number]: AbstractionNode;
-};
-
-export type SenseMaking = {
-    "reflection": string, 
-    "abstraction": AbstractionTree, 
-}
-
 // export type SenseMaking = {
 //     "episodeNumber": number, 
 //     "reflection": string, 

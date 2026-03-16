@@ -286,6 +286,7 @@ export class Deliberation extends Simulacrum {
             degree_of_support: this.lawmaker.degree_of_support,
             memory:            this.lawmaker._memory,
         },
+        sensemaking:           this.sensemaking, 
         };
     }
     public get conversation_turn () {
@@ -325,7 +326,7 @@ export class Deliberation extends Simulacrum {
             d.lawmaker.degree_of_support = raw.lawmaker.degree_of_support;
             d.lawmaker._memory           = (raw.lawmaker.memory ?? []).map(reviveMemory);
         }
-
+        d.userSensemaking = raw.sensemaking
         return d;
     }
     public async _guardrail_moderation(text: string, fetchFn: typeof fetch, last_n: number=3) {
@@ -461,8 +462,8 @@ export class Deliberation extends Simulacrum {
 /* =========================
    HYDRATION
 ========================= */
-export async function loadOrCreateDeliberation(): Promise<Deliberation> {
-    const stored = await loadDeliberation(); 
+export async function loadOrCreateDeliberation(key: string): Promise<Deliberation> {
+    const stored = await loadDeliberation(key); 
     if (stored) {
         return Deliberation.fromJSON(stored);
     } else {
@@ -486,14 +487,14 @@ export async function loadOrCreateDeliberation(): Promise<Deliberation> {
 
 
 /* One public API entry point that loads Deliberation object from the local IndexedDB and supports LLM interaction. */
-export async function manageDeliberationInstanceLocally(input: string, responseAwaitTime: Date, responseEndTime: Date, responseStartTime: Date, fetchFn: typeof fetch) {
-    const d = await loadOrCreateDeliberation(); 
+export async function manageDeliberationInstanceLocally(input: string, responseAwaitTime: Date, responseEndTime: Date, responseStartTime: Date, fetchFn: typeof fetch, key: string) {
+    const d = await loadOrCreateDeliberation(key); 
     const turn = d.conversation_turn; 
     /* Init virtual lawmaker and log time metadata  */
     if (turn === 3 || (turn > 0 && turn % 3 === 0)) {
         const result = await d._guardrail_moderation(input, fetchFn);
         if (result.triggered) {
-        await saveDeliberation(d.toJSON()); // persist guardrail state
+        await saveDeliberation(key, d.toJSON()); // persist guardrail state
         return {
             type: "guardrail.triggered" as const,
             reason: result.reason,
@@ -508,7 +509,7 @@ export async function manageDeliberationInstanceLocally(input: string, responseA
  
   // 4. Update elapsed time and save entire object
   d.elapsed_time = Math.floor((new Date().getTime() - d.createdAt.getTime()) / 1000);
-  await saveDeliberation(d.toJSON());
+  await saveDeliberation(key, d.toJSON());
  
   return {
     type:          "automated.response" as const,
@@ -521,8 +522,8 @@ export function hydrateDeliberationInstance(record: Record<string, any>): Delibe
   return Deliberation.fromJSON(record);
 }; 
 
-export async function resetDeliberation(): Promise<void> {
-  await clearDeliberation();
+export async function resetDeliberation(key: string): Promise<void> {
+  await clearDeliberation(key);
   sessionStorage.removeItem("updatedTime");
 }
 
