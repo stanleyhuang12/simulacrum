@@ -2,9 +2,11 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import type { PageProps } from "./$types";
-    import { addInteraction, clearInteractions } from "$models/+local";
+    import {
+        manageDeliberationInstanceLocally,
+        resetDeliberation,
+    } from "$models/+deliberations";   
     import type { interactionData } from "$models/+utils";
-    import { manageDeliberationInstanceLocally } from "$models/+deliberations";
     import Notification from "$models/Notification.svelte";
 
     let { data }: PageProps = $props();
@@ -35,7 +37,8 @@
     let endTime: Date;
 
     onMount(() => {
-        clearInteractions();
+        if (data.sess_cookies && data.demo) {resetDeliberation(data.sess_cookies)}
+        if (data.sess_cookies === null) {goto('/form?demo=true')}; 
         console.log("Cleared IndexedDB interactions.");
         console.log("Establishing WebRTC Peer Connection with OpenAI.");
         establishOAIConnection();
@@ -264,7 +267,7 @@
                     }
 
                     isProcessingAudio = false;
-                    await processText(text);
+                    await processUserInput(text);
                     break;
                 }
             }
@@ -277,14 +280,15 @@
     // Deliberation / agent response
     // ---------------------------------------------------------------------------
 
-    async function processText(text: string) {
+    async function processUserInput(text: string) {
         try {
             const res = await manageDeliberationInstanceLocally(
                 text,
                 awaitTime,
                 endTime,
                 startTime,
-                fetch
+                fetch, 
+                data.sess_cookies as string,
             );
 
             if (!res) {
@@ -299,25 +303,16 @@
                     break;
 
                 case "automated.response":
-                    await handleAgentResponse(res.response);
-
-                    if (res.memory) {
-                        await addInteraction(res.memory);
-                    } else {
-                        console.warn("Automated response has no memory payload.");
-                    }
+                    await playAgentResponse(res.response);
                     sessionStorage.setItem("updatedTime", new Date().toISOString());
                     break;
-
-                default:
-                    console.warn("Unhandled deliberation response type:", res.type);
-            }
+                }
         } catch (err) {
             console.error("Error processing text:", err);
         }
     }
 
-    async function handleAgentResponse(agentResponse: string) {
+    async function playAgentResponse(agentResponse: string) {
         console.log("Agent response:", agentResponse);
 
         // Mute the user mic while the agent speaks to prevent feedback / echo
@@ -373,7 +368,7 @@
             console.error("Error stopping video tracks:", err);
         }
 
-        goto(`/reflection?demo=true`);
+        goto('/reflection?demo=true');
     }
 </script>
 

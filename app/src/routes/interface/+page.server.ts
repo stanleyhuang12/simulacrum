@@ -12,7 +12,7 @@ export const load: PageServerLoad = async( event )=>{
     if (event.url.searchParams.get('demo') === "true") {
         return { 
             demo: true, 
-            sess_cookies: sess_cookies, 
+            sess_cookies: sess_cookies || "is_demo", 
             lawmakerAvatarURL: lawmakerAvatarCache, 
         }
         
