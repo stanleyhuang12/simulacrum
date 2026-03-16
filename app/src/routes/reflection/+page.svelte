@@ -2,7 +2,8 @@
     import Notification from "$models/Notification.svelte";
     import { onMount } from "svelte";
     import type { PageData, PageProps } from "../$types";
-  import { hydrateDeliberationLocally } from "$models/+deliberations";
+    import { hydrateDeliberationInstance, loadOrCreateDeliberation } from "$models/+deliberations";
+  import { saveDeliberation } from "$models/+local";
 
     let { data } = $props(); 
 
@@ -22,7 +23,6 @@
     const IDB_KEY = data.userID; 
     const IDB_NAME = 'reflection-audio-db';
     const IDB_STORE_AUDIO = 'recordings';
-    const IDB_STORE_TEXT = 'transcriptions'; 
 
     let showNotification = $state(false); 
     let alertMessage = $state(""); 
@@ -34,8 +34,6 @@
             req.onsuccess = () => resolve(req.result);
             req.onupgradeneeded = (e) => {
                 (e.target as IDBOpenDBRequest).result.createObjectStore(IDB_STORE_AUDIO);
-                (e.target as IDBOpenDBRequest).result.createObjectStore(IDB_STORE_TEXT);
-
             };
         });
     }
@@ -123,9 +121,6 @@
                     console.error("MediaRecorder error:", event); 
             };
 
-            mediaRecorder.onstop = () => {
-
-            }
             mediaRecorder.start(250); // note this 250 ms
             
             draw(); 
@@ -220,7 +215,6 @@
         stopDrawing();
         
         await clearFromIndexedDB(IDB_STORE_AUDIO, IDB_KEY);
-        await clearFromIndexedDB(IDB_STORE_TEXT, IDB_KEY); // transcription version**
         alertMessage = "Cleared audio data.";
         showNotification = true; 
 
@@ -249,22 +243,23 @@
     async function convertBlobToAudioFile(blob: Blob) {
         return await new File([blob], "recording.webm", {type: blob.type})
     }
+   
+    async function saveReflectionToDeliberation(reflection: string) {
+        const deliberation = await loadOrCreateDeliberation(data.userID);
 
-    async function saveReflectionsLocally(reflection?:string) {
-        if (reflection) {
-            const deliberation = await hydrateDeliberationLocally(); 
-            deliberation.logUserReflection(reflection); 
-        } else {
-            const reflection = await retrieveFromIndexedDB(IDB_STORE_TEXT, IDB_KEY) as string; 
-            const deliberation = await hydrateDeliberationLocally(); 
-            deliberation.logUserReflection(reflection); 
-        }
+        deliberation.logUserReflection(reflection);
+        console.log("Saving...", reflection)
+
+        await saveDeliberation(
+            data.userID,
+            deliberation.toJSON()
+        );
 
     }
 
     async function submitAudioData() {
-        /* Feeds the data by submitting audio blobs to localStorage so that we can have users play it again if needed  */
         await saveRecordingLocally(); 
+        /* Feeds the data by submitting audio blobs to localStorage so that we can have users play it again if needed  */
         
         if (audioStream) {
             audioStream.getTracks().forEach(track => track.stop());
@@ -276,7 +271,7 @@
         if (!audioBlob) throw new Error('No audio found');
 
         const formData = new FormData(); 
-        const audioFile = await convertBlobToAudioFile(audioBlob)
+        const audioFile = await convertBlobToAudioFile(audioBlob as Blob)
         formData.append("file", audioFile); 
         formData.append("model", "gpt-4o-transcribe")
         formData.append("language", "en")
@@ -287,7 +282,6 @@
         });
 
         /* Then, we make sure to retrieve the audio back */
-
         const result = await fetch("/api/speech-to-text", {
             method: "POST", 
             body: formData
@@ -301,19 +295,15 @@
 
         const res = await result.json()
         if (res.success) {
-            console.log(res.transcriptions); 
+            console.log("Res", res)
             alertMessage = "Reflections submitted!"; 
             showNotification = true; 
-            await saveToIndexedDB(IDB_STORE_TEXT, IDB_KEY, res.transcriptions); 
-        }
-        if (isDemo) {
-            saveReflectionsLocally(); 
-        } else {
-            const resultSave = await fetch("/api/manage-user-sensemaking/reflection", {
-                method: "POST", 
-                body: res.transcriptions
-            })
-            if (!resultSave.ok) { throw new Error(await resultSave.text())}
+
+            const transcriptionData = JSON.parse(res.transcriptions)
+            console.log(transcriptionData)
+            console.log(transcriptionData.text)
+            saveReflectionToDeliberation(transcriptionData.text); 
+            console.log("Successfully saved reflection to deliberation instance.")
         }
     }
 
