@@ -179,7 +179,7 @@ export class Lawmaker {
 
         const systemInstructions: ChatMessage = {
             role: "system",
-            content: winddown ? this.persona : closeConversation,
+            content: winddown ? closeConversation : this.persona,
         };
 
         const messages: ChatMessage[] = [systemInstructions];
@@ -237,7 +237,7 @@ export class Lawmaker {
 export class Deliberation extends Simulacrum {
     public ideology: string;
     public lawmaker_name: string;
-    public conversation_turn: number = 0; 
+    // public conversation_turn: number = 0; 
     public elapsed_time!: number; 
     public createdAt: Date;
     public updatedAt: Date;
@@ -263,6 +263,10 @@ export class Deliberation extends Simulacrum {
     
         this._init_virtual_lawmaker(); 
         this._diffMinSec(this.createdAt, this.updatedAt)
+    }
+
+    public get conversation_turn () {
+        return this.lawmaker._memory.length 
     }
 
     public _init_virtual_lawmaker() {
@@ -388,7 +392,7 @@ export class Deliberation extends Simulacrum {
         responseEnd: Date,
     ) {
         const turn = this.conversation_turn;
-        this.conversation_turn++;
+        // this.conversation_turn++;
 
         const time = this.compileTime(responseAwait, responseStart, responseEnd)
 
@@ -473,7 +477,6 @@ export async function hydrateDeliberationLocally() {
         new Date(updatedTime) 
     ); 
     d.lawmaker._rehydrate_memory(memory); 
-    d.conversation_turn = conversationTurn; 
 
     return d 
 }
@@ -499,9 +502,6 @@ export function hydrateDeliberationInstance( record: any) {
     if (record.persona) {
         d.lawmaker.persona = record.persona
     }
-
-    if (record.conversation_turn) {
-        d.conversation_turn = record.conversation_turn
-    }
+    
     return d
 }
