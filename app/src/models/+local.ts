@@ -1,27 +1,11 @@
 
 const DB_NAME    = "deliberations_db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "deliberations";
  
 // ---------------------------------------------------------------------------
 // Stable per-user key (cookie-based with localStorage fallback)
 // ---------------------------------------------------------------------------
- 
-export function getUserKey(): string {
-  // Prefer a server-set "uid" cookie
-  const match = document.cookie.match(/(?:^|;\s*)uid=([^;]+)/);
-  if (match) return match[1];
- 
-  // Generate once and persist in both localStorage and a cookie
-  let key = localStorage.getItem("uid");
-  if (!key) {
-    key = crypto.randomUUID();
-    localStorage.setItem("uid", key);
-    const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
-    document.cookie = `uid=${key}; expires=${expires}; path=/; SameSite=Lax`;
-  }
-  return key;
-}
  
 // ---------------------------------------------------------------------------
 // IndexedDB helpers
@@ -51,9 +35,8 @@ function openDB(): Promise<IDBDatabase> {
  * Serialise and save the Deliberation.
  * Dates survive via JSON → ISO string → Date reviver on load.
  */
-export async function saveDeliberation(d: object): Promise<void> {
+export async function saveDeliberation(key: string, d: object): Promise<void> {
   const db  = await openDB();
-  const key = getUserKey();
  
   return new Promise((resolve, reject) => {
     const tx    = db.transaction(STORE_NAME, "readwrite");
@@ -72,10 +55,9 @@ export async function saveDeliberation(d: object): Promise<void> {
 /**
  * Load the stored snapshot (or null).  ISO date strings are revived to Date.
  */
-export async function loadDeliberation(): Promise<Record<string, any> | null> {
+export async function loadDeliberation(key: string): Promise<Record<string, any> | null> {
   const db  = await openDB();
-  const key = getUserKey();
- 
+
   return new Promise((resolve, reject) => {
     const tx    = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
@@ -91,9 +73,8 @@ export async function loadDeliberation(): Promise<Record<string, any> | null> {
 }
  
 /** Remove the record for the current user (call at simulation start). */
-export async function clearDeliberation(): Promise<void> {
+export async function clearDeliberation(key: string): Promise<void> {
   const db  = await openDB();
-  const key = getUserKey();
  
   return new Promise((resolve, reject) => {
     const tx    = db.transaction(STORE_NAME, "readwrite");
