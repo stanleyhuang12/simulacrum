@@ -4,6 +4,8 @@
     import type { PageData, PageProps } from "../$types";
     import { hydrateDeliberationInstance, loadOrCreateDeliberation } from "$models/+deliberations";
   import { saveDeliberation } from "$models/+local";
+  import { redirect } from "@sveltejs/kit";
+  import { goto } from "$app/navigation";
 
     let { data } = $props(); 
 
@@ -304,6 +306,7 @@
             console.log(transcriptionData.text)
             saveReflectionToDeliberation(transcriptionData.text); 
             console.log("Successfully saved reflection to deliberation instance.")
+            goto('/retry?demo=true');
         }
     }
 

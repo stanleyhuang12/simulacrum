@@ -6,7 +6,7 @@ export const load: PageServerLoad = async ( event ): Promise<({userID: string, i
     const userID = event.cookies.get("session-id-delibs");
     const isDemo = event.url.searchParams.get('demo') == "true"; 
     if (!userID) { 
-        if (isDemo) { return {userID: "demo-key", isDemo: true} } else { throw redirect(404, "/form") }
+        if (isDemo) { return {userID: "is_demo", isDemo: true} } else { throw redirect(404, "/form") }
     }
 
     return {userID: userID, isDemo: isDemo}; 
