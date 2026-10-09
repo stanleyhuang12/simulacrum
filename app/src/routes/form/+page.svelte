@@ -1,501 +1,466 @@
 <script lang="ts">
-    import { enhance } from '$app/forms';
-    import { page } from '$app/state';
-    import { onMount } from "svelte";
-    import { fade } from 'svelte/transition';
-    import {  random_lawmaker_persona_generator } from "$models/+utils"
+  import { enhance } from "$app/forms";
+  import { fade } from "svelte/transition";
+  import {
+    random_lawmaker_persona_generator,
+    genders,
+    ethnicities,
+    ageBrackets,
+    ideology as ideologies,
+    usStates
+  } from "$models/+utils";
+  import type { ActionData } from "./$types";
 
-    const demo = page.url.searchParams.get('demo'); 
-    const actionUrl = demo ? `/submit?demo=true` : `/submit`; 
+  let { form }: { form: ActionData } = $props();
 
-    import type { PageData, ActionData } from './$types';
+  const genderLabels: Record<string, string> = {
+    female: "Female",
+    male: "Male",
+    nonbinary: "Non-binary",
+    "prefer-not-to-say": "Prefer not to say"
+  };
 
-	  let { data, form }: {data: PageData, form: ActionData} = $props();
+  const ethnicityLabels: Record<string, string> = {
+    "hispanic-latino": "Hispanic / Latino",
+    "white-non-hispanic": "White, non-Hispanic",
+    "black-african-american": "Black / African American",
+    asian: "Asian",
+    "native-american": "Native American",
+    "pacific-islander": "Pacific Islander",
+    "prefer-not-to-say": "Prefer not to say"
+  };
 
-    let selectedLawmakerProperties: Record<string, string> = $state({
-        lawmaker_name: "",
-        ideology: "",
-        state: "",
-        ethnicity: "",
-        gender: "",
-    });
+  type LawmakerMode = "none" | "random" | "specify";
 
-    let lawmakerSelectionMade = $state(false); 
-    let showRandomForm = $state(false); 
-    let showPreSpecForm = $state(false); 
+  let mode = $state<LawmakerMode>("none");
+  let isSubmitting = $state(false);
+  let ideologyIndex = $state(2);
 
-    const labels = [
-      "Very conservative",
-      "Conservative",
-      "Moderate",
-      "Liberal",
-      "Very liberal"
-    ];
+  let lawmaker = $state({
+    lawmaker_name: "",
+    gender: "",
+    ethnicity: "",
+    age: "",
+    state: "",
+    ideology: ideologies[2]
+  });
 
-    let isSubmitting = $state(false)
-    // The slider value (numeric)
-    let sliderValue = $state(2); // starting at "Moderate"
-    onMount(async () => {
-        console.log("Component is mounted.")
-    });
+  /* The slider is the source of truth for ideology when specifying by hand. */
+  $effect(() => {
+    if (mode === "specify") lawmaker.ideology = ideologies[ideologyIndex];
+  });
 
-    function handlePreSpecClick() {
-      lawmakerSelectionMade = true;
-      showPreSpecForm = true;
-    }
+  const missing = $derived(form?.is_missing ?? []);
+  const invalid = $derived(form?.is_invalid ?? []);
+  const lawmakerIncomplete = $derived(
+    ["lawmaker_name", "ideology", "state", "ethnicity", "gender", "age"].some((f) =>
+      missing.includes(f)
+    )
+  );
 
-    function handleRandomClick() {
-      lawmakerSelectionMade = true;
-      showRandomForm = true;
-      const randomPersona = random_lawmaker_persona_generator();
-      selectedLawmakerProperties.lawmaker_name = randomPersona.lawmaker_name;
-      selectedLawmakerProperties.gender = randomPersona.gender;
-      selectedLawmakerProperties.ethnicity = randomPersona.ethnicity;
-      selectedLawmakerProperties.ideology = randomPersona.ideology;
-      selectedLawmakerProperties.state = randomPersona.state;
-    }
+  function generateRandom() {
+    const persona = random_lawmaker_persona_generator();
+    lawmaker = {
+      lawmaker_name: persona.lawmaker_name,
+      gender: persona.gender,
+      ethnicity: persona.ethnicity,
+      age: persona.age,
+      state: persona.state,
+      ideology: persona.ideology
+    };
+    mode = "random";
+  }
 
+  function specifyManually() {
+    lawmaker = {
+      lawmaker_name: "",
+      gender: "",
+      ethnicity: "",
+      age: "",
+      state: "",
+      ideology: ideologies[ideologyIndex]
+    };
+    mode = "specify";
+  }
 </script>
 
+<div class="ls-page">
+  <header class="intro">
+    <p class="ls-eyebrow">Legislative Simulacrum</p>
+    <h1>Practice your advocacy with a virtual lawmaker</h1>
+    <p class="ls-lede">
+      Tell us about yourself and the policy you are advocating for, then choose who you would
+      like to meet. The whole session takes about 20 minutes.
+    </p>
+  </header>
 
-<style>
-div.form-grid { 
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  {#if form?.server_error}
+    <div class="ls-banner ls-banner--error server-error" transition:fade>
+      <span aria-hidden="true">⚠</span>
+      <span>{form.server_error}</span>
+    </div>
+  {/if}
 
-  align-items: start;
-  
-}
-
-:root {
-  --primary: rgb(22, 11, 215);
-  --primary-hover: rgb(10, 0, 280);
-  --surface: rgba(255, 255, 255, 0.9);
-  --border: #ddd;
-  --text: #cf9999;
-  --radius: 8px;
-  --gap: 1rem;
-}
-
-#begin-delibs-survey-form {
-  font-size: 1.35rem; 
-  width: min(95%, 1100px);
-  height: min(95%, 70vh);
-  margin: 2rem auto;
-  padding: 1.5rem;
-  background: var(--su rface);
-  border-radius: var(--radius);
-  backdrop-filter: blur(8px) saturate(120%);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  color: var(--text);
-}
-
-/* Sections */
-.user-data,
-.lawmaker-data {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  border-top: 1px solid var(--border);
-  padding-top: 1.5rem;
-  margin-left: 0.5rem;
-}
-
-.user-data {
-  margin-right: 1rem;
-}
-
-.label-question .error {
-  border: 2px solid red;
-}
-
-.lawmaker-selection-buttons {
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
-  justify-content: center; 
-  height: 100%;
-  transform: translateY(135%)
-}
-/* Labels + inputs */
-.label-question {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
-.label-question input {
-  width: 100%;
-  max-width: 400px;
-  padding: 0.5rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  transition: all 0.2s ease;
-  background-color: #fff;
-  color: var(--text);
-}
-.label-question input:hover {
-  border-color: var(--primary);
-}
-.label-question input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(140, 9, 227, 0.3);
-}
-
-/* Radio group */
-
-/*** SELECT BOXES ****/
-.label-question select { 
-  outline: none; 
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  transition: all 0.2s ease;
-  background: rgba(255, 255, 255, 0.1); /* semi-transparent */
-  color: var(--text);
-  backdrop-filter: blur(8px) saturate(120%);
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
-  transition: all 0.2s ease;
-  appearance: none; /* removes default arrow styling */
-  cursor: pointer;
-}
-
-.label-question select:hover {
-  border-color: var(--primary);
-}
-
-.label-question select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(125, 0, 208, 0.3);
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.slider-wrapper {
-  width: 100%
-}
-
-/** Button **/
-button {
-  margin: 2rem auto;
-  display: block;
-  padding: 0.75rem 1.5rem;
-  background-color: var(--primary);
-  color: #fff;
-  font-size: 1rem; 
-  font-weight: 700;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-button:hover {
-  background-color: var(--primary-hover);
-}
-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(125, 0, 208, 0.4);
-}
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.field-error {
-  color: #e53e3e;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-}
-
-.label-question textarea {
-  width: 70%;
-  min-height: 200px; 
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text);
-  backdrop-filter: blur(8px) saturate(120%);
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
-  resize: vertical; /* allow vertical resizing only */
-  overflow: auto;
-  transition: all 0.2s ease;
-  font-size: large; 
-}
-
-/* ----------------------------
-   Dark Mode (system preference)
-   ---------------------------- */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface: rgba(69, 6, 121, 0.9);
-    --border: rgba(255, 255, 255, 0.1);
-    --text: rgba(255, 255, 255, 0.904);
-  }
-
-  #begin-delibs-survey-form {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    color: var(--text);
-  }
-
-  .label-question input {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text);
-    border: 1px solid var(--border);
-    font-size: large; 
-  }
-
-}
-.lawmaker-error-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  margin-bottom: 1rem;
-  background: rgba(229, 62, 62, 0.12);
-  border: 1.5px solid #e53e3e;
-  border-radius: var(--radius);
-  color: #e53e3e;
-}
-
-.lawmaker-error-banner strong {
-  display: block;
-  font-size: 0.95rem;
-}
-
-.lawmaker-error-banner p {
-  margin: 0.2rem 0 0;
-  font-size: 0.85rem;
-  opacity: 0.85;
-}
-
-.error-icon {
-  font-size: 1.4rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.submit-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  background: rgba(10, 0, 40, 0.75);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.spinner-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
-  background: rgba(69, 6, 121, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius);
-  padding: 2.5rem 3rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1.1rem;
-}
-
-.spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.15);
-  border-top-color: rgb(22, 11, 215);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-</style>
-
-<form  data-sveltekit-keepfocus id="begin-delibs-survey-form" method="POST" action=actionUrl use:enhance={
-      () => {
+  <form
+    id="begin-delibs-survey-form"
+    method="POST"
+    action="?/submit"
+    data-sveltekit-keepfocus
+    use:enhance={() => {
       isSubmitting = true;
       return async ({ update }) => {
         await update();
-        isSubmitting = false;  // note for stanley: the use:enhance is a callback fn
-      };}}>
-  {#if isSubmitting}
-  <div class="submit-overlay" transition:fade>
-      <div class="spinner-card">
-        <div class="spinner"></div>
-        <p>Entering deliberations...</p>
-      </div>
-    </div>
-  {/if}
-  <div class="form-grid">
-    <input type="hidden" name="demo" value={demo ? "true" : "false"} />
+        isSubmitting = false;
+      };
+    }}
+  >
+    <div class="form-grid">
+      <!-- ------------------------------------------------------ advocate -->
+      <section class="ls-card">
+        <h2>About you</h2>
 
-    <!-- User Section -->
-    <section class="user-section">
-      <h1 color="purple">Legislative Simulacrum</h1>
-      <p>Fill out the form to start interacting with virtual lawmakers.</p>
+        <div class="fields">
+          <label class="ls-field">
+            <span>Your name</span>
+            <input
+              class="ls-input"
+              type="text"
+              name="username"
+              placeholder="Jordan Rivera"
+              aria-invalid={missing.includes("username")}
+            />
+            {#if missing.includes("username")}
+              <span class="ls-error" transition:fade>Please enter your name.</span>
+            {/if}
+          </label>
 
-      <div class="user-data">
-        <h3>User Data</h3>
-        <label class="label-question">
-          What is your name?
-          <input type="text" name="username" placeholder="John Doe" class:error={form?.is_missing?.includes("username")}/>
-        </label>
-        {#if form?.is_missing?.includes('username')}
-            <span class="field-error" transition:fade>Please enter a name. </span>
-        {/if}
+          <label class="ls-field">
+            <span>Email</span>
+            <input
+              class="ls-input"
+              type="email"
+              name="email"
+              placeholder="jordan@example.org"
+              aria-invalid={missing.includes("email") || invalid.includes("email")}
+            />
+            {#if missing.includes("email")}
+              <span class="ls-error" transition:fade>Please enter an email address.</span>
+            {:else if invalid.includes("email")}
+              <span class="ls-error" transition:fade>That does not look like a valid email address.</span>
+            {/if}
+          </label>
 
-        <label class="label-question">
-          What is your email?
-          <input type="email" name="email" placeholder="johndoe@gmail.com" class:error={form?.is_missing?.includes("email") || form?.is_invalid?.includes('email')}/>
-        </label>
-        {#if form?.is_missing?.includes('email')}
-            <span class="field-error" transition:fade>Please enter an email address.</span>
-        {/if}
-        {#if form?.is_invalid?.includes('email')}
-            <span class="field-error" transition:fade>Please enter a valid email address.</span>
+          <label class="ls-field">
+            <span>Organization</span>
+            <input
+              class="ls-input"
+              type="text"
+              name="organization"
+              placeholder="STRIPED"
+              aria-invalid={missing.includes("organization")}
+            />
+            <span class="ls-hint">Enter N/A if you are not representing an organization.</span>
+            {#if missing.includes("organization")}
+              <span class="ls-error" transition:fade>Please enter an organization, or N/A.</span>
+            {/if}
+          </label>
 
-        {/if}
-
-        <label class="label-question">
-          What organization are you part of?
-          <input 
-            type="text"
-            name="organization" 
-            placeholder="Strategic Training Initiative for the Prevention of Eating Disorders" 
-            class:error={form?.is_missing?.includes("organization")}
-          />
-        </label>
-        {#if form?.is_missing?.includes('organization')}
-            <span class="field-error" transition:fade>Please enter an affiliated organization or N/A if not applicable.</span>
-        {/if}
-
-        <label class="label-question">
-          Policy topic:
-          <textarea name="policy_topic" placeholder="Out of Kids' Hands campaign..." class:error={form?.is_missing?.includes("policy_topic")}></textarea>
-        </label>
-        {#if form?.is_missing?.includes('policy_topic')}
-            <span class="field-error" transition:fade>Please enter a brief description of the policy advocacy topic.</span>
-        {/if}
-      </div>
-
-    </section>
-
-    <!-- Lawmaker Section -->
-    <section class="lawmaker-section">
-      {#if !lawmakerSelectionMade}
-        <div class="lawmaker-selection-buttons" transition:fade>
-          <button type="button" onclick={handleRandomClick}>Generate Random Lawmaker</button>
-          <button type="button" onclick={handlePreSpecClick}>Pre-specify Lawmaker Profile</button>
+          <label class="ls-field">
+            <span>What policy are you advocating for?</span>
+            <textarea
+              class="ls-textarea"
+              name="policy_topic"
+              placeholder="The Out of Kids' Hands campaign — restricting the sale of diet pills and muscle-building supplements to minors…"
+              aria-invalid={missing.includes("policy_topic")}
+            ></textarea>
+            <span class="ls-hint">
+              A sentence or two is plenty. The lawmaker will ask you to say more.
+            </span>
+            {#if missing.includes("policy_topic")}
+              <span class="ls-error" transition:fade>Please describe your policy topic.</span>
+            {/if}
+          </label>
         </div>
-      {/if}
+      </section>
 
-      {#if showPreSpecForm}
-        <div class="lawmaker-data" transition:fade>
-          <h3>Pre-specify Lawmaker</h3>
+      <!-- ------------------------------------------------------ lawmaker -->
+      <section class="ls-card">
+        <h2>Who you will meet</h2>
 
-          <label class="label-question">
-            Name
-            <input type="text" name="lawmaker_name" placeholder="Representative John Doe" />
-          </label>
+        {#if mode === "none"}
+          <div class="chooser" transition:fade>
+            <p class="ls-lede">
+              You can meet a randomly generated lawmaker, or describe one yourself.
+            </p>
+            <button class="ls-btn" type="button" onclick={generateRandom}>
+              Generate a random lawmaker
+            </button>
+            <button class="ls-btn ls-btn--secondary" type="button" onclick={specifyManually}>
+              Describe one myself
+            </button>
+          </div>
+        {/if}
 
-          <label class="label-question">
-            Gender
-            <select name="gender">
-              <option value="">-- Select gender --</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-              <option value="non-binary">Non-binary</option>
-              <option value="other">Other</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
-            </select>
-          </label>
+        {#if mode === "random"}
+          <div class="fields" transition:fade>
+            <dl class="summary">
+              <div><dt>Name</dt><dd>{lawmaker.lawmaker_name}</dd></div>
+              <div><dt>Gender</dt><dd>{genderLabels[lawmaker.gender] ?? lawmaker.gender}</dd></div>
+              <div><dt>Ethnicity</dt><dd>{ethnicityLabels[lawmaker.ethnicity] ?? lawmaker.ethnicity}</dd></div>
+              <div><dt>Age</dt><dd>{lawmaker.age}</dd></div>
+              <div><dt>State</dt><dd>{lawmaker.state}</dd></div>
+              <div><dt>Political orientation</dt><dd>{lawmaker.ideology}</dd></div>
+            </dl>
 
-          <label class="label-question">
-            Ethnicity
-            <select name="ethnicity">
-              <option value="">-- Select ethnicity --</option>
-              <option value="hispanic-latino">Hispanic / Latino</option>
-              <option value="non-hispanic-white">White Non-Hispanic</option>
-              <option value="black-african-american">Black / African American</option>
-              <option value="asian">Asian</option>
-              <option value="native-american">Native American</option>
-              <option value="pacific-islander">Pacific Islander</option>
-              <option value="other">Other</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
-            </select>
-          </label>
-          <label class="label-question">
-            State
-            <input type="text" name="state" placeholder="e.g., California" />
-          </label>
-        
-          <label class="label-question">
-            Political orientation
-            <div class="slider-wrapper">
+            <input type="hidden" name="lawmaker_name" value={lawmaker.lawmaker_name} />
+            <input type="hidden" name="gender" value={lawmaker.gender} />
+            <input type="hidden" name="ethnicity" value={lawmaker.ethnicity} />
+            <input type="hidden" name="age" value={lawmaker.age} />
+            <input type="hidden" name="state" value={lawmaker.state} />
+            <input type="hidden" name="ideology" value={lawmaker.ideology} />
+
+            <div class="row">
+              <button class="ls-btn ls-btn--secondary" type="button" onclick={generateRandom}>
+                Generate another
+              </button>
+              <button class="ls-btn ls-btn--secondary" type="button" onclick={specifyManually}>
+                Describe one myself
+              </button>
+            </div>
+          </div>
+        {/if}
+
+        {#if mode === "specify"}
+          <div class="fields" transition:fade>
+            <label class="ls-field">
+              <span>Name</span>
               <input
+                class="ls-input"
+                type="text"
+                name="lawmaker_name"
+                bind:value={lawmaker.lawmaker_name}
+                placeholder="Representative Dana Whitfield"
+                aria-invalid={missing.includes("lawmaker_name")}
+              />
+            </label>
+
+            <div class="row">
+              <label class="ls-field">
+                <span>Gender</span>
+                <select
+                  class="ls-select"
+                  name="gender"
+                  bind:value={lawmaker.gender}
+                  aria-invalid={missing.includes("gender")}
+                >
+                  <option value="">Select…</option>
+                  {#each genders as g}
+                    <option value={g}>{genderLabels[g] ?? g}</option>
+                  {/each}
+                </select>
+              </label>
+
+              <label class="ls-field">
+                <span>Age</span>
+                <select
+                  class="ls-select"
+                  name="age"
+                  bind:value={lawmaker.age}
+                  aria-invalid={missing.includes("age")}
+                >
+                  <option value="">Select…</option>
+                  {#each ageBrackets as a}
+                    <option value={a}>{a}</option>
+                  {/each}
+                </select>
+              </label>
+            </div>
+
+            <label class="ls-field">
+              <span>Ethnicity</span>
+              <select
+                class="ls-select"
+                name="ethnicity"
+                bind:value={lawmaker.ethnicity}
+                aria-invalid={missing.includes("ethnicity")}
+              >
+                <option value="">Select…</option>
+                {#each ethnicities as e}
+                  <option value={e}>{ethnicityLabels[e] ?? e}</option>
+                {/each}
+              </select>
+            </label>
+
+            <label class="ls-field">
+              <span>State</span>
+              <select
+                class="ls-select"
+                name="state"
+                bind:value={lawmaker.state}
+                aria-invalid={missing.includes("state")}
+              >
+                <option value="">Select…</option>
+                {#each usStates as s}
+                  <option value={s}>{s}</option>
+                {/each}
+              </select>
+            </label>
+
+            <div class="ls-field">
+              <span>Political orientation</span>
+              <input
+                class="slider"
                 type="range"
                 min="0"
-                max={labels.length - 1}
+                max={ideologies.length - 1}
                 step="1"
-                bind:value={sliderValue}
+                bind:value={ideologyIndex}
+                aria-label="Political orientation"
               />
+              <input type="hidden" name="ideology" value={lawmaker.ideology} />
+              <span class="ls-hint">Selected: <strong>{lawmaker.ideology}</strong></span>
             </div>
-              <input
-                type="hidden"
-                name="ideology"
-                value={labels[sliderValue]}
-              />
 
-            <p>Selected: <strong>{labels[sliderValue]}</strong></p>
-          </label>
-
-        </div>
-      {/if}
-  {#if showRandomForm}
-    <div class="lawmaker-data" transition:fade>
-      <h3>Random Lawmaker Generated</h3>
-      <p><strong>Name:</strong>{selectedLawmakerProperties.lawmaker_name}</p>
-      <input type="hidden" name="lawmaker_name" value={selectedLawmakerProperties.lawmaker_name}>
-
-      <p><strong>Gender:</strong>{selectedLawmakerProperties.gender}</p>
-      <input type="hidden" name="gender"  value={selectedLawmakerProperties.gender} />
-
-      <p><strong>Ethnicity:</strong>{selectedLawmakerProperties.ethnicity}</p>
-      <input type="hidden" name="ethnicity"  value={selectedLawmakerProperties.ethnicity} />
-
-      <p><strong>State:</strong>{selectedLawmakerProperties.state}</p>
-      <input type="hidden" name="state"  value={selectedLawmakerProperties.state}/>
-
-      <p><strong>Political orientation:</strong>{selectedLawmakerProperties.ideology}</p>
-      <input type="hidden" name="ideology"  value={selectedLawmakerProperties.ideology}/>
-    </div>
-   {/if}
-          {#if Object.keys(selectedLawmakerProperties).some(val => form?.is_missing?.includes(val))}
-          <span class="field-error" transition:fade> Make sure to properly initialize your virtual lawmaker. </span>
-          <div class="lawmaker-error-banner" transition:fade>
-          <span class="error-icon">⚠</span>
-          <div>
-            <strong>Lawmaker profile incomplete</strong>
-            <p>Make sure all lawmaker fields are filled in before submitting.</p>
+            <button class="ls-btn ls-btn--secondary" type="button" onclick={generateRandom}>
+              Generate one for me instead
+            </button>
           </div>
-        </div>
-      {/if}
-  </section>
-  
-  </div>
+        {/if}
 
-  <button type="submit" formaction="?/submit" disabled={isSubmitting}>
-    {isSubmitting ? 'Loading...' : 'Enter simulated Deliberations with your virtual lawmaker!'}
-  </button>
-</form>
+        {#if lawmakerIncomplete}
+          <div class="ls-banner ls-banner--error" transition:fade>
+            <span aria-hidden="true">⚠</span>
+            <div>
+              <strong>Lawmaker profile incomplete.</strong>
+              <p style="margin:0.2rem 0 0">Fill in every lawmaker field before submitting.</p>
+            </div>
+          </div>
+        {/if}
+      </section>
+    </div>
+
+    <div class="submit-row">
+      <button class="ls-btn" type="submit" disabled={isSubmitting || mode === "none"}>
+        {#if isSubmitting}<span class="ls-spinner"></span>{/if}
+        {isSubmitting ? "Setting up your meeting…" : "Start the meeting"}
+      </button>
+      {#if mode === "none"}
+        <span class="ls-hint">Choose a lawmaker above to continue.</span>
+      {/if}
+    </div>
+  </form>
+</div>
+
+{#if isSubmitting}
+  <div class="overlay" transition:fade>
+    <div class="overlay-card">
+      <div class="ls-spinner" style="width:2.5rem;height:2.5rem;border-width:3px"></div>
+      <p style="margin:0">Setting up your meeting…</p>
+    </div>
+  </div>
+{/if}
+
+<style>
+  .intro {
+    max-width: var(--ls-measure);
+    margin-bottom: 1.75rem;
+  }
+
+  .server-error {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  .fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-top: 1rem;
+  }
+
+  .chooser {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .row > .ls-field {
+    flex: 1 1 10rem;
+  }
+
+  .summary {
+    margin: 0;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .summary > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid var(--ls-border);
+  }
+
+  .summary dt {
+    color: var(--ls-text-muted);
+    font-size: 0.88rem;
+  }
+
+  .summary dd {
+    margin: 0;
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .slider {
+    width: 100%;
+    accent-color: var(--ls-accent);
+  }
+
+  .submit-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--ls-bg) 80%, transparent);
+    backdrop-filter: blur(4px);
+  }
+
+  .overlay-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 2.5rem 3rem;
+    background: var(--ls-surface);
+    border: 1px solid var(--ls-border);
+    border-radius: var(--ls-radius-lg);
+    box-shadow: var(--ls-shadow-lg);
+    color: var(--ls-accent);
+  }
+</style>

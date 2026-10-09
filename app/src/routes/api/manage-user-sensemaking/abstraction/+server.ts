@@ -3,58 +3,43 @@ import { validateAndRetrieveDeliberation, updateDeliberationSensemaking } from "
 import { hydrateDeliberationInstance } from "$models/+deliberations";
 import { error, json } from "@sveltejs/kit";
 
-export const GET: RequestHandler = async(event) => {
+export const GET: RequestHandler = async (event) => {
     try {
         const sessionId = event.cookies.get('session-id-delibs');
         const dRecord = await validateAndRetrieveDeliberation(sessionId);
-        if (!dRecord) { return error(404, "Deliberation object not found. ")};
-        const d = hydrateDeliberationInstance(dRecord)
+        if (!dRecord) return error(404, "Deliberation object not found.");
+
+        const d = hydrateDeliberationInstance(dRecord.toJSON());
 
         return json({
-            data: d.userSenseMaking.abstraction, 
-            success: true,
-        })
-
-    } catch(err){
-        return error(500, `Could not retrieve the abstractions. Error: ${err}`)
-      }
-}
-
-export const POST: RequestHandler = async( event ) => {
-    /*
-     * If user makes a request for AI-assisted support, we will request feedback, update the database, and return the AI assisted feedback 
-     */
-    
-    try {
-      const sessionId = event.cookies.get('session-id-delibs');
-      const dRecord = await validateAndRetrieveDeliberation(sessionId);
-      if (!dRecord) { return error(404, "Deliberation object not found. ")}; 
-
-      const d = hydrateDeliberationInstance(dRecord); 
-
-      
-      const res = await event.request.json(); 
-
-      const episodeNumber: number = res.episodeNumber; 
-      const userAbstraction: string = res.userAbstraction; 
-      const coachAbstraction: string = res.coachAbstraction; 
-    
-      if (coachAbstraction ) {
-        d.logAbstractConceptualization(episodeNumber, userAbstraction, coachAbstraction )
-      } else {
-        d.logAbstractConceptualization(episodeNumber, userAbstraction)
-      }
-
-      await updateDeliberationSensemaking(dRecord, d); 
-      
-      return json({
-        data: coachAbstraction 
-      }); 
-      
-    } catch(err){
-      return error(500, "Could not submit an update the database")
+            data: d.userSensemaking.abstraction ?? null,
+            success: true
+        });
+    } catch (err) {
+        return error(500, `Could not retrieve the abstractions. Error: ${err}`);
     }
-    
-  
-  
-  }
+};
+
+export const POST: RequestHandler = async (event) => {
+    /* Stores what the advocate took away from the session. */
+    try {
+        const sessionId = event.cookies.get('session-id-delibs');
+        const dRecord = await validateAndRetrieveDeliberation(sessionId);
+        if (!dRecord) return error(404, "Deliberation object not found.");
+
+        const d = hydrateDeliberationInstance(dRecord.toJSON());
+
+        const res = await event.request.json();
+        const userAbstraction: string = res.userAbstraction;
+
+        if (!userAbstraction) return error(400, "No abstraction supplied.");
+
+        d.logUserAbstraction(userAbstraction);
+        await updateDeliberationSensemaking(dRecord, d);
+
+        return json({ data: d.userSensemaking.abstraction });
+    } catch (err) {
+        console.error("Could not update abstraction:", err);
+        return error(500, "Could not submit an update to the database.");
+    }
+};

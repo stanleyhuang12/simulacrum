@@ -1,22 +1,10 @@
-import { OPENAI_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async () => {
     return new Response("Speech to text API endpoint requires a POST request.");
 }; 
-
-
-async function validateUser(sess_cookies: string) {
-    const isUserValidated = await fetch("/trial-v1/delibs/retrieve-end-of-call-transcript-and-feedback", {
-        headers: {
-            "Cookies": `session_id_delibs=${sess_cookies}`
-        }
-    })
-    if (!isUserValidated.ok) {
-        return 
-    }
-}
 
 
 export const POST: RequestHandler = async ( {request} ) => {
@@ -36,7 +24,7 @@ export const POST: RequestHandler = async ( {request} ) => {
         const agentResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${OPENAI_API_KEY}`,
+                "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
             },
             body: formData
         })

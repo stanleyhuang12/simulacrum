@@ -1,86 +1,84 @@
 import type { RequestHandler } from './$types';
-import { json, error, text } from '@sveltejs/kit';
-import { redirect } from '@sveltejs/kit';
+import { json, error } from '@sveltejs/kit';
 import { validateAndRetrieveDeliberation, updateDeliberationRecord } from '$db/+server';
 import { hydrateDeliberationInstance } from '$models/+deliberations';
-import type { timeMetadata } from '$models/+deliberations';
-/* GET request will retrieve the DeliberationORM object if it exists in the database  */
 
+export const POST: RequestHandler = async (event) => {
+    const sessionId = event.cookies.get('session-id-delibs');
+    if (!sessionId) return error(401, 'Missing session-id-delibs');
 
-export const POST: RequestHandler = async ( event ) => {
-    const userID = await event.cookies.get('session-id-delibs'); 
-    const sessionId = event.cookies.get('session-id-delibs'); 
-    if (!sessionId) throw error(401, 'Missing session-id-delibs')
+    const res = await event.request.json();
+    const input: string = res.text;
 
-    const res = await event.request.json(); 
-    const input = res.text
-    const responseAwaitTime = res.responseAwaitTime; 
-    const responseStartTime = res.responseStartTime; 
-    const responseEndTime = res.responseEndTime; 
-
-    console.group(`Running manage_deliberation_instance endpoint.`)
-    console.log(`
-        Step 1: Retrieve deliberation instance from database
-        Step 2: Rehydrate a new deliberation instance.
-            Step 2a: Run through guardrails every 3 turns if specified.
-        Step 3: Process the input response given the past memory 
-        Step 4: Update the database 
-        `)
-
-    try { 
-        const delibsRecord = await validateAndRetrieveDeliberation(userID)
-        if (delibsRecord == null) 
-            { return error(404, "No deliberation object found.")}
-
-        if (delibsRecord?.getDataValue('guardrail_tripwire')){
-           event.cookies.set(
-            'session-id-delibs', 
-            sessionId, {
-                 path: '/', 
-                 httpOnly: true, 
-                 sameSite: 'lax', 
-                 maxAge: 72460*60 
-                }
-            ); 
-            redirect(500, "forbidden"); 
-        }
-        // this could be made more efficient by just trying to hydrate and returning the error
-        const d = hydrateDeliberationInstance(delibsRecord)
-        
-        if (d.conversation_turn === 3 || d.conversation_turn % 3 === 0) {
-            console.log("Running guardrail functions")
-            let guardrailResponse = await d._guardrail_moderation(input, event.fetch)
-            console.log(`Guardrail response ${JSON.stringify(guardrailResponse)}`)
-            if (guardrailResponse.triggered) {
-                return json({
-                    type: 'guardrail.triggered',
-                    reason: guardrailResponse.reason
-                }, {status: 403, statusText: "Your session has ended abruptly due to guardrails put in place. Please contact the team to retry application use."})
-            }
-        }; 
-        
-        const response = await d.panel_discussion(input, event.fetch, responseAwaitTime, responseStartTime, responseEndTime); 
-        console.log(`Model response: ${response}`)
-        let savedMemory = d.lawmaker._retrieve_deserialized_memory()
-
-        console.log(savedMemory)
-        await updateDeliberationRecord( delibsRecord, d, savedMemory )
-        
-        console.log('Deliberation record in PostgreSQL updated!')
-        console.log('Completed load function ')
-        console.groupEnd()
-        return json({
-            type: 'automated.response', 
-            response: response,
-            episodeNumber: d.conversation_turn, 
-        }, 
-            { 
-                status: 200
-             }
-        );
-    } catch(err) {
-        console.error(`Error retrieving Deliberation instance from PostgreSQL database, ${err}`)
-        console.groupEnd()
-        return error(500, `${err}`)
+    if (!input || !input.trim()) {
+        return error(400, 'No transcribed text supplied.');
     }
-}; 
+
+    /* These arrive as ISO strings over JSON; the timing maths needs real Dates. */
+    const now = new Date();
+    const responseAwaitTime = res.responseAwaitTime ? new Date(res.responseAwaitTime) : now;
+    const responseStartTime = res.responseStartTime ? new Date(res.responseStartTime) : now;
+    const responseEndTime = res.responseEndTime ? new Date(res.responseEndTime) : now;
+
+    try {
+        const delibsRecord = await validateAndRetrieveDeliberation(sessionId);
+        if (delibsRecord == null) {
+            return error(404, 'No deliberation session found.');
+        }
+
+        if (delibsRecord.getDataValue('guardrail_tripwire')) {
+            return json(
+                { type: 'guardrail.triggered', reason: delibsRecord.getDataValue('guardrail_reason') },
+                { status: 403 }
+            );
+        }
+
+        const d = hydrateDeliberationInstance(delibsRecord.toJSON());
+
+        /* Turns 0-2 are scripted openers, so moderation starts at turn 3 and then
+           runs every third turn over a sliding window of the user's own words. */
+        const turn = d.conversation_turn;
+        if (turn >= 3 && turn % 3 === 0) {
+            const guardrailResponse = await d._guardrail_moderation(input, event.fetch);
+            if (guardrailResponse.triggered) {
+                await updateDeliberationRecord(delibsRecord, d, d.lawmaker._retrieve_deserialized_memory());
+                return json(
+                    { type: 'guardrail.triggered', reason: guardrailResponse.reason },
+                    { status: 403 }
+                );
+            }
+        }
+
+        const response = await d.panel_discussion(
+            input,
+            event.fetch,
+            responseAwaitTime,
+            responseStartTime,
+            responseEndTime
+        );
+
+        if (typeof response !== 'string') {
+            console.error('Lawmaker response was not text:', response);
+            return error(502, 'The lawmaker could not respond. Please try again.');
+        }
+
+        await updateDeliberationRecord(
+            delibsRecord,
+            d,
+            d.lawmaker._retrieve_deserialized_memory()
+        );
+
+        return json(
+            {
+                type: 'automated.response',
+                response,
+                episodeNumber: d.conversation_turn,
+                winddown: d.shouldWindDown()
+            },
+            { status: 200 }
+        );
+    } catch (err) {
+        console.error('manage-deliberation-instance failed:', err);
+        return error(500, `${err}`);
+    }
+};

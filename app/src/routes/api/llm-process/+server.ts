@@ -1,4 +1,4 @@
-import { HUIT_OPENAI_API_KEY, OPENAI_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 
@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ( event ) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
+        "Authorization": `Bearer ${env.OPENAI_API_KEY}`
       },
       body: JSON.stringify(body)
     });

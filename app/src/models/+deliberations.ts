@@ -1,7 +1,6 @@
 import { Simulacrum } from './+simulacrum';
 import type { ChatMessage, Dialogue } from './+utils';
 import { random_beta_sampler, ADVOCACY_GUARDRAILS } from './+utils';
-import { loadDeliberation, clearDeliberation, saveDeliberation } from './+local';
 /**
  * TYPES 
  **/
@@ -302,46 +301,69 @@ export class Deliberation extends Simulacrum {
         const totalSeconds = Math.floor(diffMs / 1000);
         return totalSeconds 
     } 
+    /**
+     * Accepts either shape:
+     *   - the nested object produced by `toJSON()` (lawmaker internals under `lawmaker`)
+     *   - a flat `deliberations` row from Postgres (persona/memory/organization as columns)
+     * The flat case used to fall through silently, dropping the persona and the
+     * entire conversation history on every server-side turn.
+     */
     public static fromJSON(raw: Record<string, any>): Deliberation {
+        const group = raw.group ?? raw.organization ?? "";
+
+        const lawmakerData = raw.lawmaker ?? {
+            persona: raw.persona,
+            degree_of_support: raw.degree_of_support,
+            memory: raw.memory
+        };
+
+        const createdAt = raw.createdAt ? new Date(raw.createdAt) : new Date();
+        const updatedAt = raw.updatedAt ? new Date(raw.updatedAt) : new Date();
+
         const d = new Deliberation(
         raw.username,
-        raw.group,
+        group,
         raw.simulacrum_type ?? "deliberations",
         raw.policy_topic,
         raw.state,
         raw.num_agents ?? 1,
         raw.ideology,
         raw.lawmaker_name,
-        new Date(raw.createdAt),
-        new Date(raw.updatedAt),
+        createdAt,
+        updatedAt,
         );
-    
-        d.elapsed_time           = raw.elapsed_time  ?? 0;
-        d.guardrail_triggered    = raw.guardrail_triggered ?? false;
-        d.guardrail_reason       = raw.guardrail_reason    ?? null;
-    
+
+        d.elapsed_time           = raw.elapsed_time ?? d._diffMinSec(createdAt, updatedAt);
+        d.guardrail_triggered    = raw.guardrail_triggered ?? raw.guardrail_tripwire ?? false;
+        d.guardrail_reason       = raw.guardrail_reason ?? undefined;
+
         // Restore lawmaker persona + memory
-        if (raw.lawmaker) {
-            d.lawmaker.persona           = raw.lawmaker.persona;
-            d.lawmaker.degree_of_support = raw.lawmaker.degree_of_support;
-            d.lawmaker._memory           = (raw.lawmaker.memory ?? []).map(reviveMemory);
+        if (lawmakerData?.persona) {
+            d.lawmaker.persona = lawmakerData.persona;
         }
-        d.userSensemaking = raw.sensemaking
+        if (typeof lawmakerData?.degree_of_support === "number") {
+            d.lawmaker.degree_of_support = lawmakerData.degree_of_support;
+        }
+        d.lawmaker._memory = (lawmakerData?.memory ?? []).map(reviveMemory);
+
+        d.userSensemaking = raw.sensemaking ?? {};
         return d;
     }
     public async _guardrail_moderation(text: string, fetchFn: typeof fetch, last_n: number=3) {
-        /** Passes in the last n exchanges to do guardrail moderations **/
-        let userTranscript: string = ""; 
-        
-        this.lawmaker._memory.slice(-last_n).forEach(item => {
-            userTranscript += item.dialogue.prompt.trim() + ""
-        });
-        userTranscript = userTranscript.trim(); 
+        /** Moderates the current input in the context of the last n user turns. **/
+        const recentUserTurns = this.lawmaker._memory
+            .slice(-last_n)
+            .map(item => item.dialogue.prompt.trim())
+            .filter(Boolean);
+
+        const userTranscript = [...recentUserTurns, text.trim()]
+            .filter(Boolean)
+            .join("\n");
 
         if (userTranscript === "") {
             return {    triggered: false    }
         }
- 
+
         let guardrail_persona: ChatMessage = {
             "role": "system",
             "content": ADVOCACY_GUARDRAILS
@@ -349,7 +371,7 @@ export class Deliberation extends Simulacrum {
 
         let task: ChatMessage = {
             "role": "user",
-            "content": text
+            "content": userTranscript
         }
 
         let prompt: ChatMessage[] = [guardrail_persona, task]
@@ -451,81 +473,24 @@ export class Deliberation extends Simulacrum {
             return text 
         }  
 
-        if (this.elapsed_time > 1200 || this.conversation_turn >= 11) {
-            console.warn(`Conversation reached ${this.elapsed_time/60} minutes and ${this.conversation_turn} number of turns`)
-            return this.lawmaker.process(input, fetchFn, time)
+        const winddown = this.shouldWindDown();
+        if (winddown) {
+            console.warn(`Conversation reached ${Math.round(this.elapsed_time / 60)} minutes and ${this.conversation_turn} turns — winding down.`)
         }
-        return this.lawmaker.process(input, fetchFn, time); /*Note that process automatically perform logging of episodal memory*/
+
+        /* process() logs the episodal memory itself. */
+        return this.lawmaker.process(input, fetchFn, time, "gpt-4.1", winddown);
     }
-}
 
-/* =========================
-   HYDRATION
-========================= */
-export async function loadOrCreateDeliberation(key: string): Promise<Deliberation> {
-    const stored = await loadDeliberation(key); 
-    if (stored) {
-        return Deliberation.fromJSON(stored);
-    } else {
-         const raw = sessionStorage.getItem("formData");
-  if (!raw) throw new Error("No formData found in sessionStorage.");
- 
-  const form = JSON.parse(raw);
-    return new Deliberation(
-        form.username,
-        form.organization,
-        "deliberations",
-        form.policy_topic,
-        form.state,
-        1,
-        form.ideology,
-        form.lawmaker_name,
-        new Date(),
-        new Date(),
-    );
-}}; 
-
-
-/* One public API entry point that loads Deliberation object from the local IndexedDB and supports LLM interaction. */
-export async function manageDeliberationInstanceLocally(input: string, responseAwaitTime: Date, responseEndTime: Date, responseStartTime: Date, fetchFn: typeof fetch, key: string) {
-    const d = await loadOrCreateDeliberation(key); 
-    const turn = d.conversation_turn; 
-    /* Init virtual lawmaker and log time metadata  */
-    if (turn === 3 || (turn > 0 && turn % 3 === 0)) {
-        const result = await d._guardrail_moderation(input, fetchFn);
-        if (result.triggered) {
-        await saveDeliberation(key, d.toJSON()); // persist guardrail state
-        return {
-            type: "guardrail.triggered" as const,
-            reason: result.reason,
-            status: 403,
-            statusText: "Your session has ended due to guardrails. Please contact the STRIPED team if you think this was a mistake.",
-        };
+    /** A meeting winds down after ~20 minutes or 11 exchanges, whichever comes first. */
+    public shouldWindDown(): boolean {
+        return this.elapsed_time > 1200 || this.conversation_turn >= 11;
     }
-  }
-  const response = await d.panel_discussion(
-    input, fetchFn, responseAwaitTime, responseStartTime, responseEndTime,
-  );
- 
-  // 4. Update elapsed time and save entire object
-  d.elapsed_time = Math.floor((new Date().getTime() - d.createdAt.getTime()) / 1000);
-  await saveDeliberation(key, d.toJSON());
- 
-  return {
-    type:          "automated.response" as const,
-    response,
-    episodeNumber: d.conversation_turn,
-  };
 }
 
 export function hydrateDeliberationInstance(record: Record<string, any>): Deliberation {
   return Deliberation.fromJSON(record);
 }; 
-
-export async function resetDeliberation(key: string): Promise<void> {
-  await clearDeliberation(key);
-  sessionStorage.removeItem("updatedTime");
-}
 
 function reviveMemory(m: any): Memory {
   const t = m.time ?? {};

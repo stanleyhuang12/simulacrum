@@ -24,7 +24,7 @@ export const GET: RequestHandler = async (event) => {
         }
 
         // Hydrate the Deliberation instance
-        const d = hydrateDeliberationInstance(delibsRecord);
+        const d = hydrateDeliberationInstance(delibsRecord.toJSON());
         
         console.log('Deliberation instance hydrated:', {
             username: d._username,

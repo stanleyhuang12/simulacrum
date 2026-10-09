@@ -1,72 +1,57 @@
-    
 <script lang="ts">
     import { fade } from "svelte/transition";
 
     let { alertMessage, onClose } = $props<{
-        alertMessage: string
-        onClose: () => void
+        alertMessage: string;
+        onClose: () => void;
     }>();
-
-    function dismissNotification() {
-        onClose(); 
-    }
-
 </script>
 
-<style>
-
-/* === NOTIFICATION === */
-.notification {
-    color: white;
-  position: fixed;
-  top: 2rem;
-  right: 2rem;
-  max-width: 400px;
-  padding: 1.5rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-  z-index: 1000;
-}
-
-.notification-content {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.notification-icon {
-  font-size: 1.5rem;
-}
-
-.notification-text {
-  flex: 1;
-  font-size: 1.25rem; 
-}
-
-.notification-close {
-  background: none;
-  border: none;
-  color: var(--text);
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0.25rem;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-.notification-close:hover {
-  opacity: 1;
-}
-
-</style>
-
-
-<div class="notification" in:fade out:fade>
-    <div class="notification-content">
-    <div class="notification-icon">🔔</div>
-    <div class="notification-text">{alertMessage}</div>
-    <button class="notification-close" onclick={dismissNotification}>×</button>
-    </div>
+<div class="notification" role="status" in:fade out:fade>
+    <span class="notification-icon" aria-hidden="true">🔔</span>
+    <p class="notification-text">{alertMessage}</p>
+    <button class="notification-close" onclick={onClose} aria-label="Dismiss notification">×</button>
 </div>
+
+<style>
+    .notification {
+        position: fixed;
+        top: 1.5rem;
+        right: 1.5rem;
+        z-index: 1000;
+        max-width: min(calc(100vw - 3rem), 380px);
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        padding: 1rem 1.1rem;
+        background: var(--ls-surface);
+        color: var(--ls-text);
+        border: 1px solid var(--ls-border-strong);
+        border-left: 3px solid var(--ls-accent);
+        border-radius: var(--ls-radius);
+        box-shadow: var(--ls-shadow-lg);
+    }
+
+    .notification-icon {
+        font-size: 1.1rem;
+        line-height: 1.5;
+    }
+
+    .notification-text {
+        flex: 1;
+        margin: 0;
+        font-size: 0.92rem;
+    }
+
+    .notification-close {
+        background: none;
+        border: none;
+        color: var(--ls-text-faint);
+        cursor: pointer;
+        font-size: 1.3rem;
+        line-height: 1;
+        padding: 0 0.15rem;
+    }
+
+    .notification-close:hover { color: var(--ls-text); }
+</style>

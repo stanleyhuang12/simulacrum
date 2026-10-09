@@ -1,33 +1,31 @@
 <script lang="ts">
-    import Notification from "$models/Notification.svelte";
-    import { onMount } from "svelte";
-    import type { PageData, PageProps } from "../$types";
-    import { hydrateDeliberationInstance, loadOrCreateDeliberation } from "$models/+deliberations";
-  import { saveDeliberation } from "$models/+local";
-  import { redirect } from "@sveltejs/kit";
-  import { goto } from "$app/navigation";
+    import { onMount, onDestroy } from "svelte";
+    import { fade } from "svelte/transition";
+    import { goto } from "$app/navigation";
+    import type { PageProps } from "./$types";
 
-    let { data } = $props(); 
+    let { data }: PageProps = $props();
 
-    let isDemo = data.isDemo; 
+    type RecorderState = "idle" | "recording" | "paused" | "submitting";
 
-    let audioAccept: MediaDevices; 
-    let audioStream: MediaStream | undefined; 
-    let canvasEl: HTMLCanvasElement;
-    let audioCtx: AudioContext; 
-    let audioAnalyser: AnalyserNode; 
+    let recorderState = $state<RecorderState>("idle");
+    let hasRecording = $state(false);
+    let errorMessage = $state<string | null>(null);
+    let statusMessage = $state<string | null>(null);
 
-    // creates an Audio Context 
-    let drawId: number | null = null;
+    let canvasEl = $state<HTMLCanvasElement | null>(null);
+    let audioStream: MediaStream | undefined;
+    let audioCtx: AudioContext | undefined;
+    let audioAnalyser: AnalyserNode | undefined;
     let mediaRecorder: MediaRecorder | undefined;
     let audioChunks: Blob[] = [];
+    let drawId: number | null = null;
 
-    const IDB_KEY = data.userID; 
-    const IDB_NAME = 'reflection-audio-db';
-    const IDB_STORE_AUDIO = 'recordings';
+    const IDB_KEY = data.sessionId;
+    const IDB_NAME = "reflection-audio-db";
+    const IDB_STORE_AUDIO = "recordings";
 
-    let showNotification = $state(false); 
-    let alertMessage = $state(""); 
+    /* --------------------------------------------------------- local audio store */
 
     function openDB(): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
@@ -40,107 +38,133 @@
         });
     }
 
-    async function retrieveFromIndexedDB(storeName: string, idbKey: string): Promise<Blob|string> {
-        const db = await openDB(); 
-
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, "readonly")
-            const store = tx.objectStore(storeName); 
-            const request = store.get(idbKey); 
-            request.onerror = () => reject(new Error(`Could not retrieve the item from IndexedDB from ${storeName} and key ${idbKey}`)); 
-            request.onsuccess = () => {
-                resolve(request.result); 
-            }; 
-        }); 
-    }
-
-    async function saveToIndexedDB(storeName: string, idbKey: string, data: Blob | string): Promise<string> {
+    async function saveToIndexedDB(key: string, blob: Blob): Promise<void> {
         const db = await openDB();
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            const store = tx.objectStore(storeName);
-            store.put(data, idbKey);
-            tx.oncomplete = () => {
-                db.close();
-                resolve("Saved audio.");
-            };
-            tx.onerror = () => {
-                db.close();
-                reject(tx.error);
-            };
+            const tx = db.transaction(IDB_STORE_AUDIO, "readwrite");
+            tx.objectStore(IDB_STORE_AUDIO).put(blob, key);
+            tx.oncomplete = () => { db.close(); resolve(); };
+            tx.onerror = () => { db.close(); reject(tx.error); };
         });
     }
 
-    async function clearFromIndexedDB(storeName: string, idbKey: string): Promise<void> {
+    async function retrieveFromIndexedDB(key: string): Promise<Blob | undefined> {
         const db = await openDB();
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            tx.objectStore(storeName).delete(idbKey);
-            tx.oncomplete = () => {
-                db.close();
-                resolve();
-            };
-            tx.onerror = () => {
-                db.close();
-                reject(tx.error);
-            };
+            const tx = db.transaction(IDB_STORE_AUDIO, "readonly");
+            const request = tx.objectStore(IDB_STORE_AUDIO).get(key);
+            request.onsuccess = () => { db.close(); resolve(request.result); };
+            request.onerror = () => { db.close(); reject(request.error); };
         });
     }
 
-    async function getAudioStream(): Promise<void> {
+    async function clearFromIndexedDB(key: string): Promise<void> {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(IDB_STORE_AUDIO, "readwrite");
+            tx.objectStore(IDB_STORE_AUDIO).delete(key);
+            tx.oncomplete = () => { db.close(); resolve(); };
+            tx.onerror = () => { db.close(); reject(tx.error); };
+        });
+    }
+
+    /* ------------------------------------------------------------- recording */
+
+    async function startRecording() {
+        errorMessage = null;
         try {
+            audioCtx ??= new AudioContext();
             await audioCtx.resume();
-            // If already recording and paused, resume
-            if (mediaRecorder && mediaRecorder.state === 'paused') {
+
+            if (mediaRecorder?.state === "paused") {
                 mediaRecorder.resume();
+                recorderState = "recording";
                 draw();
                 return;
             }
-            
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {return; }
-            
-            audioAccept = window.navigator.mediaDevices; 
-            if (!audioAccept || !audioAccept.getUserMedia) {
-                throw new Error("Media Error: Media Devices not supported."); 
+
+            if (mediaRecorder && mediaRecorder.state !== "inactive") return;
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                throw new Error("This browser does not support audio recording.");
             }
-            audioStream = await window.navigator.mediaDevices.getUserMedia( { audio: true } ); 
-            console.log(audioStream?.getTracks());
-            const source = audioCtx.createMediaStreamSource(audioStream);  // creates a Stream Source Node 
-            source.connect(audioAnalyser);  // Connect the stream source node to the analyzer node 
-            
-            // Start recording audio
-            mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm;codecs=opus' });
+
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            audioAnalyser = audioCtx.createAnalyser();
+            audioAnalyser.fftSize = 2048;
+            audioCtx.createMediaStreamSource(audioStream).connect(audioAnalyser);
+
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(audioStream, { mimeType: "audio/webm;codecs=opus" });
             mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    audioChunks.push(event.data);
-                    console.log("Pushing audio data into audioChunks array.")
-                } else {
-                    console.error("Audio chunks has a size of 0 bytes, can not append...")
-                }
+                if (event.data.size > 0) audioChunks.push(event.data);
             };
-
             mediaRecorder.onerror = (event) => {
-                    console.error("MediaRecorder error:", event); 
+                console.error("MediaRecorder error:", event);
+                errorMessage = "Recording stopped unexpectedly. Please try again.";
+                recorderState = "idle";
             };
 
-            mediaRecorder.start(250); // note this 250 ms
-            
-            draw(); 
-            console.log("Collecting audioStreams and recording it via MediaRecorder");
-        } catch(error) {
-            console.error(error);
+            mediaRecorder.start(250);
+            recorderState = "recording";
+            hasRecording = true;
+            draw();
+        } catch (err) {
+            console.error(err);
+            errorMessage =
+                "We could not access your microphone. Check your browser's microphone permission and try again.";
+            recorderState = "idle";
         }
     }
 
-    function draw(): void {
-        if (!canvasEl || !audioStream) return;
+    function pauseRecording() {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.pause();
+            recorderState = "paused";
+        }
+        stopDrawing(true);
+    }
 
-        const ctx = canvasEl.getContext('2d');
+    async function resetRecording() {
+        stopDrawing();
+        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+        mediaRecorder = undefined;
+        audioStream?.getTracks().forEach((t) => t.stop());
+        audioStream = undefined;
+        audioChunks = [];
+        hasRecording = false;
+        recorderState = "idle";
+
+        await clearFromIndexedDB(IDB_KEY);
+        statusMessage = "Cleared. You can start again whenever you are ready.";
+    }
+
+    function finaliseRecording(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            if (!mediaRecorder || mediaRecorder.state === "inactive") return resolve();
+            mediaRecorder.onstop = async () => {
+                try {
+                    await saveToIndexedDB(IDB_KEY, new Blob(audioChunks, { type: "audio/webm" }));
+                    resolve();
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            mediaRecorder.stop();
+            stopDrawing();
+        });
+    }
+
+    /* --------------------------------------------------------------- waveform */
+
+    function draw(): void {
+        if (!canvasEl || !audioAnalyser) return;
+
+        const ctx = canvasEl.getContext("2d");
         if (!ctx) return;
 
         const scale = window.devicePixelRatio || 1;
-        
-        // Set dimensions ONCE, outside the render loop
         const cssWidth = canvasEl.offsetWidth;
         const cssHeight = canvasEl.offsetHeight;
         canvasEl.width = Math.floor(cssWidth * scale);
@@ -151,296 +175,228 @@
         const dataArray = new Uint8Array(bufferLength);
 
         function render() {
+            if (!audioAnalyser) return;
             drawId = requestAnimationFrame(render);
             audioAnalyser.getByteTimeDomainData(dataArray);
 
-            const width = cssWidth;
-            const height = cssHeight;
-
-            ctx!.fillStyle = '#1f1143';
-            ctx!.fillRect(0, 0, width, height);
+            ctx!.fillStyle = "#171227";
+            ctx!.fillRect(0, 0, cssWidth, cssHeight);
             ctx!.lineWidth = 2;
-            ctx!.strokeStyle = '#9d7bff';
+            ctx!.strokeStyle = "#9c8bff";
             ctx!.beginPath();
 
-            const sliceWidth = width / bufferLength;
+            const sliceWidth = cssWidth / bufferLength;
             let x = 0;
-
             for (let i = 0; i < bufferLength; i++) {
-                const v = dataArray[i] / 128;             // 128 centers at 0 properly
-                const y = (v * height) / 2;               // centered waveform
+                const v = dataArray[i] / 128;
+                const y = (v * cssHeight) / 2;
                 if (i === 0) ctx!.moveTo(x, y);
                 else ctx!.lineTo(x, y);
                 x += sliceWidth;
             }
-
-            ctx!.lineTo(width, height / 2);
+            ctx!.lineTo(cssWidth, cssHeight / 2);
             ctx!.stroke();
         }
 
         render();
     }
 
-    function stopDrawing(keepCache?: boolean) {
+    function stopDrawing(keepFrame = false) {
         if (drawId !== null) {
             cancelAnimationFrame(drawId);
             drawId = null;
         }
-        if (canvasEl) {
-            if (keepCache) return; 
-            const ctx = canvasEl.getContext('2d');
-            if (ctx) {
-                ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+        if (canvasEl && !keepFrame) {
+            canvasEl.getContext("2d")?.clearRect(0, 0, canvasEl.width, canvasEl.height);
+        }
+    }
+
+    /* ----------------------------------------------------------------- submit */
+
+    async function submitReflection() {
+        if (!hasRecording) {
+            errorMessage = "Record a short reflection first — even 30 seconds is enough.";
+            return;
+        }
+
+        recorderState = "submitting";
+        errorMessage = null;
+        statusMessage = null;
+
+        try {
+            await finaliseRecording();
+            audioStream?.getTracks().forEach((t) => t.stop());
+            audioStream = undefined;
+
+            const audioBlob = await retrieveFromIndexedDB(IDB_KEY);
+            if (!audioBlob || audioBlob.size === 0) {
+                throw new Error("No audio was captured.");
             }
-    }
-    }
 
-    async function pauseAudioStream() {
-        stopDrawing(true);
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.pause();
-        }
-    }
+            const formData = new FormData();
+            formData.append("file", new File([audioBlob], "reflection.webm", { type: audioBlob.type }));
+            formData.append("model", "gpt-4o-transcribe");
+            formData.append("language", "en");
 
-    async function resetAudioStorage() {
-        audioChunks = [];
+            const result = await fetch("/api/speech-to-text", { method: "POST", body: formData });
+            if (!result.ok) throw new Error(await result.text());
 
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            console.log("Stopping media recorder")
-            mediaRecorder.stop();
-            mediaRecorder = undefined;
-        }
-        if (audioStream) {
-            audioStream.getTracks().forEach(track => track.stop());
-            audioStream = undefined;
-        }
-        stopDrawing();
-        
-        await clearFromIndexedDB(IDB_STORE_AUDIO, IDB_KEY);
-        alertMessage = "Cleared audio data.";
-        showNotification = true; 
+            const res = await result.json();
+            const transcription = JSON.parse(res.transcriptions);
+            const text: string = transcription.text;
 
-    }   
+            if (!text || !text.trim()) {
+                throw new Error("We could not make out any speech in that recording.");
+            }
 
-    async function saveRecordingLocally() {
-        return new Promise<string>((resolve, reject) => {
-            mediaRecorder!.onstop = async () => {
-                try {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    // const audioBuffer = await audioBlob.arrayBuffer();
-                    if (!audioBlob) throw new Error('No audio data found');
-                    const res = await saveToIndexedDB(IDB_STORE_AUDIO, IDB_KEY, audioBlob); 
-                
-                    console.log('Audio buffer saved to IndexedDB');
-                    resolve(res);
-                } catch (err) {
-                    console.error(err);
-                    reject(err);
-                }
-            };
-                mediaRecorder!.stop();
-                stopDrawing();
+            const saved = await fetch("/api/manage-user-sensemaking/reflection", {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                credentials: "include",
+                body: text
             });
-    }
-    async function convertBlobToAudioFile(blob: Blob) {
-        return await new File([blob], "recording.webm", {type: blob.type})
-    }
-   
-    async function saveReflectionToDeliberation(reflection: string) {
-        const deliberation = await loadOrCreateDeliberation(data.userID);
+            if (!saved.ok) throw new Error(await saved.text());
 
-        deliberation.logUserReflection(reflection);
-        console.log("Saving...", reflection)
-
-        await saveDeliberation(
-            data.userID,
-            deliberation.toJSON()
-        );
-
-    }
-
-    async function submitAudioData() {
-        await saveRecordingLocally(); 
-        /* Feeds the data by submitting audio blobs to localStorage so that we can have users play it again if needed  */
-        
-        if (audioStream) {
-            audioStream.getTracks().forEach(track => track.stop());
-            audioStream = undefined;
-        }
-        
-        const audioBlob = await retrieveFromIndexedDB(IDB_STORE_AUDIO, IDB_KEY)
-        
-        if (!audioBlob) throw new Error('No audio found');
-
-        const formData = new FormData(); 
-        const audioFile = await convertBlobToAudioFile(audioBlob as Blob)
-        formData.append("file", audioFile); 
-        formData.append("model", "gpt-4o-transcribe")
-        formData.append("language", "en")
-        console.log(formData); 
-        console.log("Submitting FormData:", {
-            fileSize: audioFile.size,
-            fileType: audioFile.type
-        });
-
-        /* Then, we make sure to retrieve the audio back */
-        const result = await fetch("/api/speech-to-text", {
-            method: "POST", 
-            body: formData
-        }); 
-
-        if (!result.ok) { 
-            alertMessage = await result.text(); 
-            showNotification = true; 
-            throw new Error(await result.text()); 
-        }; 
-
-        const res = await result.json()
-        if (res.success) {
-            console.log("Res", res)
-            alertMessage = "Reflections submitted!"; 
-            showNotification = true; 
-
-            const transcriptionData = JSON.parse(res.transcriptions)
-            console.log(transcriptionData)
-            console.log(transcriptionData.text)
-            saveReflectionToDeliberation(transcriptionData.text); 
-            console.log("Successfully saved reflection to deliberation instance.")
-            goto('/retry?demo=true');
+            statusMessage = "Reflection saved. Taking you to your feedback…";
+            goto(`/feedback/${data.sessionId}`);
+        } catch (err) {
+            console.error(err);
+            errorMessage =
+                err instanceof Error && err.message
+                    ? `We could not save that reflection: ${err.message}`
+                    : "We could not save that reflection. Please try again.";
+            recorderState = "paused";
         }
     }
 
     onMount(() => {
-        audioCtx = new AudioContext;  
-        audioAnalyser = audioCtx.createAnalyser(); 
-        audioAnalyser.fftSize = 2048; 
-    })
+        audioCtx = new AudioContext();
+    });
+
+    onDestroy(() => {
+        stopDrawing();
+        audioStream?.getTracks().forEach((t) => t.stop());
+        audioCtx?.close();
+    });
 </script>
 
+<div class="ls-page ls-page--narrow">
+    <header class="intro">
+        <p class="ls-eyebrow">Step 2 of 3 · Debrief</p>
+        <h1>How did that go?</h1>
+        <p class="ls-lede">
+            Before you see your feedback, talk through the meeting out loud. Thinking aloud is
+            part of the exercise — pause as often as you like.
+        </p>
+    </header>
+
+    <section class="ls-card">
+        <h2>Prompts to think through</h2>
+        <ul class="prompts">
+            <li>What did you say, and what were you trying to achieve?</li>
+            <li>What happened during the conversation?</li>
+            <li>How did {data.lawmakerName} respond, and what surprised you?</li>
+            <li>What would you do differently next time?</li>
+        </ul>
+
+        <div class="waveform" data-state={recorderState}>
+            <canvas bind:this={canvasEl}></canvas>
+            {#if recorderState === "idle"}
+                <span class="waveform-label">Press record when you are ready</span>
+            {/if}
+        </div>
+
+        <div class="controls">
+            {#if recorderState === "recording"}
+                <button class="ls-btn ls-btn--secondary" onclick={pauseRecording}>⏸ Pause</button>
+            {:else}
+                <button
+                    class="ls-btn"
+                    onclick={startRecording}
+                    disabled={recorderState === "submitting"}
+                >
+                    {hasRecording ? "⏺ Resume" : "⏺ Record"}
+                </button>
+            {/if}
+
+            <button
+                class="ls-btn ls-btn--secondary"
+                onclick={resetRecording}
+                disabled={!hasRecording || recorderState === "submitting"}
+            >
+                Start over
+            </button>
+
+            <button
+                class="ls-btn"
+                onclick={submitReflection}
+                disabled={!hasRecording || recorderState === "submitting"}
+            >
+                {#if recorderState === "submitting"}<span class="ls-spinner"></span>{/if}
+                {recorderState === "submitting" ? "Saving…" : "Done — see my feedback"}
+            </button>
+        </div>
+
+        {#if errorMessage}
+            <div class="ls-banner ls-banner--error" transition:fade>
+                <span aria-hidden="true">⚠</span>
+                <span>{errorMessage}</span>
+            </div>
+        {/if}
+
+        {#if statusMessage && !errorMessage}
+            <div class="ls-banner ls-banner--success" transition:fade>
+                <span aria-hidden="true">✓</span>
+                <span>{statusMessage}</span>
+            </div>
+        {/if}
+    </section>
+</div>
+
 <style>
-:root {
-    --primary: rgb(22, 11, 215);
-    --primary-hover: rgb(10, 0, 180);
-    --surface: rgba(255, 255, 255, 0.9);
-    --border: #ddd;
-    --text: #cf9999;
-    --radius: 8px;
-}
+    .intro { margin-bottom: 1.5rem; }
 
-.reflection-shell {
-    width: min(95%, 1100px);
-    margin: 2rem auto;
-    padding: 1.5rem;
-    background: var(--surface);
-    border-radius: var(--radius);
-    backdrop-filter: blur(8px) saturate(120%);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    color: var(--text);
-}
-
-header {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-}
-
-.reflection-debrief {
-    font-size: 1.4rem;
-    line-height: 1.5;
-}
-
-.main-record-controls,
-.main-record-cache-controls {
-    display: flex;
-    justify-content: center; 
-    gap: 0.75rem;
-    margin-top: 1rem;
-}
-
-button {
-    padding: 0.75rem 1.5rem;
-    background-color: var(--primary);
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 700;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-button:hover {
-    background-color: var(--primary-hover);
-}
-
-.audio-signal {
-    display: flex;
-    margin: 0 auto; 
-    width: 80%; 
-    justify-content: center; 
-    align-items: center;  
-    margin-top: 1.25rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    overflow: hidden;
-    background: #1f1143;
-}
-
-canvas {
-    display: block;
-    width: 100%;   
-    height: 80px; 
-    border-radius: var(--radius);
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-    --surface: rgba(69, 6, 121, 0.9);
-    --border: rgba(255, 255, 255, 0.15);
-    --text: rgba(255, 255, 255, 0.9);
+    .prompts {
+        margin: 0 0 1.5rem;
+        padding-left: 1.1rem;
+        color: var(--ls-text-muted);
     }
-}
+
+    .prompts li { margin-bottom: 0.35rem; }
+
+    .waveform {
+        position: relative;
+        border-radius: var(--ls-radius);
+        border: 1px solid var(--ls-border);
+        background: var(--ls-stage);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+        transition: border-color 0.2s ease;
+    }
+
+    .waveform[data-state="recording"] { border-color: var(--ls-danger); }
+
+    .waveform canvas {
+        display: block;
+        width: 100%;
+        height: 96px;
+    }
+
+    .waveform-label {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ls-stage-text-muted);
+        font-size: 0.88rem;
+        pointer-events: none;
+    }
+
+    .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
 </style>
-
-<div class="reflection-shell">
-
-    {#if showNotification}
-        <Notification alertMessage={alertMessage} onClose={()=> showNotification=false }></Notification>
-    {/if}
-
-    <header> You have now chatted with a lawmaker. Let's debrief! </header>
-    <div class="reflection-debrief">
-    Think out loud and answer these questions: 
-        
-    Please record and voice your thoughts out loud. It is OK to pause a bit and think through what you will say. Feel free to let your thoughts flow.
-    <p>Think out loud and answer these questions:</p>
-    <ul>
-        <li>What did you do? What did you say?</li>
-        <li>What happened during the experience?</li>
-        <li>How did the lawmaker respond?</li>
-    </ul>
-    <p>Please record and voice your thoughts out loud. It is OK to pause a bit and think through what you will say. Feel free to let your thoughts flow.</p>
-    </div>
-    
-    <section class="main-record-controls">
-    
-        <button class="click-record" onclick={getAudioStream} aria-label="record button"> Record </button>
-        <button class="click-stop" onclick={pauseAudioStream} aria-label="pause record button"> Pause </button>
-    
-    </section>
-    
-    <section class="audio-signal"> 
-    
-        <canvas bind:this={canvasEl}></canvas>
-    
-    </section>
-
-    <div class="main-record-cache-controls">
-    
-        <button class="reset-record" onclick={resetAudioStorage} aria-label="reset recording"> Restart </button>
-        <button class="submit-record" onclick={submitAudioData} aria-label="submit recording"> Done </button>
-    
-    </div>
-
-</div> 

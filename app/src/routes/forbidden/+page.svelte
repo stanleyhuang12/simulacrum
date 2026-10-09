@@ -1,50 +1,35 @@
 <script lang="ts">
-  export let message: string = `504 - You were blocked because our system's guardrails were triggered. 
-This may have been a mistake. 
-Please contact the STRIPED team.`;
-  export let contactEmail: string = "striped@hsph.harvard.edu";
+  const contactEmail = "striped@hsph.harvard.edu";
 </script>
 
-<main>
-  <div class="block-container">
-    <p>504</p>
-    <p>{message}</p>
-    <a href={`mailto:${contactEmail}`}>Contact STRIPED Support</a>
+<div class="ls-page ls-page--narrow">
+  <div class="ls-card block-card">
+    <p class="ls-eyebrow">Session ended</p>
+    <h1>This session was stopped by our safety guardrails</h1>
+    <p class="ls-lede">
+      Our moderation layer flagged something in the conversation and ended the meeting. This can
+      happen by mistake — if you believe it did, the STRIPED team can review it and reopen your
+      session.
+    </p>
+
+    <div class="actions">
+      <a class="ls-btn" href={`mailto:${contactEmail}?subject=Legislative%20Simulacrum%20session%20blocked`}>
+        Contact the STRIPED team
+      </a>
+      <a class="ls-btn ls-btn--secondary" href="/form">Start a new session</a>
+    </div>
   </div>
-</main>
+</div>
 
 <style>
-  main {
-    background-color: #000;
-    color: #fff;
-    height: 100vh;
-    margin: 0;
+  .block-card { text-align: left; }
+
+  .actions {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: Arial, sans-serif;
-    text-align: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
   }
 
-  .block-container {
-    max-width: 600px;
-  }
-
-  .block-container p:first-child {
-    font-size: 6rem;
-    margin: 0;
-    font-weight: bold;
-  }
-
-  .block-container p:nth-child(2) {
-    font-size: 1.5rem;
-    margin: 20px 0;
-    line-height: 1.5;
-  }
-
-  .block-container a {
-    color: #fff;
-    text-decoration: underline;
-    font-size: 1.2rem;
-  }
+  .actions a { text-decoration: none; }
 </style>

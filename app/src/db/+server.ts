@@ -3,11 +3,10 @@ import { Sequelize, Model, DataTypes } from "sequelize";
 import { Deliberation } from "../models/+deliberations"; 
 import type { ModelOptions } from "sequelize"; 
 import { type Memory } from "../models/+deliberations";
-import { DB_USER, DB_HOST, DB_NAME, DB_PASS } from "$env/static/private";
+import { env } from "$env/dynamic/private";
 import pg from "pg"; 
-import type { SenseMaking } from "$models/+utils";
 
-export const sequelize = new Sequelize(`postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB_NAME}`, 
+export const sequelize = new Sequelize(`postgresql://${env.DB_USER}:${env.DB_PASS}@${env.DB_HOST}/${env.DB_NAME}`, 
     {
         dialect: "postgres", 
         dialectModule: pg,
@@ -132,7 +131,7 @@ export async function updateDeliberationSensemaking( record: Model, d: Deliberat
     try {
         await record.reload(); 
         return await record.update({
-            sensemaking: d.userSenseMaking
+            sensemaking: d.userSensemaking
         })
     } catch(err) {
         console.error(`Failed to update deliberation record for sensemaking in PostgreSQL data. ${err}`)

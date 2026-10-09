@@ -1,87 +1,94 @@
 <script lang="ts">
     /*
-    The Feedback interface provides feedback from the Feedback module that iteratively maps, synthesize, and generate feedback
-    into an accessible format for the advocate. 
-    
-    Users will see the following: 
-      * A downloadable PDF that contains conversation threads, user details, and other information 
-      * A text box that allows them to reflect on the experience in audio format. A few prompts to guide them through this process 
-      * A matrix of conversation threads where you see lawmaker message, your previous response, timestamps, and 
-        a voice memo that asks user to describe which conversation threads they think they can improve? 
-        * On-demand (ask AI for help) 
-        * Accept suggestions  
-      * 
+      The feedback page closes the loop: it pulls the full transcript and the
+      advocacy trainer's synthesis, shows both on screen, and offers the same
+      material as a downloadable PDF report.
     */
     import { onMount } from "svelte";
+    import { fade } from "svelte/transition";
     import { jsPDF } from "jspdf";
     import type { PageProps } from './$types';
-    
-    let { data }: PageProps = $props();
-    
-    let retry = $state(0);
-    let isDownloading = $state(false);
-    let feedbackData = $state<any>(null);
-    let errorMessage = $state('');
-    const MAX_RETRIES = 3;
 
-    async function queryFeedback() {
-        console.log("Querying feedback for user.");        
-        // Validation
-        if (!data?.sess_cookies) {
-            errorMessage = "Session expired. Please start a new session.";
-            return;
-        }
-        
-        isDownloading = true;
+    let { data }: PageProps = $props();
+
+    type Feedback = {
+        identifier: string;
+        username: string;
+        organization: string;
+        policy_topic: string;
+        lawmaker_name: string;
+        state: string;
+        ideology: string;
+        full_transcript: string;
+        trainer_agent_feedback: string;
+        conversation_turns: number;
+        timestamp: string;
+    };
+
+    let feedbackData = $state<Feedback | null>(null);
+    let isLoading = $state(true);
+    let errorMessage = $state('');
+    let attempt = $state(0);
+    const MAX_ATTEMPTS = 3;
+
+    /* Split the transcript back into speaker turns for on-screen display. */
+    const turns = $derived.by(() => {
+        if (!feedbackData) return [];
+        return feedbackData.full_transcript
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line && !line.startsWith('Transcript:'))
+            .map((line) => {
+                const match = line.match(/^(.+?):\s*(.+)$/);
+                if (!match) return { speaker: '', text: line };
+                return { speaker: match[1].trim(), text: match[2].trim() };
+            });
+    });
+
+    async function loadFeedback() {
+        isLoading = true;
         errorMessage = '';
-        
+
         try {
-            console.log("Fetching end-of-call feedback...");
-            
             const response = await fetch("/api/end-of-call-feedback", {
                 method: "GET",
-                credentials: "include",
+                credentials: "include"
             });
 
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Server returned ${response.status}: ${errorText}`);
+                throw new Error(`Server returned ${response.status}: ${await response.text()}`);
             }
-            
-            const data = await response.json();
-            
-            // Validate response
-            if (!data.full_transcript || !data.trainer_agent_feedback) {
-                throw new Error("Invalid feedback data received");
+
+            const payload = await response.json();
+
+            if (!payload.full_transcript || !payload.trainer_agent_feedback) {
+                throw new Error("The session did not contain enough conversation to summarise.");
             }
-            
-            console.log("Feedback received:", data);
-            feedbackData = data;
-            
-            // Generate comprehensive PDF
-            generateComprehensivePDF(data);
-            
-            // Reset retry counter on success
-            retry = 0;
-            isDownloading = false;
-            
-        } catch(err) {
+
+            feedbackData = payload;
+            attempt = 0;
+            isLoading = false;
+        } catch (err) {
             console.error("Error retrieving feedback:", err);
-            
-            retry += 1;
-            
-            if (retry >= MAX_RETRIES) {
-                console.error("Maximum retries reached.");
-                errorMessage = `Error retrieving feedback after ${MAX_RETRIES} attempts: ${err instanceof Error ? err.message : 'Unknown error'}`;
-                isDownloading = false;
-                retry = 0;
+            attempt += 1;
+
+            if (attempt >= MAX_ATTEMPTS) {
+                errorMessage =
+                    err instanceof Error ? err.message : 'We could not generate your feedback.';
+                isLoading = false;
+                attempt = 0;
                 return;
             }
-            
-            console.log(`Retrying... (attempt ${retry}/${MAX_RETRIES})`);
-            setTimeout(() => queryFeedback(), 5000);
+
+            setTimeout(loadFeedback, 4000);
         }
     }
+
+    function downloadPDF() {
+        if (feedbackData) generateComprehensivePDF(feedbackData);
+    }
+
+    onMount(loadFeedback);
 
     function generateComprehensivePDF(data: any) {
         const pdf = new jsPDF();
@@ -329,277 +336,184 @@
         console.log("Comprehensive PDF generated successfully:", filename);
     }
 </script>
-<style>
-:root {
-  --primary: #160bf7;        /* deep blue-purple for highlights */
-  --primary-hover: #0a00c0;
-  --surface: rgba(255,255,255,0.05); /* semi-transparent cards */
-  --border: rgba(255,255,255,0.2);
-  --bg: #2a0d6e;             /* main purple box background */
-  --text: #f8f8f8;           /* main text white */
-  --text-muted: rgba(248, 248, 248, 0.7);
-  --radius: 12px;
-  --shadow: 0 8px 24px rgba(0,0,0,0.5);
-  --gap: 1rem;
-}
 
-/* --------------------------
-   Outer Purple Container
---------------------------- */
-.container {
-  max-width: 1000px;
-  margin: 2rem auto;
-  padding: 2rem;
-  background-color: var(--bg);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  color: var(--text);
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-}
-
-/* --------------------------
-   Header
---------------------------- */
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 3rem;
-}
-
-.header-content h1 {
-  font-size: 2rem;
-  margin: 0;
-  color: #fff;
-}
-
-.header-content .tagline {
-  font-size: 1rem;
-  color: var(--text-muted);
-  max-width: 500px;
-}
-
-nav a {
-  margin-left: 1.5rem;
-  text-decoration: none;
-  color: var(--text);
-  font-weight: 500;
-  transition: color 0.2s ease;
-}
-
-nav a:hover {
-  color: var(--primary);
-}
-
-/* --------------------------
-   Hero Section
---------------------------- */
-.hero {
-  text-align: center;
-  margin-bottom: 4rem;
-}
-
-.hero-title {
-  font-size: 1.8rem;
-  margin-bottom: 1.5rem;
-  color: #fff;
-}
-
-.status-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 2rem;
-  max-width: 600px;
-  margin: 0 auto 2rem auto;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  color: var(--text);
-  backdrop-filter: blur(10px) saturate(120%);
-}
-
-.error-message {
-  color: #ff6b6b;
-  font-weight: 600;
-  margin-bottom: 1rem;
-}
-
-.success-message {
-  color: #00c851;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
-.status-card ul {
-  text-align: left;
-  margin: 1rem auto;
-  max-width: 400px;
-  color: var(--text-muted);
-}
-
-/* --------------------------
-   Button
---------------------------- */
-.download-btn {
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
-  font-weight: 600;
-  border-radius: var(--radius);
-  border: none;
-  cursor: pointer;
-  background-color: var(--primary);
-  color: #fff;
-  transition: all 0.2s ease;
-}
-
-.download-btn:hover:not(:disabled) {
-  background-color: var(--primary-hover);
-}
-
-.download-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* --------------------------
-   Features Section
---------------------------- */
-/* .features {
-  text-align: center;
-  margin-bottom: 4rem;
-}
-
-.features h3 {
-  font-size: 1.5rem;
-  margin-bottom: 2rem;
-  color: #fff;
-}
-
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 2rem;
-}
-
-.feature-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  color: var(--text);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.6);
-}
-
-.feature-card h4 {
-  margin-bottom: 0.75rem;
-  color: #fff;
-} */
-
-/* --------------------------
-   Footer
---------------------------- */
-footer {
-  text-align: center;
-  padding: 2rem 1rem 1rem 1rem;
-  font-size: 0.875rem;
-  color: var(--text-muted);
-}
-
-/* ----------------------------
-   Dark Mode (Optional)
----------------------------- */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: rgba(69, 6, 121, 0.9);;
-    --surface: rgba(255,255,255,0.05);
-    --border: rgba(255,255,255,0.2);
-    --text: #f8f8f8;
-    --text-muted: rgba(248,248,248,0.7);
-  }
-}
-</style>
-
-
-<div class="container">
-  <!-- Header -->
-  <header>
-    <div class="header-content">
-      <h1>Legislative Simulacrum</h1>
-      <p class="tagline">
-        Empower communities to learn, understand, and practice legislative and public policy advocacy through risk-free virtual and AI-enabled simulations.
-      </p>
-    </div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="#features">Features</a>
-      <a href="#contact">Contact</a>
-    </nav>
-  </header>
-  <!-- Hero Section -->
-  <section class="hero">
-    <h2 class="hero-title">
-      Thank You for Completing Your Session
-    </h2>
-    
-    <div class="status-card">
-      {#if errorMessage}
-        <div class="error-message">
-          <strong>Error:</strong> {errorMessage}
-        </div>
-      {/if}
-      
-      {#if feedbackData}
-        <div class="success-message">
-          ✓ Your comprehensive feedback report has been downloaded successfully!
-        </div>
-        <p style="margin-top: 1rem; color: var(--text-muted);">
-          Review your personalized feedback to improve your advocacy skills.
+<div class="ls-page">
+    <header class="intro">
+        <p class="ls-eyebrow">Step 3 of 3 · Feedback</p>
+        <h1>Your session report</h1>
+        <p class="ls-lede">
+            Here is what happened in your meeting, and what an advocacy coach makes of it. You can
+            download the whole thing as a PDF to share with your team.
         </p>
-      {/if}
-      
-      {#if !feedbackData && !errorMessage}
-        <p style="margin-bottom: 1.5rem; color: var(--text-muted);">
-          Click below to generate and download your detailed session report including:
+    </header>
+
+    {#if isLoading}
+        <div class="ls-card loading" transition:fade>
+            <span class="ls-spinner" style="width:1.8rem;height:1.8rem;border-width:3px"></span>
+            <div>
+                <p style="margin:0;font-weight:600">Reading back your conversation…</p>
+                <p class="ls-footnote" style="margin:0.25rem 0 0">
+                    This takes a few seconds while the coach reviews the transcript.
+                </p>
+            </div>
+        </div>
+    {:else if errorMessage}
+        <div class="ls-card" transition:fade>
+            <div class="ls-banner ls-banner--error">
+                <span aria-hidden="true">⚠</span>
+                <div>
+                    <strong>We could not generate your feedback.</strong>
+                    <p style="margin:0.25rem 0 0">{errorMessage}</p>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="ls-btn" onclick={loadFeedback}>Try again</button>
+                <a class="ls-btn ls-btn--secondary" href="/form">Start a new session</a>
+            </div>
+        </div>
+    {:else if feedbackData}
+        <div class="report" transition:fade>
+            <section class="ls-card">
+                <h2>Session summary</h2>
+                <dl class="summary">
+                    <div><dt>Advocate</dt><dd>{feedbackData.username}</dd></div>
+                    <div><dt>Organization</dt><dd>{feedbackData.organization || 'N/A'}</dd></div>
+                    <div><dt>Lawmaker</dt><dd>{feedbackData.lawmaker_name}</dd></div>
+                    <div><dt>Orientation</dt><dd>{feedbackData.ideology}</dd></div>
+                    <div><dt>State</dt><dd>{feedbackData.state}</dd></div>
+                    <div><dt>Exchanges</dt><dd>{feedbackData.conversation_turns}</dd></div>
+                </dl>
+                <p class="topic"><strong>Topic:</strong> {feedbackData.policy_topic}</p>
+
+                <div class="actions">
+                    <button class="ls-btn" onclick={downloadPDF}>Download the full report (PDF)</button>
+                    <a class="ls-btn ls-btn--secondary" href="/form">Run another session</a>
+                </div>
+            </section>
+
+            <section class="ls-card">
+                <h2>What your coach noticed</h2>
+                <div class="coach-feedback">
+                    {#each feedbackData.trainer_agent_feedback.split('\n') as para}
+                        {#if para.trim()}<p>{para}</p>{/if}
+                    {/each}
+                </div>
+            </section>
+
+            <section class="ls-card">
+                <h2>Transcript</h2>
+                <div class="transcript">
+                    {#each turns as turn}
+                        <div class="line" class:line--you={turn.speaker === feedbackData.username}>
+                            {#if turn.speaker}<span class="line-speaker">{turn.speaker}</span>{/if}
+                            <p>{turn.text}</p>
+                        </div>
+                    {/each}
+                </div>
+            </section>
+        </div>
+    {/if}
+
+    <footer class="page-footer">
+        <p class="ls-footnote">
+            Legislative Simulacrum is developed by the Strategic Training Initiative for the
+            Prevention of Eating Disorders (STRIPED) in collaboration with the University of
+            Michigan.
         </p>
-        <ul style="text-align: left; margin: 1rem auto; max-width: 400px; color: var(--text-muted);">
-          <li>Complete conversation transcript</li>
-          <li>Personalized advocacy feedback</li>
-          <li>Performance insights</li>
-          <li>Recommended next steps</li>
-        </ul>
-      {/if}
-    </div>
-    
-    <button 
-      class="download-btn"
-      onclick={queryFeedback}
-      disabled={isDownloading}>
-      {#if isDownloading}
-        ⏳ Generating your feedback report...
-      {:else if feedbackData}
-        📥 Download Another Copy
-      {:else}
-        📄 Get Your Feedback Report
-      {/if}
-    </button>
-  </section>
-
-  <!-- Feature Highlights -->
-
-
-  <!-- Footer -->
-  <footer>
-    <p>
-      Legislative Simulacrum is a tool developed by the Strategic Training Initiative for the Prevention of Eating Disorders (STRIPED) in collaboration with the University of Michigan.
-    </p>
-    <p style="margin-top: 0.5rem; font-size: 0.85rem;">
-      © {new Date().getFullYear()} STRIPED. All rights reserved.
-    </p>
-  </footer>
+        <p class="ls-footnote">© {new Date().getFullYear()} STRIPED. All rights reserved.</p>
+    </footer>
 </div>
+
+<style>
+    .intro {
+        max-width: var(--ls-measure);
+        margin-bottom: 1.5rem;
+    }
+
+    .loading {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: var(--ls-accent);
+    }
+
+    .report {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .summary {
+        margin: 1rem 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+        gap: 0.85rem 1.5rem;
+    }
+
+    .summary dt {
+        color: var(--ls-text-faint);
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        font-weight: 700;
+    }
+
+    .summary dd {
+        margin: 0.15rem 0 0;
+        font-weight: 600;
+    }
+
+    .topic {
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--ls-border);
+        color: var(--ls-text-muted);
+    }
+
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+
+    .actions a { text-decoration: none; }
+
+    .coach-feedback {
+        max-width: var(--ls-measure);
+        color: var(--ls-text-muted);
+    }
+
+    .transcript {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        max-height: 32rem;
+        overflow-y: auto;
+    }
+
+    .line-speaker {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--ls-text-faint);
+        margin-bottom: 0.2rem;
+    }
+
+    .line p {
+        margin: 0;
+        font-size: 0.93rem;
+        padding: 0.6rem 0.8rem;
+        border-radius: var(--ls-radius);
+        background: var(--ls-surface-sunken);
+    }
+
+    .line--you p { background: var(--ls-accent-soft); }
+
+    .page-footer {
+        margin-top: 2.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--ls-border);
+    }
+</style>

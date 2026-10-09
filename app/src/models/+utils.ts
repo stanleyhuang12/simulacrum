@@ -178,7 +178,7 @@ export type Persona = {
     // "race": "white" | "black" | "asian" | "native-american" | "pacific-islander" | "prefer-not-to-say"
     "age": "18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+";
     "state": USState,
-    "ideology":  "Very conservative" | "Conservative" | "Independent"| "Liberal" | "Very liberal";
+    "ideology":  "Very conservative" | "Conservative" | "Moderate" | "Liberal" | "Very liberal";
 }; 
 
 export const neutralNames = [
@@ -209,11 +209,11 @@ export const ageBrackets: Persona["age"][] = ["18-24", "25-34", "35-44", "45-54"
 export const ideology: Persona["ideology"][] = [
   "Very conservative",
   "Conservative",
-  "Independent",
+  "Moderate",
   "Liberal",
   "Very liberal",
 ];
-const usStates: USState[] = [
+export const usStates: USState[] = [
   "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia",
   "Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts",
   "Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey",
@@ -278,10 +278,5 @@ export function random_beta_sampler(
 export function should_display_coach(
     threshold=0.5
 ):boolean {
-    const probs = (jStat as any).random()
-    if (probs > threshold) {
-        return true
-    } else {
-        return false 
-    }
+    return Math.random() > threshold;
 };

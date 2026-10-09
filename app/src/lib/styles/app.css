@@ -1,0 +1,314 @@
+/* =========================================================================
+   Legislative Simulacrum — design tokens and base styles.
+   Every route inherits this via src/routes/+layout.svelte.
+   ========================================================================= */
+
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --ls-bg: #f6f5fa;
+  --ls-bg-accent: radial-gradient(ellipse 90% 60% at 50% -10%, #e6e1f7 0%, #f6f5fa 70%);
+  --ls-surface: #ffffff;
+  --ls-surface-sunken: #f0eef7;
+  --ls-border: #ddd9e8;
+  --ls-border-strong: #c4bddb;
+
+  /* Text */
+  --ls-text: #1d1a2b;
+  --ls-text-muted: #5d5873;
+  --ls-text-faint: #86819c;
+
+  /* Accent */
+  --ls-accent: #4c35c9;
+  --ls-accent-hover: #3b28a8;
+  --ls-accent-soft: #ece8fb;
+  --ls-on-accent: #ffffff;
+
+  /* Status */
+  --ls-danger: #c02a3d;
+  --ls-danger-soft: #fbe9eb;
+  --ls-success: #15754f;
+  --ls-success-soft: #e4f4ed;
+  --ls-warning: #9a6207;
+  --ls-warning-soft: #fdf1dd;
+
+  /* The "stage" — the call interface, dark in both themes so video reads well */
+  --ls-stage: #171227;
+  --ls-stage-raised: #221a3a;
+  --ls-stage-border: #372c58;
+  --ls-stage-text: #f2f0f8;
+  --ls-stage-text-muted: #aaa3c4;
+
+  /* Geometry */
+  --ls-radius-sm: 6px;
+  --ls-radius: 10px;
+  --ls-radius-lg: 16px;
+  --ls-shadow: 0 1px 2px rgba(24, 18, 45, 0.06), 0 8px 24px rgba(24, 18, 45, 0.08);
+  --ls-shadow-lg: 0 2px 4px rgba(24, 18, 45, 0.08), 0 18px 48px rgba(24, 18, 45, 0.16);
+
+  --ls-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  --ls-measure: 68ch;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ls-bg: #100d1c;
+    --ls-bg-accent: radial-gradient(ellipse 90% 60% at 50% -10%, #241b40 0%, #100d1c 70%);
+    --ls-surface: #1a1530;
+    --ls-surface-sunken: #141024;
+    --ls-border: #2e2650;
+    --ls-border-strong: #453a70;
+
+    --ls-text: #f1eff8;
+    --ls-text-muted: #b0a9cc;
+    --ls-text-faint: #837ca3;
+
+    --ls-accent: #9c8bff;
+    --ls-accent-hover: #b0a2ff;
+    --ls-accent-soft: #251d45;
+    --ls-on-accent: #16102e;
+
+    --ls-danger: #ff8b96;
+    --ls-danger-soft: #33161d;
+    --ls-success: #6fd4a8;
+    --ls-success-soft: #10291f;
+    --ls-warning: #e8b866;
+    --ls-warning-soft: #2d2110;
+
+    --ls-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --ls-shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.5), 0 18px 48px rgba(0, 0, 0, 0.5);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ls-bg-accent);
+  background-color: var(--ls-bg);
+  color: var(--ls-text);
+  font-family: var(--ls-font);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.015em;
+  font-weight: 650;
+}
+
+h1 { font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem); }
+h2 { font-size: clamp(1.3rem, 1.05rem + 1vw, 1.7rem); }
+h3 { font-size: 1.1rem; }
+
+p { margin: 0 0 0.85rem; }
+
+a {
+  color: var(--ls-accent);
+  text-underline-offset: 2px;
+}
+
+img { max-width: 100%; }
+
+/* ---------------------------------------------------------------- layout */
+
+.ls-page {
+  width: min(100% - 2rem, 1120px);
+  margin-inline: auto;
+  padding-block: clamp(1.5rem, 4vw, 3rem);
+}
+
+.ls-page--narrow { width: min(100% - 2rem, 760px); }
+
+.ls-card {
+  background: var(--ls-surface);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  box-shadow: var(--ls-shadow);
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.ls-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ls-accent);
+  margin: 0 0 0.4rem;
+}
+
+.ls-lede {
+  color: var(--ls-text-muted);
+  font-size: 1.02rem;
+  max-width: var(--ls-measure);
+}
+
+.ls-footnote {
+  color: var(--ls-text-faint);
+  font-size: 0.82rem;
+  max-width: var(--ls-measure);
+}
+
+/* --------------------------------------------------------------- controls */
+
+.ls-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-radius: var(--ls-radius);
+  border: 1px solid transparent;
+  background: var(--ls-accent);
+  color: var(--ls-on-accent);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.ls-btn:hover:not(:disabled) { background: var(--ls-accent-hover); }
+
+.ls-btn:focus-visible {
+  outline: 2px solid var(--ls-accent);
+  outline-offset: 2px;
+}
+
+.ls-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ls-btn--secondary {
+  background: transparent;
+  color: var(--ls-text);
+  border-color: var(--ls-border-strong);
+}
+
+.ls-btn--secondary:hover:not(:disabled) {
+  background: var(--ls-surface-sunken);
+}
+
+.ls-btn--danger {
+  background: var(--ls-danger);
+  color: #fff;
+}
+
+.ls-btn--danger:hover:not(:disabled) { filter: brightness(0.92); }
+
+/* ------------------------------------------------------------------ forms */
+
+.ls-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ls-field > span:first-child {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.ls-hint {
+  color: var(--ls-text-faint);
+  font-size: 0.8rem;
+}
+
+.ls-input,
+.ls-select,
+.ls-textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--ls-text);
+  background: var(--ls-surface);
+  border: 1px solid var(--ls-border-strong);
+  border-radius: var(--ls-radius);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ls-textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.ls-input:focus,
+.ls-select:focus,
+.ls-textarea:focus {
+  outline: none;
+  border-color: var(--ls-accent);
+  box-shadow: 0 0 0 3px var(--ls-accent-soft);
+}
+
+.ls-input[aria-invalid="true"],
+.ls-select[aria-invalid="true"],
+.ls-textarea[aria-invalid="true"] {
+  border-color: var(--ls-danger);
+}
+
+.ls-error {
+  color: var(--ls-danger);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------------- banners */
+
+.ls-banner {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.8rem 1rem;
+  border-radius: var(--ls-radius);
+  border: 1px solid;
+  font-size: 0.9rem;
+}
+
+.ls-banner--error {
+  background: var(--ls-danger-soft);
+  border-color: var(--ls-danger);
+  color: var(--ls-danger);
+}
+
+.ls-banner--success {
+  background: var(--ls-success-soft);
+  border-color: var(--ls-success);
+  color: var(--ls-success);
+}
+
+.ls-banner--info {
+  background: var(--ls-accent-soft);
+  border-color: var(--ls-border-strong);
+  color: var(--ls-text);
+}
+
+/* --------------------------------------------------------------- spinners */
+
+.ls-spinner {
+  width: 1.1em;
+  height: 1.1em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ls-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ls-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

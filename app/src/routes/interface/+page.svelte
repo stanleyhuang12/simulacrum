@@ -1,97 +1,104 @@
 <script lang="ts">
-    import { onMount } from "svelte";
+    import { onMount, onDestroy, tick } from "svelte";
     import { goto } from "$app/navigation";
+    import { fade } from "svelte/transition";
     import type { PageProps } from "./$types";
-    import {
-        manageDeliberationInstanceLocally,
-        resetDeliberation,
-    } from "$models/+deliberations";   
-    import type { interactionData } from "$models/+utils";
-    import Notification from "$models/Notification.svelte";
 
     let { data }: PageProps = $props();
-    let localData = $state<Record<string, any>>({});
 
-    const mutedNotification = "You are currently muted. Unmute yourself to speak.";
-    // Only show the muted notification when mic is actually off
-    let showNotification = $state(true);
+    /* ----------------------------------------------------------------- state */
 
-    let audioStream: MediaStream | undefined;
-    let videoStreams: MediaStream | undefined;
-    let videoElem: HTMLVideoElement;
-    let micOn = $state(false);   // mic starts OFF — user must explicitly enable
+    type CallStatus =
+        | "connecting"
+        | "muted"
+        | "listening"
+        | "transcribing"
+        | "thinking"
+        | "speaking"
+        | "error";
+
+    type Line = { speaker: "you" | "lawmaker"; text: string };
+
+    const statusCopy: Record<CallStatus, string> = {
+        connecting: "Connecting…",
+        muted: "Your mic is off",
+        listening: "Listening",
+        transcribing: "Hearing you…",
+        thinking: `${data.lawmaker.name} is thinking…`,
+        speaking: `${data.lawmaker.name} is speaking`,
+        error: "Something went wrong"
+    };
+
+    let status = $state<CallStatus>("connecting");
+    let transcript = $state<Line[]>([]);
+    let errorMessage = $state<string | null>(null);
+    let winddown = $state(false);
+    let micOn = $state(false);
     let camOn = $state(false);
-    let isProcessingAudio = false;
+    let ending = $state(false);
+    let transcriptEl = $state<HTMLDivElement | null>(null);
 
-    let audioElement: HTMLAudioElement;
-    let agentSpeaking = $state(false); // track when agent audio is playing
+    /* The mic is a live input; the status is derived from what the system is doing. */
+    const busy = $derived(
+        status === "connecting" || status === "thinking" || status === "speaking"
+    );
 
-    let EPHEMERAL_KEY: string | null = null;
+    /* ------------------------------------------------------------- media/rtc */
+
+    let audioStream = $state<MediaStream | undefined>(undefined);
+    let videoStream: MediaStream | undefined;
+    let videoElem = $state<HTMLVideoElement | null>(null);
+    let remoteAudioElem: HTMLAudioElement | undefined;
+    let currentAudio: HTMLAudioElement | undefined;
+
     let peerConnection: RTCPeerConnection | null = null;
     let dc: RTCDataChannel | null = null;
-    // Separate flag for whether the WebRTC peer connection itself is alive
-    let isConnected = $state(false);
+    let ephemeralKey: string | null = null;
 
-    let awaitTime: Date;
-    let startTime: Date;
-    let endTime: Date;
+    let awaitTime = new Date();
+    let startTime = new Date();
+    let endTime = new Date();
 
-    onMount(() => {
-        if (data.sess_cookies && data.demo) {resetDeliberation(data.sess_cookies)}
-        if (data.sess_cookies === null) {goto('/form?demo=true')}; 
-        console.log("Cleared IndexedDB interactions.");
-        console.log("Establishing WebRTC Peer Connection with OpenAI.");
-        establishOAIConnection();
-
-        sessionStorage.setItem("initTime", new Date().toISOString());
-
-        if (data.demo) {
-            const formData = sessionStorage.getItem("formData");
-            if (!formData) { goto("/"); return; }
-            localData = JSON.parse(formData);
-        }
-
-        console.log($state.snapshot(localData));
-        console.log("Establishing video stream.");
-        getVideoStream();
-
-        awaitTime = new Date();
-    });
-
-    // ---------------------------------------------------------------------------
-    // WebRTC / OpenAI connection
-    // ---------------------------------------------------------------------------
-
-    async function establishOAIConnection() {
-        if (isConnected && peerConnection) {
-            console.log("WebRTC session already active.");
+    onMount(async () => {
+        try {
+            await establishOAIConnection();
+            status = "muted";
+        } catch (err) {
+            console.error("Could not start the call:", err);
+            status = "error";
+            errorMessage =
+                "We could not reach your microphone or the speech service. Check your browser's microphone permission and reload the page.";
             return;
         }
+        getVideoStream();
+    });
 
+    onDestroy(() => teardown());
+
+    async function establishOAIConnection() {
         const pc = new RTCPeerConnection();
 
-        if (!EPHEMERAL_KEY) {
-            await getEphemeralKey();
+        if (!ephemeralKey) {
+            const res = await fetch("/api/ephemeral-key-for-transcription", { method: "POST" });
+            if (!res.ok) throw new Error(`Ephemeral key request failed: ${res.status}`);
+            ephemeralKey = (await res.json()).ephemeralKey;
         }
 
-        // Acquire audio — start with all tracks DISABLED so user is muted by default
-        audioStream = await window.navigator.mediaDevices.getUserMedia({
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-            },
+        /* Start muted — the advocate opts in before anything is transcribed. */
+        audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         });
-        audioStream.getAudioTracks().forEach(track => (track.enabled = false));
+        audioStream.getAudioTracks().forEach((t) => (t.enabled = false));
         micOn = false;
-        showNotification = true; // mic is off, show the muted notice
 
-        audioElement = document.createElement("audio");
-        audioElement.autoplay = true;
-        pc.ontrack = (e) => (audioElement.srcObject = e.streams[0]);
+        remoteAudioElem = document.createElement("audio");
+        remoteAudioElem.autoplay = true;
+        pc.ontrack = (e) => {
+            if (remoteAudioElem) remoteAudioElem.srcObject = e.streams[0];
+        };
 
         dc = pc.createDataChannel("oai-events");
-        dc.addEventListener("message", (evt) => receiveEmittedEvents(evt));
+        dc.addEventListener("message", receiveEmittedEvents);
 
         pc.addTrack(audioStream.getTracks()[0]);
 
@@ -102,129 +109,58 @@
             method: "POST",
             body: offer.sdp,
             headers: {
-                Authorization: `Bearer ${EPHEMERAL_KEY}`,
-                "Content-Type": "application/sdp",
-            },
+                Authorization: `Bearer ${ephemeralKey}`,
+                "Content-Type": "application/sdp"
+            }
         });
 
         if (!sdpResponse.ok) {
-            console.error("SDP negotiation failed:", sdpResponse.status, await sdpResponse.text());
-            return;
+            throw new Error(`SDP negotiation failed: ${sdpResponse.status} ${await sdpResponse.text()}`);
         }
 
-        const answer: RTCSessionDescriptionInit = {
-            type: "answer",
-            sdp: await sdpResponse.text(),
-        };
-        await pc.setRemoteDescription(answer);
+        await pc.setRemoteDescription({ type: "answer", sdp: await sdpResponse.text() });
 
         peerConnection = pc;
-        isConnected = true;
-        console.log("WebRTC remote connection established.");
+        awaitTime = new Date();
     }
 
-    async function getEphemeralKey() {
-        console.log("Retrieving ephemeral key...");
-        const res = await fetch("/api/ephemeral-key-for-transcription", { method: "POST" });
-        const data = await res.json();
-        EPHEMERAL_KEY = data.ephemeralKey;
-        console.log("Ephemeral key retrieved.");
-        return EPHEMERAL_KEY;
-    }
-
-    // ---------------------------------------------------------------------------
-    // Mic toggle
-    // ---------------------------------------------------------------------------
+    /* --------------------------------------------------------------- controls */
 
     function toggleMic() {
-        if (!audioStream) return;
-        if (agentSpeaking) {
-            console.log("Agent is speaking — ignoring mic toggle.");
-            return;
-        }
+        if (!audioStream || busy) return;
 
-        const newState = !micOn;
-        audioStream.getAudioTracks().forEach(track => (track.enabled = newState));
-        micOn = newState;
-        // Keep the muted notification in sync with mic state
-        showNotification = !newState;
-        console.log(micOn ? "Microphone enabled." : "Microphone disabled.");
+        const next = !micOn;
+        audioStream.getAudioTracks().forEach((t) => (t.enabled = next));
+        micOn = next;
+        status = next ? "listening" : "muted";
+        if (next) awaitTime = new Date();
     }
-
-    // ---------------------------------------------------------------------------
-    // Tear down the WebRTC connection entirely (called on Leave Call)
-    // ---------------------------------------------------------------------------
-
-    function closeOAIConnection() {
-        if (!isConnected) {
-            console.log("No active WebRTC session to close.");
-            return;
-        }
-
-        console.log("Closing WebRTC connection...");
-
-        if (dc) {
-            dc.close();
-            dc = null;
-        }
-
-        if (peerConnection) {
-            peerConnection.getSenders().forEach(sender => sender.track?.stop());
-            peerConnection.close();
-            peerConnection = null;
-        }
-
-        // Stop the local audio tracks so the browser releases the mic
-        audioStream?.getTracks().forEach(track => track.stop());
-        audioStream = undefined;
-
-        isConnected = false;
-        micOn = false;
-        showNotification = false;
-    }
-
-    // ---------------------------------------------------------------------------
-    // Camera
-    // ---------------------------------------------------------------------------
 
     async function getVideoStream() {
         try {
-            if (!window.navigator.mediaDevices?.getUserMedia) {
-                console.error("Browser does not support video streaming.");
-                return;
-            }
-            videoStreams = await window.navigator.mediaDevices.getUserMedia({ video: true });
-            videoElem.srcObject = videoStreams;
+            if (!navigator.mediaDevices?.getUserMedia) return;
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            await tick();
+            if (videoElem) videoElem.srcObject = videoStream;
             camOn = true;
-            console.log("Video stream enabled.");
         } catch (err) {
             console.error("Failed to get video stream:", err);
+            camOn = false;
         }
     }
 
     function toggleCamera() {
-        if (!videoStreams && !camOn) {
-            getVideoStream();
-            return;
-        }
-        if (!videoStreams) return;
-
-        if (camOn) {
-            videoStreams.getVideoTracks().forEach(track => {
-                track.stop();
-                track.enabled = false;
-            });
-            videoElem.srcObject = null;
-            videoStreams = undefined;
+        if (camOn && videoStream) {
+            videoStream.getVideoTracks().forEach((t) => t.stop());
+            if (videoElem) videoElem.srcObject = null;
+            videoStream = undefined;
             camOn = false;
         } else {
             getVideoStream();
         }
     }
 
-    // ---------------------------------------------------------------------------
-    // Incoming OpenAI data-channel events
-    // ---------------------------------------------------------------------------
+    /* ------------------------------------------------------ transcription in */
 
     async function receiveEmittedEvents(evt: MessageEvent) {
         try {
@@ -235,39 +171,21 @@
                 return;
             }
 
-            console.log("OAI event:", event.type, event);
-
             switch (event.type) {
-                case "session.created":
-                    console.log("OAI session established.");
-                    isProcessingAudio = true;
-                    break;
-
                 case "input_audio_buffer.speech_started":
+                case "conversation.item.input_audio_transcription.started":
                     startTime = new Date();
-                    break;
-
-                case "conversation.item.input_audio_transcription.started": //this signal may have been deprecated but including here just in case
-                    startTime = new Date();
+                    if (micOn && status === "listening") status = "transcribing";
                     break;
 
                 case "conversation.item.input_audio_transcription.completed": {
                     endTime = new Date();
                     const text: string = event.transcript;
-
-                    if (!text) {
-                        isProcessingAudio = false;
+                    if (!text || !text.trim()) {
+                        if (micOn) status = "listening";
                         break;
                     }
-
-                    console.log("User said:", text);
-
-                    if (data.demo) {
-                        sessionStorage.setItem("updatedTime", new Date().toISOString());
-                    }
-
-                    isProcessingAudio = false;
-                    await processUserInput(text);
+                    await processUserInput(text.trim());
                     break;
                 }
             }
@@ -276,54 +194,73 @@
         }
     }
 
-    // ---------------------------------------------------------------------------
-    // Deliberation / agent response
-    // ---------------------------------------------------------------------------
+    async function appendLine(line: Line) {
+        transcript = [...transcript, line];
+        await tick();
+        transcriptEl?.scrollTo({ top: transcriptEl.scrollHeight, behavior: "smooth" });
+    }
+
+    /* ------------------------------------------------------------ agent turn */
 
     async function processUserInput(text: string) {
-        try {
-            const res = await manageDeliberationInstanceLocally(
-                text,
-                awaitTime,
-                endTime,
-                startTime,
-                fetch, 
-                data.sess_cookies as string,
-            );
+        await appendLine({ speaker: "you", text });
 
-            if (!res) {
-                console.error("No response from deliberation instance.");
+        /* Hold the mic closed for the whole turn so the agent's voice is not
+           transcribed back as the advocate. */
+        audioStream?.getAudioTracks().forEach((t) => (t.enabled = false));
+        status = "thinking";
+        errorMessage = null;
+
+        try {
+            const res = await fetch("/api/manage-deliberation-instance", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    text,
+                    responseAwaitTime: awaitTime.toISOString(),
+                    responseStartTime: startTime.toISOString(),
+                    responseEndTime: endTime.toISOString()
+                })
+            });
+
+            if (res.status === 403) {
+                goto("/forbidden");
                 return;
             }
 
-            switch (res.type) {
-                case "guardrail.triggered":
-                    console.log("Guardrail triggered:", res.reason);
-                    goto("/forbidden");
-                    break;
+            if (!res.ok) {
+                throw new Error(await res.text());
+            }
 
-                case "automated.response":
-                    await playAgentResponse(res.response);
-                    sessionStorage.setItem("updatedTime", new Date().toISOString());
-                    break;
-                }
+            const payload = await res.json();
+
+            if (payload.type === "guardrail.triggered") {
+                goto("/forbidden");
+                return;
+            }
+
+            winddown = Boolean(payload.winddown);
+            await appendLine({ speaker: "lawmaker", text: payload.response });
+            await playAgentResponse(payload.response);
         } catch (err) {
             console.error("Error processing text:", err);
+            status = "error";
+            errorMessage =
+                "The lawmaker could not respond just then. Turn your mic back on and try saying that again.";
+        } finally {
+            restoreMic();
         }
     }
 
     async function playAgentResponse(agentResponse: string) {
-        console.log("Agent response:", agentResponse);
-
-        // Mute the user mic while the agent speaks to prevent feedback / echo
-        audioStream?.getAudioTracks().forEach(track => (track.enabled = false));
-        agentSpeaking = true;
+        status = "speaking";
 
         try {
             const ttsRes = await fetch("/api/text-to-speech", {
                 method: "POST",
                 headers: { "Content-Type": "text/plain" },
-                body: agentResponse,
+                body: agentResponse
             });
 
             if (!ttsRes.ok) {
@@ -331,242 +268,483 @@
                 return;
             }
 
-            const audioBuffer = await ttsRes.arrayBuffer();
-            const blob = new Blob([audioBuffer], { type: "audio/wav" });
+            const blob = new Blob([await ttsRes.arrayBuffer()], { type: "audio/wav" });
             const blobURL = URL.createObjectURL(blob);
-            const audioElem = new Audio(blobURL);
+            currentAudio = new Audio(blobURL);
 
-            await new Promise<void>((resolve, reject) => {
-                audioElem.onended = () => resolve();
-                audioElem.onerror = (e) => reject(e);
-                audioElem.play().catch(reject);
+            await new Promise<void>((resolve) => {
+                if (!currentAudio) return resolve();
+                currentAudio.onended = () => resolve();
+                currentAudio.onerror = () => resolve();
+                currentAudio.play().catch(() => resolve());
             });
 
-            URL.revokeObjectURL(blobURL); // clean up the object URL
-        } finally {
-            // Always restore mic state after agent finishes (or on error)
-            agentSpeaking = false;
-            // Only re-enable the mic track if the user had it switched on
-            if (micOn && audioStream) {
-                audioStream.getAudioTracks().forEach(track => (track.enabled = true));
-            }
-            awaitTime = new Date();
+            URL.revokeObjectURL(blobURL);
+            currentAudio = undefined;
+        } catch (err) {
+            console.error("Could not play the lawmaker's reply:", err);
         }
     }
 
-    // ---------------------------------------------------------------------------
-    // End simulation
-    // ---------------------------------------------------------------------------
+    function restoreMic() {
+        awaitTime = new Date();
+        if (status === "error") return;
 
-    function completeSimulation() {
-        console.log("Ending simulation.");
-        closeOAIConnection();
+        if (micOn && audioStream) {
+            audioStream.getAudioTracks().forEach((t) => (t.enabled = true));
+            status = "listening";
+        } else {
+            status = "muted";
+        }
+    }
 
-        try {
-            videoStreams?.getTracks().forEach(track => track.stop());
-        } catch (err) {
-            console.error("Error stopping video tracks:", err);
+    /* ----------------------------------------------------------------- teardown */
+
+    function teardown() {
+        currentAudio?.pause();
+        currentAudio = undefined;
+
+        dc?.close();
+        dc = null;
+
+        if (peerConnection) {
+            peerConnection.getSenders().forEach((s) => s.track?.stop());
+            peerConnection.close();
+            peerConnection = null;
         }
 
-        goto('/reflection?demo=true');
+        audioStream?.getTracks().forEach((t) => t.stop());
+        audioStream = undefined;
+
+        videoStream?.getTracks().forEach((t) => t.stop());
+        videoStream = undefined;
+
+        micOn = false;
+        camOn = false;
+    }
+
+    function completeSimulation() {
+        ending = true;
+        teardown();
+        goto("/reflection");
     }
 </script>
 
-<style>
-.simulation-container {
-    display: flex;
-    flex-direction: column;
-    background: rgba(69, 6, 121, 0.8);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    border-radius: 3em;
-    margin: 0 auto;
-    align-items: center;
-}
+<div class="call">
+    <header class="call-header">
+        <div>
+            <p class="topic">{data.policyTopic}</p>
+            <p class="subtitle">
+                Meeting with {data.lawmaker.name} · {data.lawmaker.state}
+            </p>
+        </div>
+        <div class="status" data-status={status}>
+            {#if busy}<span class="ls-spinner"></span>{:else}<span class="dot"></span>{/if}
+            <span>{statusCopy[status]}</span>
+        </div>
+    </header>
 
-.video-grid {
-    display: grid;
-    grid-auto-flow: column;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 16px;
-    padding: 30px;
-    align-items: center;
-    background: rgba(69, 6, 121, 0.9);
-    border-radius: 3em;
-    box-sizing: border-box;
-}
-
-.video-grid video,
-.video-grid img {
-    aspect-ratio: 16 / 12;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 8px;
-}
-
-.controls {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 16px;
-    padding: 12px 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-video {
-    width: 70%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-    border-radius: 12px;
-    background-color: #000;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
-}
-
-.video-grid strong {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 1.5rem;
-    font-weight: bold;
-    letter-spacing: 0.03em;
-    background: rgba(0, 0, 0, 0.15);
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-.video-grid strong:hover {
-    color: rgba(255, 255, 255, 1);
-    transition: color 0.3s;
-}
-
-.status-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-left: 8px;
-    animation: blink 2s infinite;
-}
-
-@keyframes blink {
-    0%   { opacity: 1; }
-    50%  { opacity: 0; }
-    100% { opacity: 1; }
-}
-
-button.microphone,
-button.camera,
-#leave-call {
-    border-radius: 50px;
-    color: white;
-    padding: 12px 20px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-button.microphone:hover,
-button.camera:hover {
-    transform: translateY(-2px);
-    background-color: rgb(5, 44, 5);
-    box-shadow: 0 0 0 3px rgb(0, 79, 0);
-}
-
-#enable-microphone,
-#enable-camera {
-    background-color: forestgreen;
-}
-
-#disable-microphone,
-#disable-camera {
-    background-color: #555;
-}
-
-#leave-call {
-    background: crimson;
-}
-
-#leave-call:hover {
-    background: darkred;
-    box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.4);
-}
-
-/* Dim mic button while agent is speaking */
-button.microphone:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-</style>
-
-<div class="simulation-container">
-    {#if showNotification}
-        <Notification
-            alertMessage={mutedNotification}
-            onClose={() => (showNotification = false)}
-        />
+    {#if errorMessage}
+        <div class="ls-banner ls-banner--error call-banner" transition:fade>
+            <span aria-hidden="true">⚠</span>
+            <span>{errorMessage}</span>
+        </div>
     {/if}
 
-    <div class="video-grid">
-        <div class="lawmaker-profile">
-            <img class="lawmaker-avatar" src={data.lawmakerAvatarURL} alt="Lawmaker Avatar" />
-            <div>
-                <strong>
-                    {data.demo ? localData.lawmaker_name : data.form?.lawmakerName} |
-                    {data.demo ? localData.state : data.form?.state}
-                </strong>
-            </div>
+    {#if winddown}
+        <div class="ls-banner ls-banner--info call-banner" transition:fade>
+            <span aria-hidden="true">⏳</span>
+            <span>
+                Your time with {data.lawmaker.name} is nearly up — bring your ask home, then
+                leave the call when you are ready.
+            </span>
         </div>
-        <div class="user-profile">
-            <video bind:this={videoElem} autoplay playsinline muted></video>
-            <div>
-                <span class="status-dot" style="background-color: green;"></span>
-                <strong>
-                    {data.demo ? localData.username : data.form?.username} |
-                    {data.demo ? localData.organization : data.form?.organization}
-                </strong>
-            </div>
+    {/if}
+
+    <div class="stage">
+        <div class="tiles">
+            <figure class="tile" class:active={status === "speaking"}>
+                {#if data.lawmakerAvatarURL}
+                    <img src={data.lawmakerAvatarURL} alt="Portrait of {data.lawmaker.name}" />
+                {:else}
+                    <div class="tile-placeholder" aria-hidden="true">
+                        {data.lawmaker.name?.slice(0, 1) ?? "?"}
+                    </div>
+                {/if}
+                <figcaption>
+                    <span class="name">{data.lawmaker.name}</span>
+                    <span class="meta">{data.lawmaker.state}</span>
+                </figcaption>
+            </figure>
+
+            <figure class="tile" class:active={status === "listening" || status === "transcribing"}>
+                <!-- svelte-ignore a11y_media_has_caption -->
+                <video bind:this={videoElem} autoplay playsinline muted></video>
+                {#if !camOn}
+                    <div class="tile-placeholder camera-off" aria-hidden="true">
+                        {data.advocate.username?.slice(0, 1) ?? "?"}
+                    </div>
+                {/if}
+                <figcaption>
+                    <span class="name">
+                        {data.advocate.username}
+                        {#if !micOn}<span class="muted-pill">muted</span>{/if}
+                    </span>
+                    <span class="meta">{data.advocate.organization}</span>
+                </figcaption>
+            </figure>
         </div>
+
+        <aside class="transcript-panel">
+            <h2>Transcript</h2>
+            <div class="transcript" bind:this={transcriptEl}>
+                {#if transcript.length === 0}
+                    <p class="transcript-empty">
+                        Turn on your mic and introduce yourself. What you say and what
+                        {data.lawmaker.name} says back will appear here.
+                    </p>
+                {/if}
+                {#each transcript as line}
+                    <div class="line line--{line.speaker}">
+                        <span class="line-speaker">
+                            {line.speaker === "you" ? "You" : data.lawmaker.name}
+                        </span>
+                        <p>{line.text}</p>
+                    </div>
+                {/each}
+                {#if status === "thinking"}
+                    <div class="line line--lawmaker pending" transition:fade>
+                        <span class="line-speaker">{data.lawmaker.name}</span>
+                        <p><span class="ls-spinner"></span> thinking…</p>
+                    </div>
+                {/if}
+            </div>
+        </aside>
     </div>
 
     <div class="controls">
-        <!-- Microphone toggle — disabled while agent is speaking -->
-        {#if !micOn}
-            <button
-                class="microphone"
-                id="enable-microphone"
-                onclick={toggleMic}
-                disabled={agentSpeaking}
-                aria-label="Enable microphone"
-            >
-                🎙️ Turn on mic
-            </button>
-        {:else}
-            <button
-                class="microphone"
-                id="disable-microphone"
-                onclick={toggleMic}
-                disabled={agentSpeaking}
-                aria-label="Disable microphone"
-            >
-                🔇 Turn off mic
-            </button>
-        {/if}
+        <button
+            class="control"
+            class:on={micOn}
+            onclick={toggleMic}
+            disabled={busy || !audioStream}
+            aria-pressed={micOn}
+        >
+            {micOn ? "🎙️" : "🔇"}
+            <span>{micOn ? "Mute" : "Unmute"}</span>
+        </button>
 
-        {#if !camOn}
-            <button class="camera" id="enable-camera" onclick={toggleCamera}>
-                📸 Turn on camera
-            </button>
-        {:else}
-            <button class="camera" id="disable-camera" onclick={toggleCamera}>
-                📷 Turn off camera
-            </button>
-        {/if}
+        <button class="control" class:on={camOn} onclick={toggleCamera} aria-pressed={camOn}>
+            {camOn ? "📹" : "🚫"}
+            <span>{camOn ? "Stop video" : "Start video"}</span>
+        </button>
 
-        <button id="leave-call" onclick={completeSimulation} aria-label="Leave call">
-            🚪 Leave Call
+        <button class="control control--leave" onclick={completeSimulation} disabled={ending}>
+            🚪 <span>Leave call</span>
         </button>
     </div>
+
+    {#if !micOn && status === "muted" && transcript.length === 0}
+        <p class="hint" transition:fade>
+            You are muted. Press <strong>Unmute</strong> when you are ready to speak — pause for a
+            moment when you finish a thought and {data.lawmaker.name} will reply.
+        </p>
+    {/if}
 </div>
+
+<style>
+    .call {
+        width: min(100% - 2rem, 1200px);
+        margin-inline: auto;
+        padding-block: clamp(1rem, 3vw, 2rem);
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .call-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .topic {
+        margin: 0;
+        font-weight: 650;
+        font-size: 1.05rem;
+        max-width: 60ch;
+    }
+
+    .subtitle {
+        margin: 0.15rem 0 0;
+        color: var(--ls-text-muted);
+        font-size: 0.88rem;
+    }
+
+    .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.85rem;
+        border-radius: 999px;
+        border: 1px solid var(--ls-border-strong);
+        background: var(--ls-surface);
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .status .dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: var(--ls-text-faint);
+    }
+
+    .status[data-status="listening"],
+    .status[data-status="transcribing"] {
+        color: var(--ls-success);
+        border-color: var(--ls-success);
+        background: var(--ls-success-soft);
+    }
+
+    .status[data-status="listening"] .dot,
+    .status[data-status="transcribing"] .dot {
+        background: var(--ls-success);
+        animation: pulse 1.6s ease-in-out infinite;
+    }
+
+    .status[data-status="speaking"],
+    .status[data-status="thinking"],
+    .status[data-status="connecting"] {
+        color: var(--ls-accent);
+        border-color: var(--ls-accent);
+        background: var(--ls-accent-soft);
+    }
+
+    .status[data-status="error"] {
+        color: var(--ls-danger);
+        border-color: var(--ls-danger);
+        background: var(--ls-danger-soft);
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.25; }
+    }
+
+    .call-banner { margin: 0; }
+
+    /* ------------------------------------------------------------ the stage */
+
+    .stage {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    @media (max-width: 880px) {
+        .stage { grid-template-columns: 1fr; }
+    }
+
+    .tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--ls-stage);
+        border: 1px solid var(--ls-stage-border);
+        border-radius: var(--ls-radius-lg);
+    }
+
+    .tile {
+        position: relative;
+        margin: 0;
+        border-radius: var(--ls-radius);
+        overflow: hidden;
+        background: var(--ls-stage-raised);
+        border: 2px solid transparent;
+        transition: border-color 0.2s ease;
+        aspect-ratio: 4 / 3;
+    }
+
+    .tile.active { border-color: var(--ls-accent); }
+
+    .tile img,
+    .tile video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .tile-placeholder {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        font-weight: 700;
+        color: var(--ls-stage-text-muted);
+        background: var(--ls-stage-raised);
+        text-transform: uppercase;
+    }
+
+    .tile figcaption {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        padding: 1.75rem 0.75rem 0.6rem;
+        background: linear-gradient(to top, rgba(10, 7, 20, 0.88), transparent);
+        color: var(--ls-stage-text);
+    }
+
+    .tile .name {
+        font-weight: 650;
+        font-size: 0.92rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .tile .meta {
+        font-size: 0.78rem;
+        color: var(--ls-stage-text-muted);
+    }
+
+    .muted-pill {
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.1rem 0.4rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    /* -------------------------------------------------------- transcript */
+
+    .transcript-panel {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        background: var(--ls-surface);
+        border: 1px solid var(--ls-border);
+        border-radius: var(--ls-radius-lg);
+        padding: 1rem;
+    }
+
+    .transcript-panel h2 {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: var(--ls-text-faint);
+        margin-bottom: 0.75rem;
+    }
+
+    .transcript {
+        flex: 1;
+        overflow-y: auto;
+        max-height: min(48vh, 420px);
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        scroll-behavior: smooth;
+    }
+
+    .transcript-empty {
+        color: var(--ls-text-faint);
+        font-size: 0.88rem;
+    }
+
+    .line-speaker {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--ls-text-faint);
+        margin-bottom: 0.2rem;
+    }
+
+    .line p {
+        margin: 0;
+        font-size: 0.92rem;
+        padding: 0.55rem 0.75rem;
+        border-radius: var(--ls-radius);
+        background: var(--ls-surface-sunken);
+    }
+
+    .line--you p {
+        background: var(--ls-accent-soft);
+    }
+
+    .line.pending p {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--ls-text-faint);
+    }
+
+    /* --------------------------------------------------------- controls */
+
+    .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+    }
+
+    .control {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.65rem 1.15rem;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.92rem;
+        border-radius: 999px;
+        border: 1px solid var(--ls-border-strong);
+        background: var(--ls-surface);
+        color: var(--ls-text);
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .control:hover:not(:disabled) { background: var(--ls-surface-sunken); }
+
+    .control.on {
+        border-color: var(--ls-success);
+        color: var(--ls-success);
+        background: var(--ls-success-soft);
+    }
+
+    .control:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .control--leave {
+        border-color: var(--ls-danger);
+        color: #fff;
+        background: var(--ls-danger);
+    }
+
+    .control--leave:hover:not(:disabled) { filter: brightness(0.92); background: var(--ls-danger); }
+
+    .hint {
+        text-align: center;
+        color: var(--ls-text-muted);
+        font-size: 0.88rem;
+        max-width: 52ch;
+        margin-inline: auto;
+    }
+</style>

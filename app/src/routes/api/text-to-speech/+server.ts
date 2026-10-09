@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { json, error } from "@sveltejs/kit"
-import { OPENAI_API_KEY } from "$env/static/private";
+import { env } from "$env/dynamic/private";
 
 export const GET: RequestHandler = async () => {
     return new Response();
@@ -18,7 +18,7 @@ export const POST: RequestHandler = async( {request} ) => {
         const agentAudio = await fetch("https://api.openai.com/v1/audio/speech", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${OPENAI_API_KEY}`,
+                "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
                 "Content-Type": "application/json",
             }, 
             body: JSON.stringify({
@@ -75,7 +75,7 @@ export const POST: RequestHandler = async( {request} ) => {
 //         const response = await fetch("https://api.openai.com/v1/audio/speech", {
 //             method: "POST",
 //             headers: { 
-//                 "Authorization": `Bearer ${OPENAI_API_KEY}`, 
+//                 "Authorization": `Bearer ${env.OPENAI_API_KEY}`, 
 //                 "Content-Type": "application/json"
 //             },
 //             body: JSON.stringify({ 

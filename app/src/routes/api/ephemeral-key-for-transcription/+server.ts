@@ -1,4 +1,4 @@
-import { OPENAI_API_KEY } from "$env/static/private";
+import { env } from "$env/dynamic/private";
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
 
@@ -8,7 +8,7 @@ export const POST: RequestHandler = async() => {
         const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${OPENAI_API_KEY}`,
+                "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
